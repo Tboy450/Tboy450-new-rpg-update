@@ -48,12 +48,17 @@ import wave
 import io
 
 from game_data import (
+    AREA_DESCRIPTIONS,
     AREA_ENEMY_TYPES,
+    AREA_PARTICLE_PROFILES,
     CHARACTER_CLASS_STATS,
     DRAGON_BOSS_COLORS,
     ENEMY_NAME_POOLS,
+    ITEM_PROFILES,
+    ITEM_SPAWN_TABLE,
     WORLD_LAYOUT,
     create_town_guard,
+    get_element_profile,
 )
 
 # Initialize Pygame
@@ -2371,19 +2376,24 @@ class Enemy:
         # Enemies will be positioned by the spawn system
         self.x = 0
         self.y = 0
-        self.enemy_type = random.choice(list(ENEMY_NAME_POOLS))
-        self.name = random.choice(ENEMY_NAME_POOLS[self.enemy_type])
+        self.set_type(random.choice(list(ENEMY_NAME_POOLS)))
         
         self.health = random.randint(20, 30) + player_level * 5
         self.max_health = self.health
         self.strength = random.randint(5, 10) + player_level * 2
         self.speed = random.randint(3, 6) + player_level // 2
-        self.color = ENEMY_COLOR
         self.movement_cooldown = 0
         self.movement_delay = 60
         self.animation_offset = 0
         self.attack_animation = 0
         self.hit_animation = 0
+
+    def set_type(self, enemy_type):
+        self.enemy_type = enemy_type
+        self.profile = get_element_profile(enemy_type)
+        self.color = self.profile["primary_color"]
+        names = ENEMY_NAME_POOLS.get(enemy_type, ["Wandering Foe"])
+        self.name = random.choice(names)
         
     def update_animation(self):
         self.animation_offset = math.sin(pygame.time.get_ticks() * 0.005) * 2
@@ -2413,9 +2423,10 @@ class Enemy:
         
         x = self.x + offset_x
         y = self.y + offset_y
+        profile = get_element_profile(self.enemy_type)
         
         if self.enemy_type == "fiery":
-            pygame.draw.ellipse(surface, (200, 50, 0), (x, y, self.size, self.size))
+            pygame.draw.ellipse(surface, profile["primary_color"], (x, y, self.size, self.size))
             flame_size = 15
             if self.attack_animation > 0:
                 flame_size = 20 * (1 - self.attack_animation / 10)
@@ -2423,35 +2434,35 @@ class Enemy:
                 angle = i * math.pi / 4
                 flame_x = x + self.size//2 + math.cos(angle) * flame_size
                 flame_y = y + self.size//2 + math.sin(angle) * flame_size
-                pygame.draw.polygon(surface, (255, 150, 0), 
+                pygame.draw.polygon(surface, profile["secondary_color"], 
                                   [(x + self.size//2, y + self.size//2),
                                    (flame_x, flame_y),
                                    (flame_x + math.cos(angle+0.3)*5, flame_y + math.sin(angle+0.3)*5)])
-            pygame.draw.circle(surface, (255, 255, 0), (x + 15, y + 15), 4)
-            pygame.draw.circle(surface, (255, 255, 0), (x + self.size - 15, y + 15), 4)
-            pygame.draw.arc(surface, (255, 100, 0), (x + 10, y + 20, self.size - 20, 15), 0, math.pi, 2)
+            pygame.draw.circle(surface, profile["accent_color"], (x + 15, y + 15), 4)
+            pygame.draw.circle(surface, profile["accent_color"], (x + self.size - 15, y + 15), 4)
+            pygame.draw.arc(surface, profile["secondary_color"], (x + 10, y + 20, self.size - 20, 15), 0, math.pi, 2)
             
         elif self.enemy_type == "shadow":
-            pygame.draw.ellipse(surface, (40, 40, 80), (x, y, self.size, self.size))
+            pygame.draw.ellipse(surface, profile["primary_color"], (x, y, self.size, self.size))
             smoke_count = 6
             if self.attack_animation > 0:
                 smoke_count = 12 * (1 - self.attack_animation / 10)
             for i in range(int(smoke_count)):
                 offset_x = random.randint(-5, 5)
                 offset_y = random.randint(-5, 5)
-                pygame.draw.circle(surface, (70, 70, 120), 
+                pygame.draw.circle(surface, profile["secondary_color"], 
                                  (x + self.size//2 + offset_x, y + self.size//2 + offset_y), 
                                  random.randint(3, 8))
-            pygame.draw.circle(surface, (0, 255, 255), (x + 20, y + 20), 5)
-            pygame.draw.circle(surface, (0, 255, 255), (x + self.size - 20, y + 20), 5)
+            pygame.draw.circle(surface, profile["accent_color"], (x + 20, y + 20), 5)
+            pygame.draw.circle(surface, profile["accent_color"], (x + self.size - 20, y + 20), 5)
             claw_length = 10
             if self.attack_animation > 0:
                 claw_length = 15 * (1 - self.attack_animation / 10)
-            pygame.draw.line(surface, (0, 200, 200), (x, y + self.size), (x - claw_length, y + self.size + claw_length), 2)
-            pygame.draw.line(surface, (0, 200, 200), (x + self.size, y + self.size), (x + self.size + claw_length, y + self.size + claw_length), 2)
+            pygame.draw.line(surface, profile["accent_color"], (x, y + self.size), (x - claw_length, y + self.size + claw_length), 2)
+            pygame.draw.line(surface, profile["accent_color"], (x + self.size, y + self.size), (x + self.size + claw_length, y + self.size + claw_length), 2)
             
         else:  # Ice enemy
-            pygame.draw.ellipse(surface, (150, 220, 255), (x, y, self.size, self.size))
+            pygame.draw.ellipse(surface, profile["primary_color"], (x, y, self.size, self.size))
             shard_length = 20
             if self.attack_animation > 0:
                 shard_length = 30 * (1 - self.attack_animation / 10)
@@ -2459,15 +2470,15 @@ class Enemy:
                 angle = i * math.pi / 4
                 shard_x = x + self.size//2 + math.cos(angle) * shard_length
                 shard_y = y + self.size//2 + math.sin(angle) * shard_length
-                pygame.draw.line(surface, (200, 240, 255), 
+                pygame.draw.line(surface, profile["secondary_color"], 
                                (x + self.size//2, y + self.size//2),
                                (shard_x, shard_y), 2)
-            pygame.draw.circle(surface, (0, 100, 200), (x + 15, y + 15), 4)
-            pygame.draw.circle(surface, (0, 100, 200), (x + self.size - 15, y + 15), 4)
+            pygame.draw.circle(surface, profile["accent_color"], (x + 15, y + 15), 4)
+            pygame.draw.circle(surface, profile["accent_color"], (x + self.size - 15, y + 15), 4)
             breath_width = 10
             if self.attack_animation > 0:
                 breath_width = 20 * (1 - self.attack_animation / 10)
-            pygame.draw.arc(surface, (100, 200, 255), (x + 10, y + 25, self.size - 20, breath_width), 0, math.pi, 2)
+            pygame.draw.arc(surface, profile["secondary_color"], (x + 10, y + 25, self.size - 20, breath_width), 0, math.pi, 2)
             
         bar_width = 40
         pygame.draw.rect(surface, (20, 20, 30), (x - 5, y - 15, bar_width, 8), border_radius=2)
@@ -2508,8 +2519,9 @@ class Item:
         # Items will be positioned by the spawn system
         self.x = 0
         self.y = 0
-        self.type = random.choice(["health", "mana"])
-        self.color = ITEM_COLOR if self.type == "health" else MANA_COLOR
+        self.type = random.choice(ITEM_SPAWN_TABLE)
+        self.profile = ITEM_PROFILES[self.type]
+        self.color = self.profile["color"]
         self.pulse = 0
         self.float_offset = 0
         
@@ -2518,18 +2530,38 @@ class Item:
         self.float_offset = math.sin(pygame.time.get_ticks() * 0.003) * 3
         
     def draw(self, surface):
-        pulse_size = self.size//2 + math.sin(self.pulse) * 3
-        y_pos = self.y + self.float_offset
+        pulse_size = int(self.size//2 + math.sin(self.pulse) * 3)
+        y_pos = int(self.y + self.float_offset)
         
         pygame.draw.circle(surface, self.color, (self.x + self.size//2, y_pos + self.size//2), pulse_size)
         
         if self.type == "health":
             pygame.draw.rect(surface, (255, 255, 255), (self.x + 10, y_pos + 8, 10, 14), border_radius=2)
-        else:
+        elif self.type == "mana":
             pygame.draw.polygon(surface, (255, 255, 255), 
                               [(self.x + 15, y_pos + 8),
                                (self.x + 8, y_pos + 22),
                                (self.x + 22, y_pos + 22)])
+        elif self.type == "might":
+            pygame.draw.polygon(surface, (255, 255, 255),
+                              [(self.x + 15, y_pos + 6),
+                               (self.x + 19, y_pos + 14),
+                               (self.x + 27, y_pos + 15),
+                               (self.x + 21, y_pos + 20),
+                               (self.x + 23, y_pos + 28),
+                               (self.x + 15, y_pos + 23),
+                               (self.x + 7, y_pos + 28),
+                               (self.x + 9, y_pos + 20),
+                               (self.x + 3, y_pos + 15),
+                               (self.x + 11, y_pos + 14)])
+        elif self.type == "ward":
+            pygame.draw.polygon(surface, (255, 255, 255),
+                              [(self.x + 15, y_pos + 7),
+                               (self.x + 24, y_pos + 11),
+                               (self.x + 22, y_pos + 22),
+                               (self.x + 15, y_pos + 28),
+                               (self.x + 8, y_pos + 22),
+                               (self.x + 6, y_pos + 11)])
 
 # ============================================================================
 # DECORATIVE DRAGON - Animated background element for title screen
@@ -2666,6 +2698,9 @@ class BattleScreen:
         self.is_boss = hasattr(self.enemy, 'enemy_type') and "boss_dragon" in self.enemy.enemy_type
         self.pending_elemental_effect = None
         self.elemental_effect_timer = 0
+        self.player_chill_turns = 0
+        self.player_condition = None
+        self.player_condition_timer = 0
         
     def start_transition(self):
         self.transition_state = "in"
@@ -2674,6 +2709,47 @@ class BattleScreen:
     def add_screen_shake(self, intensity=5, duration=10):
         self.screen_shake = duration
         self.shake_intensity = intensity
+
+    def draw_elemental_enemy(self, surface, enemy_x, enemy_y):
+        profile = get_element_profile(self.enemy.enemy_type)
+        primary = profile["primary_color"]
+        secondary = profile["secondary_color"]
+        accent = profile["accent_color"]
+
+        if self.enemy.enemy_type == "fiery":
+            pygame.draw.ellipse(surface, primary, (enemy_x, enemy_y, 60, 60))
+            for i in range(12):
+                angle = i * math.pi / 6
+                flame_length = random.randint(10, 20)
+                flame_x = enemy_x + 30 + math.cos(angle) * flame_length
+                flame_y = enemy_y + 30 + math.sin(angle) * flame_length
+                flame_color = random.choice(profile["particle_colors"])
+                pygame.draw.line(surface, flame_color,
+                               (enemy_x + 30, enemy_y + 30),
+                               (flame_x, flame_y), 3)
+        elif self.enemy.enemy_type == "shadow":
+            pygame.draw.ellipse(surface, primary, (enemy_x, enemy_y, 60, 60))
+            for _ in range(10):
+                offset_x = random.randint(-10, 10)
+                offset_y = random.randint(-10, 10)
+                size = random.randint(5, 15)
+                alpha = random.randint(50, 150)
+                smoke_surf = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+                pygame.draw.circle(smoke_surf, (*secondary, alpha), (size, size), size)
+                surface.blit(smoke_surf, (enemy_x + 30 - size + offset_x, enemy_y + 30 - size + offset_y))
+        else:
+            pygame.draw.ellipse(surface, primary, (enemy_x, enemy_y, 60, 60))
+            for i in range(8):
+                angle = i * math.pi / 4
+                crystal_length = random.randint(10, 20)
+                crystal_x = enemy_x + 30 + math.cos(angle) * crystal_length
+                crystal_y = enemy_y + 30 + math.sin(angle) * crystal_length
+                pygame.draw.line(surface, secondary,
+                               (enemy_x + 30, enemy_y + 30),
+                               (crystal_x, crystal_y), 3)
+
+        pygame.draw.circle(surface, accent, (enemy_x + 20, enemy_y + 25), 6)
+        pygame.draw.circle(surface, accent, (enemy_x + 40, enemy_y + 25), 6)
         
     def draw(self, surface):
         shake_offset_x = 0
@@ -2709,43 +2785,8 @@ class BattleScreen:
             self.enemy.y = enemy_y
             self.enemy.draw(boss_surf)
             temp_surface.blit(boss_surf, (0, 0))
-        elif self.enemy.enemy_type == "fiery":
-            pygame.draw.ellipse(temp_surface, (220, 80, 0), (enemy_x, enemy_y, 60, 60))
-            for i in range(12):
-                angle = i * math.pi / 6
-                flame_length = random.randint(10, 20)
-                flame_x = enemy_x + 30 + math.cos(angle) * flame_length
-                flame_y = enemy_y + 30 + math.sin(angle) * flame_length
-                flame_color = random.choice(FIRE_COLORS)
-                pygame.draw.line(temp_surface, flame_color, 
-                               (enemy_x + 30, enemy_y + 30),
-                               (flame_x, flame_y), 3)
-            pygame.draw.circle(temp_surface, (255, 255, 0), (enemy_x + 20, enemy_y + 25), 6)
-            pygame.draw.circle(temp_surface, (255, 255, 0), (enemy_x + 40, enemy_y + 25), 6)
-        elif self.enemy.enemy_type == "shadow":
-            pygame.draw.ellipse(temp_surface, (30, 30, 60), (enemy_x, enemy_y, 60, 60))
-            for i in range(10):
-                offset_x = random.randint(-10, 10)
-                offset_y = random.randint(-10, 10)
-                size = random.randint(5, 15)
-                alpha = random.randint(50, 150)
-                smoke_surf = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
-                pygame.draw.circle(smoke_surf, (70, 70, 120, alpha), (size, size), size)
-                temp_surface.blit(smoke_surf, (enemy_x + 30 - size + offset_x, enemy_y + 30 - size + offset_y))
-            pygame.draw.circle(temp_surface, (0, 255, 255), (enemy_x + 20, enemy_y + 25), 7)
-            pygame.draw.circle(temp_surface, (0, 255, 255), (enemy_x + 40, enemy_y + 25), 7)
-        else:  # Ice enemy
-            pygame.draw.ellipse(temp_surface, (180, 230, 255), (enemy_x, enemy_y, 60, 60))
-            for i in range(8):
-                angle = i * math.pi / 4
-                crystal_length = random.randint(10, 20)
-                crystal_x = enemy_x + 30 + math.cos(angle) * crystal_length
-                crystal_y = enemy_y + 30 + math.sin(angle) * crystal_length
-                pygame.draw.line(temp_surface, (220, 240, 255), 
-                               (enemy_x + 30, enemy_y + 30),
-                               (crystal_x, crystal_y), 3)
-            pygame.draw.circle(temp_surface, (0, 100, 200), (enemy_x + 20, enemy_y + 25), 6)
-            pygame.draw.circle(temp_surface, (0, 100, 200), (enemy_x + 40, enemy_y + 25), 6)
+        else:
+            self.draw_elemental_enemy(temp_surface, enemy_x, enemy_y)
         
         # Draw character-specific attack effects
         if self.attack_effect_timer > 0:
@@ -2881,6 +2922,12 @@ class BattleScreen:
         player_text = font_small.render(f"{self.player.health}/{self.player.max_health}", True, TEXT_COLOR)
         text_rect = player_text.get_rect(center=(180 + 80, 410 + 10))
         temp_surface.blit(player_text, text_rect)
+        if self.player_condition and self.player_condition_timer > 0:
+            condition_text = font_tiny.render(self.player_condition["label"], True, self.player_condition["color"])
+            pygame.draw.rect(temp_surface, UI_BG, (180, 435, max(90, condition_text.get_width() + 16), 24), border_radius=4)
+            pygame.draw.rect(temp_surface, self.player_condition["color"], (180, 435, max(90, condition_text.get_width() + 16), 24), 2, border_radius=4)
+            temp_surface.blit(condition_text, (188, 439))
+            self.player_condition_timer -= 1
         # Only draw enemy health bar and name if not a boss dragon
         if not (hasattr(self.enemy, 'enemy_type') and "boss_dragon" in self.enemy.enemy_type):
             enemy_health_width = 150 * (self.enemy.health / max(1, self.enemy.max_health))
@@ -3114,7 +3161,7 @@ class BattleScreen:
         # Handle enemy turn if no actions are queued
         if self.state == "enemy_turn" and not self.battle_ended and not self.waiting_for_continue:
             damage = max(1, self.enemy.strength - self.player.defense // 3)
-            self.player.health -= damage
+            self.player.health = max(0, self.player.health - damage)
             self.add_log(f"{self.enemy.name} attacks for {damage} damage!")
             self.damage_target = "player"
             self.damage_amount = damage
@@ -3122,7 +3169,7 @@ class BattleScreen:
             self.enemy.start_attack_animation()
             self.player.start_hit_animation()
             self.add_screen_shake(3, 5)
-            # Elemental effect after dialog
+            self.apply_enemy_elemental_effect()
             self.pending_elemental_effect = self.enemy.enemy_type
             self.elemental_effect_timer = 20
             self.state = "player_turn"
@@ -3134,6 +3181,49 @@ class BattleScreen:
     def add_log(self, message):
         self.battle_log.append(message)
         self.waiting_for_continue = True
+
+    def set_player_condition(self, label, color, duration=90):
+        self.player_condition = {"label": label, "color": color}
+        self.player_condition_timer = duration
+
+    def apply_enemy_elemental_effect(self):
+        profile = get_element_profile(self.enemy.enemy_type)
+        status = profile.get("status")
+        if not status or random.random() > status["chance"]:
+            return
+
+        kind = status["kind"]
+        color = profile["accent_color"]
+        self.particle_system.add_explosion(
+            200 + 25, 350 + 25, random.choice(profile["particle_colors"]),
+            count=18, size_range=(2, 5), speed_range=(1, 3), lifetime_range=(15, 30)
+        )
+
+        if kind == "burn":
+            amount = max(1, status["damage"] + self.enemy.strength // 12)
+            self.player.health = max(0, self.player.health - amount)
+            self.set_player_condition("BURNING", color)
+            self.add_log(status["message"].format(amount=amount))
+        elif kind == "drain":
+            amount = min(self.player.mana, status["amount"] + self.enemy.strength // 10)
+            if amount > 0:
+                self.player.mana -= amount
+                self.set_player_condition("DRAINED", color)
+                self.add_log(status["message"].format(amount=amount))
+        elif kind == "chill":
+            self.player_chill_turns = max(self.player_chill_turns, status["turns"])
+            self.set_player_condition("CHILLED", color)
+            self.add_log(status["message"])
+
+    def apply_player_damage_modifiers(self, damage):
+        if self.player_chill_turns <= 0:
+            return damage
+
+        self.player_chill_turns -= 1
+        multiplier = get_element_profile("ice")["status"]["damage_multiplier"]
+        reduced_damage = max(1, int(damage * multiplier))
+        self.add_log("Chill weakens the strike.")
+        return reduced_damage
     
     def handle_input(self, event, game=None):
         if self.waiting_for_continue:
@@ -3207,7 +3297,7 @@ class BattleScreen:
         elif self.selected_option == 2:  # Item
             if game and hasattr(game, 'SFX_ITEM') and game.SFX_ITEM: game.SFX_ITEM.play()
             self.action_steps = [
-                lambda: self.add_log("You used a health potion!"),
+                lambda: self.add_log(f"You used a {ITEM_PROFILES['health']['label'].lower()} potion!"),
                 lambda: self.execute_item()
             ]
         elif self.selected_option == 3:  # Run
@@ -3328,8 +3418,8 @@ class BattleScreen:
             )
     
     def execute_attack(self):
-        damage = self.player.strength
-        self.enemy.health -= damage
+        damage = self.apply_player_damage_modifiers(self.player.strength)
+        self.enemy.health = max(0, self.enemy.health - damage)
         
         # Character-specific attack messages and effects
         if self.player.type == "Mage":
@@ -3368,8 +3458,8 @@ class BattleScreen:
         self.action_cooldown = self.action_delay
     
     def execute_magic(self):
-        damage = self.player.strength * 2
-        self.enemy.health -= damage
+        damage = self.apply_player_damage_modifiers(self.player.strength * 2)
+        self.enemy.health = max(0, self.enemy.health - damage)
         self.player.mana -= 20
         self.add_log(f"Fireball dealt {damage} damage to {self.enemy.name}!")
         self.damage_target = "enemy"
@@ -3393,15 +3483,16 @@ class BattleScreen:
         self.action_cooldown = self.action_delay
     
     def execute_item(self):
-        heal_amount = 30
+        profile = ITEM_PROFILES["health"]
+        heal_amount = profile["amount"]
         self.player.health = min(self.player.max_health, self.player.health + heal_amount)
-        self.add_log(f"Restored {heal_amount} HP!")
+        self.add_log(profile["message"].format(amount=heal_amount))
         
         for _ in range(20):
             x = random.randint(200, 200 + PLAYER_SIZE)
             y = random.randint(300, 300 + PLAYER_SIZE)
             self.particle_system.add_particle(
-                x, y, HEALTH_COLOR,
+                x, y, profile["color"],
                 (random.uniform(-0.5, 0.5), random.uniform(-1, -0.5)),
                 3, 30
             )
@@ -3707,6 +3798,8 @@ class Game:
         self.boss_battle_triggered = False
         self.boss_defeated = False
         self.show_world_map = False
+        self.pickup_message = None
+        self.pickup_message_timer = 0
         
         # Initialize starfield
         for _ in range(150):
@@ -3796,6 +3889,46 @@ class Game:
             # Enter/Space
             self.android_buttons['enter'] = pygame.Rect(screen_w - button_margin - button_size, screen_h - 2*button_size, button_size, button_size)
             self.android_buttons['space'] = pygame.Rect(screen_w - button_margin - 2*button_size, screen_h - 2*button_size, button_size, button_size)
+
+    def apply_world_item(self, item):
+        profile = ITEM_PROFILES.get(item.type, ITEM_PROFILES["health"])
+        amount = profile["amount"]
+        effect = profile["effect"]
+
+        if effect == "restore_health":
+            self.player.health = min(self.player.max_health, self.player.health + amount)
+        elif effect == "restore_mana":
+            self.player.mana = min(self.player.max_mana, self.player.mana + amount)
+        elif effect == "raise_strength":
+            self.player.strength += amount
+        elif effect == "raise_defense":
+            self.player.defense += amount
+
+        self.pickup_message = profile["message"].format(amount=amount)
+        self.pickup_message_timer = 120
+        for _ in range(18):
+            x = random.randint(self.player.x, self.player.x + PLAYER_SIZE)
+            y = random.randint(self.player.y, self.player.y + PLAYER_SIZE)
+            self.particle_system.add_particle(
+                x, y, profile["color"],
+                (random.uniform(-0.5, 0.5), random.uniform(-1, -0.5)),
+                3, 30
+            )
+
+    def emit_area_particles(self, current_area):
+        area_world_x, area_world_y = current_area.get_world_position()
+        for profile in AREA_PARTICLE_PROFILES.get(current_area.area_type, ()):
+            for _ in range(profile["count"]):
+                x = area_world_x + random.randint(0, AREA_WIDTH)
+                y = area_world_y + random.randint(0, AREA_HEIGHT)
+                velocity = (
+                    random.uniform(*profile["velocity_x"]),
+                    random.uniform(*profile["velocity_y"]),
+                )
+                self.particle_system.add_particle(
+                    x, y, profile["color"], velocity,
+                    profile["size"], profile["lifetime"]
+                )
     
     def spawn_enemy(self):
         current_area = self.world_map.get_current_area()
@@ -3808,7 +3941,7 @@ class Game:
             available_types = AREA_ENEMY_TYPES.get(
                 current_area.area_type, ["fiery", "shadow", "ice"]
             )
-            enemy.enemy_type = random.choice(available_types)
+            enemy.set_type(random.choice(available_types))
             
             # Position enemy randomly within the current area
             area_world_x, area_world_y = current_area.get_world_position()
@@ -3916,6 +4049,8 @@ class Game:
             self.item_timer += 1
             self.movement_cooldown = max(0, self.movement_cooldown - 1)
             self.player.update_animation()
+            if self.pickup_message_timer > 0:
+                self.pickup_message_timer -= 1
             
             # Update camera to follow player
             self.world_map.update_camera(self.player.x, self.player.y)
@@ -3944,99 +4079,8 @@ class Game:
                 if current_area.particle_timer >= current_area.particle_interval:
                     current_area.particle_timer = 0
                     
-                    # Spawn area-specific particles
-                    area_world_x, area_world_y = current_area.get_world_position()
-                    if current_area.area_type == "volcano":
-                        # Lava particles
-                        for _ in range(5):
-                            x = area_world_x + random.randint(0, AREA_WIDTH)
-                            y = area_world_y + random.randint(0, AREA_HEIGHT)
-                            self.particle_system.add_particle(
-                                x, y, (255, 100, 0),
-                                (random.uniform(-0.5, 0.5), random.uniform(-2, -0.5)),
-                                6, 40
-                            )
-                    elif current_area.area_type == "ice":
-                        # Snow particles
-                        for _ in range(4):
-                            x = area_world_x + random.randint(0, AREA_WIDTH)
-                            y = area_world_y + random.randint(0, AREA_HEIGHT)
-                            self.particle_system.add_particle(
-                                x, y, (200, 220, 255),
-                                (random.uniform(-0.3, 0.3), random.uniform(0.5, 1.5)),
-                                4, 50
-                            )
-                    elif current_area.area_type == "swamp":
-                        # Mist particles
-                        for _ in range(3):
-                            x = area_world_x + random.randint(0, AREA_WIDTH)
-                            y = area_world_y + random.randint(0, AREA_HEIGHT)
-                            self.particle_system.add_particle(
-                                x, y, (150, 180, 150),
-                                (random.uniform(-0.2, 0.2), random.uniform(-0.2, 0.2)),
-                                5, 60
-                            )
-                    elif current_area.area_type == "forest":
-                        # Leaf particles
-                        for _ in range(4):
-                            x = area_world_x + random.randint(0, AREA_WIDTH)
-                            y = area_world_y + random.randint(0, AREA_HEIGHT)
-                            self.particle_system.add_particle(
-                                x, y, (100, 150, 50),
-                                (random.uniform(-0.3, 0.3), random.uniform(-0.5, -0.1)),
-                                5, 45
-                            )
-                    elif current_area.area_type == "desert":
-                        # Sand particles
-                        for _ in range(6):
-                            x = area_world_x + random.randint(0, AREA_WIDTH)
-                            y = area_world_y + random.randint(0, AREA_HEIGHT)
-                            self.particle_system.add_particle(
-                                x, y, (200, 180, 120),
-                                (random.uniform(-1, 1), random.uniform(-0.5, 0.5)),
-                                4, 35
-                            )
-                    elif current_area.area_type == "mountain":
-                        # Wind particles
-                        for _ in range(3):
-                            x = area_world_x + random.randint(0, AREA_WIDTH)
-                            y = area_world_y + random.randint(0, AREA_HEIGHT)
-                            self.particle_system.add_particle(
-                                x, y, (180, 180, 200),
-                                (random.uniform(-0.8, 0.8), random.uniform(-0.3, 0.3)),
-                                4, 40
-                            )
-                    elif current_area.area_type == "beach":
-                        # Sea foam particles
-                        for _ in range(4):
-                            x = area_world_x + random.randint(0, AREA_WIDTH)
-                            y = area_world_y + random.randint(0, AREA_HEIGHT)
-                            self.particle_system.add_particle(
-                                x, y, (220, 240, 255),
-                                (random.uniform(-0.4, 0.4), random.uniform(-0.2, 0.2)),
-                                5, 55
-                            )
-                    elif current_area.area_type == "castle":
-                        # Magic sparkles
-                        for _ in range(3):
-                            x = area_world_x + random.randint(0, AREA_WIDTH)
-                            y = area_world_y + random.randint(0, AREA_HEIGHT)
-                            self.particle_system.add_particle(
-                                x, y, (255, 215, 0),
-                                (random.uniform(-0.2, 0.2), random.uniform(-0.2, 0.2)),
-                                4, 50
-                            )
-                    elif current_area.area_type == "cave":
-                        # Dust particles
-                        for _ in range(2):
-                            x = area_world_x + random.randint(0, AREA_WIDTH)
-                            y = area_world_y + random.randint(0, AREA_HEIGHT)
-                            self.particle_system.add_particle(
-                                x, y, (100, 100, 120),
-                                (random.uniform(-0.1, 0.1), random.uniform(-0.1, 0.1)),
-                                3, 70
-                            )
-                    elif current_area.area_type == "town":
+                    self.emit_area_particles(current_area)
+                    if current_area.area_type == "town":
                         # Town-specific particles (smoke, fountain, leaves)
                         current_area.generate_town_particles(self.particle_system)
                         
@@ -4095,26 +4139,7 @@ class Game:
                     item_rect = pygame.Rect(item.x, item.y, ITEM_SIZE, ITEM_SIZE)
                     player_rect = pygame.Rect(self.player.x, self.player.y, PLAYER_SIZE, PLAYER_SIZE)
                     if player_rect.colliderect(item_rect):
-                        if item.type == "health":
-                            self.player.health = min(self.player.max_health, self.player.health + 30)
-                            for _ in range(15):
-                                x = random.randint(self.player.x, self.player.x + PLAYER_SIZE)
-                                y = random.randint(self.player.y, self.player.y + PLAYER_SIZE)
-                                self.particle_system.add_particle(
-                                    x, y, HEALTH_COLOR,
-                                    (random.uniform(-0.5, 0.5), random.uniform(-1, -0.5)),
-                                    3, 30
-                                )
-                        else:
-                            self.player.mana = min(self.player.max_mana, self.player.mana + 40)
-                            for _ in range(15):
-                                x = random.randint(self.player.x, self.player.x + PLAYER_SIZE)
-                                y = random.randint(self.player.y, self.player.y + PLAYER_SIZE)
-                                self.particle_system.add_particle(
-                                    x, y, MANA_COLOR,
-                                    (random.uniform(-0.5, 0.5), random.uniform(-1, -0.5)),
-                                    3, 30
-                                )
+                        self.apply_world_item(item)
                         self.player.items_collected += 1
                         # Remove item from both lists
                         if item in self.items:
@@ -4382,6 +4407,13 @@ class Game:
             
             # Draw player stats
             self.player.draw_stats(screen, 20, 20)
+
+            if self.pickup_message and self.pickup_message_timer > 0:
+                message_text = font_small.render(self.pickup_message, True, (255, 215, 0))
+                panel_width = max(260, message_text.get_width() + 24)
+                pygame.draw.rect(screen, UI_BG, (20, 150, panel_width, 38), border_radius=6)
+                pygame.draw.rect(screen, (255, 215, 0), (20, 150, panel_width, 38), 2, border_radius=6)
+                screen.blit(message_text, (32, 158))
             
             # Draw score and other info
             score_text = font_medium.render(f"SCORE: {self.score}", True, TEXT_COLOR)
@@ -4399,21 +4431,7 @@ class Game:
                 area_text = font_small.render(f"AREA: {current_area.area_type.upper()}", True, TEXT_COLOR)
                 screen.blit(area_text, (SCREEN_WIDTH - area_text.get_width() - 20, 120))
                 
-                # Area descriptions
-                area_descriptions = {
-                    "plains": "Peaceful grasslands",
-                    "forest": "Dense woodland",
-                    "mountain": "Rocky peaks",
-                    "desert": "Harsh wasteland",
-                    "swamp": "Misty wetlands",
-                    "beach": "Sandy shores",
-                    "volcano": "Fiery depths",
-                    "ice": "Frozen wastes",
-                    "castle": "Ancient fortress",
-                    "cave": "Dark caverns"
-                }
-                
-                desc = area_descriptions.get(current_area.area_type, "")
+                desc = AREA_DESCRIPTIONS.get(current_area.area_type, "")
                 if desc:
                     desc_text = font_tiny.render(desc, True, (180, 180, 200))
                     screen.blit(desc_text, (SCREEN_WIDTH - desc_text.get_width() - 20, 145))
