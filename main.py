@@ -35,7 +35,8 @@ CONTROLS:
 """
 
 import os
-os.environ['SDL_AUDIODRIVER'] = 'directsound'  # or 'winmm' or 'waveout'
+if os.name == "nt":
+    os.environ.setdefault("SDL_AUDIODRIVER", "directsound")
 import pygame
 import sys
 import random
@@ -46,11 +47,25 @@ import tempfile
 import wave
 import io
 
+from game_data import (
+    AREA_ENEMY_TYPES,
+    CHARACTER_CLASS_STATS,
+    DRAGON_BOSS_COLORS,
+    ENEMY_NAME_POOLS,
+    WORLD_LAYOUT,
+    create_town_guard,
+)
+
 # Initialize Pygame
 pygame.init()
 pygame.font.init()
-pygame.mixer.init()
-pygame.mixer.music.set_volume(1.0)
+try:
+    pygame.mixer.init()
+    pygame.mixer.music.set_volume(1.0)
+    AUDIO_AVAILABLE = True
+except pygame.error as exc:
+    AUDIO_AVAILABLE = False
+    print(f"[WARN] Audio disabled: {exc}")
 
 # ============================================================================
 # GAME CONSTANTS AND CONFIGURATION
@@ -941,25 +956,7 @@ class WorldArea:
             return
             
         # Create guard at the town entrance (near the gate)
-        self.guard = {
-            "x": 300,  # Moved 200 pixels left from center gate
-            "y": 270,  # Just inside the gate (moved down 2 squares)
-            "width": 40,
-            "height": 60,
-            "color": (100, 150, 200),  # Blue uniform
-            "animation_offset": 0,
-            "animation_timer": 0,
-            "dialogue": [
-                "Halt! Welcome to our fair town, traveler.",
-                "I am Captain Marcus, keeper of the peace.",
-                "You may enter freely, but mind our laws.",
-                "If you need assistance, seek me out.",
-                "Safe travels, adventurer!"
-            ],
-            "current_dialogue": 0,
-            "dialogue_timer": 0,
-            "visible": True
-        }
+        self.guard = create_town_guard()
     
     def check_entrance_cutscene(self, player_x, player_y):
         """Check if player should trigger the entrance cutscene"""
@@ -1416,15 +1413,9 @@ class WorldMap:
         self.transitioning = False
         
         # Initialize all areas
-        area_types = [
-            ["mountain", "forest", "desert"],
-            ["swamp", "beach", "volcano"],
-            ["ice", "town", "cave"]
-        ]
-        
         for y in range(WORLD_SIZE):
             for x in range(WORLD_SIZE):
-                area_type = area_types[y][x]
+                area_type = WORLD_LAYOUT[y][x]
                 self.areas[(x, y)] = WorldArea(x, y, area_type)
         
         # Mark starting area as visited
@@ -1629,25 +1620,13 @@ class Character:
         self.level = 1
         self.exp = 0
         self.exp_to_level = 100
-        
-        if char_type == "Warrior":
-            self.max_health = 120
-            self.max_mana = 50
-            self.strength = 15
-            self.defense = 10
-            self.speed = 7
-        elif char_type == "Mage":
-            self.max_health = 80
-            self.max_mana = 120
-            self.strength = 8
-            self.defense = 6
-            self.speed = 8
-        else:  # Rogue
-            self.max_health = 100
-            self.max_mana = 70
-            self.strength = 12
-            self.defense = 8
-            self.speed = 12
+
+        stats = CHARACTER_CLASS_STATS.get(char_type, CHARACTER_CLASS_STATS["Rogue"])
+        self.max_health = stats["max_health"]
+        self.max_mana = stats["max_mana"]
+        self.strength = stats["strength"]
+        self.defense = stats["defense"]
+        self.speed = stats["speed"]
             
         self.health = self.max_health
         self.mana = self.max_mana
@@ -2392,16 +2371,8 @@ class Enemy:
         # Enemies will be positioned by the spawn system
         self.x = 0
         self.y = 0
-        self.enemy_type = random.choice(["fiery", "shadow", "ice"])
-        
-        # Generate enemy name based on type
-        if self.enemy_type == "fiery":
-            names = ["Fire Imp", "Lava Sprite", "Magma Beast", "Inferno Hound", "Blaze Fiend"]
-        elif self.enemy_type == "shadow":
-            names = ["Dark Shade", "Night Phantom", "Void Walker", "Gloom Stalker", "Shadow Fiend"]
-        else:  # ice
-            names = ["Frost Sprite", "Ice Golem", "Blizzard Elemental", "Frozen Wraith", "Chill Specter"]
-        self.name = random.choice(names)
+        self.enemy_type = random.choice(list(ENEMY_NAME_POOLS))
+        self.name = random.choice(ENEMY_NAME_POOLS[self.enemy_type])
         
         self.health = random.randint(20, 30) + player_level * 5
         self.max_health = self.health
@@ -3786,20 +3757,24 @@ class Game:
             # Make it stereo by duplicating the mono channel
             audio_stereo = np.column_stack((audio, audio))
             return pygame.sndarray.make_sound(audio_stereo)
-        try:
-            pygame.mixer.init()
-            self.SFX_CLICK = generate_tone(frequency=800, duration_ms=60, volume=0.5, waveform='square')
-            self.SFX_ATTACK = generate_tone(frequency=200, duration_ms=120, volume=0.5, waveform='square')
-            self.SFX_MAGIC = generate_tone(frequency=1200, duration_ms=200, volume=0.5, waveform='sine')
-            self.SFX_ITEM = generate_tone(frequency=1000, duration_ms=80, volume=0.5, waveform='sine')
-            self.SFX_LEVELUP = generate_tone(frequency=1500, duration_ms=300, volume=0.5, waveform='sine')
-            self.SFX_GAMEOVER = generate_tone(frequency=100, duration_ms=400, volume=0.5, waveform='sine')
-            self.SFX_VICTORY = generate_tone(frequency=900, duration_ms=500, volume=0.5, waveform='sine')
-            self.SFX_ARROW = generate_tone(frequency=600, duration_ms=40, volume=0.4, waveform='square')
-            self.SFX_ENTER = generate_tone(frequency=1200, duration_ms=80, volume=0.5, waveform='sine')
-        except Exception as e:
-            print("[WARNING] Could not generate sound effects:", e)
+        if AUDIO_AVAILABLE and pygame.mixer.get_init():
+            try:
+                self.SFX_CLICK = generate_tone(frequency=800, duration_ms=60, volume=0.5, waveform='square')
+                self.SFX_ATTACK = generate_tone(frequency=200, duration_ms=120, volume=0.5, waveform='square')
+                self.SFX_MAGIC = generate_tone(frequency=1200, duration_ms=200, volume=0.5, waveform='sine')
+                self.SFX_ITEM = generate_tone(frequency=1000, duration_ms=80, volume=0.5, waveform='sine')
+                self.SFX_LEVELUP = generate_tone(frequency=1500, duration_ms=300, volume=0.5, waveform='sine')
+                self.SFX_GAMEOVER = generate_tone(frequency=100, duration_ms=400, volume=0.5, waveform='sine')
+                self.SFX_VICTORY = generate_tone(frequency=900, duration_ms=500, volume=0.5, waveform='sine')
+                self.SFX_ARROW = generate_tone(frequency=600, duration_ms=40, volume=0.4, waveform='square')
+                self.SFX_ENTER = generate_tone(frequency=1200, duration_ms=80, volume=0.5, waveform='sine')
+            except Exception as e:
+                print("[WARNING] Could not generate sound effects:", e)
+                self.SFX_CLICK = self.SFX_ATTACK = self.SFX_MAGIC = self.SFX_ITEM = self.SFX_LEVELUP = self.SFX_GAMEOVER = self.SFX_VICTORY = None
+                self.SFX_ARROW = self.SFX_ENTER = None
+        else:
             self.SFX_CLICK = self.SFX_ATTACK = self.SFX_MAGIC = self.SFX_ITEM = self.SFX_LEVELUP = self.SFX_GAMEOVER = self.SFX_VICTORY = None
+            self.SFX_ARROW = self.SFX_ENTER = None
         
         # ========================================
         # MUSIC SYSTEM - Procedural Chiptune Generation
@@ -3828,22 +3803,11 @@ class Game:
         if current_area and current_area.area_type != "town" and len(current_area.enemies) < 3:
             # Spawn enemy in current area
             enemy = Enemy(self.player.level if self.player else 1)
-            
-            # Area-specific enemy types
-            area_enemy_types = {
-                "plains": ["fiery", "shadow", "ice"],
-                "forest": ["shadow", "ice"],
-                "mountain": ["fiery", "ice"],
-                "desert": ["fiery"],
-                "swamp": ["shadow", "ice"],
-                "volcano": ["fiery"],
-                "ice": ["ice"],
-                "castle": ["shadow", "fiery"],
-                "cave": ["shadow", "ice"]
-            }
-            
+
             # Set enemy type based on area
-            available_types = area_enemy_types.get(current_area.area_type, ["fiery", "shadow", "ice"])
+            available_types = AREA_ENEMY_TYPES.get(
+                current_area.area_type, ["fiery", "shadow", "ice"]
+            )
             enemy.enemy_type = random.choice(available_types)
             
             # Position enemy randomly within the current area
@@ -4941,7 +4905,17 @@ class MusicSystem:
         self.current_track = None
         self.last_state = None
         self.boss_battle_active = False
-        
+        self.town_music_bytes = None
+        self.start_menu_music_bytes = None
+        self.overworld_music_bytes = None
+        self.battle_music_bytes = None
+        self.boss_music_bytes = None
+        self.victory_music_bytes = None
+        self.game_over_music_bytes = None
+
+        if not pygame.mixer.get_init():
+            return
+
         try:
             # Store raw bytes instead of BytesIO objects
             self.start_menu_music_bytes = self.sound_to_wav_bytes(self.generate_start_menu_music())
@@ -4992,6 +4966,9 @@ class MusicSystem:
             print(f"Error converting sound to WAV: {e}")
             return None
     def update(self, game_state, is_boss_battle=False, current_area=None):
+        if not pygame.mixer.get_init():
+            return
+
         # Only update when state or boss battle status changes
         if game_state == self.last_state and is_boss_battle == self.boss_battle_active:
             return
@@ -5233,19 +5210,6 @@ class MusicSystem:
         return pygame.sndarray.make_sound(song)
 
 # --- DragonBoss: Progressive boss for each level ---
-DRAGON_BOSS_COLORS = [
-    ((255, 69, 0), (255, 140, 0)),      # Red-Orange
-    ((0, 191, 255), (0, 255, 255)),    # Blue-Cyan
-    ((50, 205, 50), (124, 252, 0)),    # Green-Lime
-    ((148, 0, 211), (255, 0, 255)),    # Purple-Magenta
-    ((255, 215, 0), (255, 255, 0)),    # Gold-Yellow
-    ((255, 20, 147), (255, 105, 180)), # Pink
-    ((255, 255, 255), (200, 200, 200)),# White-Grey
-    ((255, 99, 71), (255, 160, 122)),  # Tomato-Salmon
-    ((70, 130, 180), (176, 224, 230)), # SteelBlue-PowderBlue
-    ((139, 69, 19), (222, 184, 135)),  # Brown-Tan
-]
-
 # ============================================================================
 # BOSS ENEMY CLASSES - Special enemies with unique abilities
 # ============================================================================
