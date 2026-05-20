@@ -21,9 +21,36 @@ TOWN_GUARD_DIALOGUE = (
     "Safe travels, adventurer!",
 )
 
+TOWN_SERVICES = {
+    "inn": {
+        "name": "Warm Hearth Inn",
+        "npc": "Innkeeper Mara",
+        "prompt": "SPACE: rest at the inn",
+    },
+    "shop": {
+        "name": "Mooncap Market",
+        "npc": "Peddler Nix",
+        "prompt": "SPACE: restock potions",
+    },
+    "blacksmith": {
+        "name": "Ironroot Forge",
+        "npc": "Borin the Smith",
+        "prompt": "SPACE: train gear",
+    },
+    "library": {
+        "name": "Starwell Library",
+        "npc": "Archivist Luma",
+        "prompt": "SPACE: study lore",
+    },
+    "town_hall": {
+        "name": "Dragonwatch Hall",
+        "npc": "Captain Marcus",
+        "prompt": "SPACE: ask about bosses",
+    },
+}
+
 def create_town_guard():
     """Return a fresh town guard NPC record."""
     guard = dict(TOWN_GUARD_TEMPLATE)
     guard["dialogue"] = list(TOWN_GUARD_DIALOGUE)
     return guard
-

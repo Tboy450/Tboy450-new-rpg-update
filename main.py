@@ -58,6 +58,7 @@ from game_data import (
     ENEMY_NAME_POOLS,
     ITEM_PROFILES,
     ITEM_SPAWN_TABLE,
+    TOWN_SERVICES,
     WORLD_LAYOUT,
     create_town_guard,
     get_element_profile,
@@ -957,6 +958,33 @@ class WorldArea:
                     return True
         return False
 
+    def get_nearby_town_service(self, player_x, player_y):
+        if self.area_type != "town":
+            return None
+
+        area_world_x, area_world_y = self.get_world_position()
+        local_x = player_x - area_world_x
+        local_y = player_y - area_world_y
+        player_rect = pygame.Rect(local_x, local_y, PLAYER_SIZE, PLAYER_SIZE)
+
+        for building in self.buildings:
+            service_type = building["type"]
+            if service_type not in TOWN_SERVICES:
+                continue
+
+            service_rect = pygame.Rect(
+                building["x"] - 45,
+                building["y"] - 45,
+                building["width"] + 90,
+                building["height"] + 90,
+            )
+            if player_rect.colliderect(service_rect):
+                service = dict(TOWN_SERVICES[service_type])
+                service["type"] = service_type
+                return service
+
+        return None
+
     def _create_town_guard(self):
         """Create the town guard NPC for the entrance cutscene"""
         if self.area_type != "town":
@@ -1649,6 +1677,7 @@ class Character:
         self.last_boss_level = 0  # Track the last boss level encountered
         self.just_leveled_up = False
         self.boss_cooldown = False  # Prevent boss battles during cooldown
+        self.town_service_claims = set()
         
     def move(self, dx, dy):
         new_x = self.x + dx * GRID_SIZE
@@ -2350,7 +2379,7 @@ class Character:
     
     def gain_exp(self, amount):
         self.exp += amount
-        if self.exp >= self.exp_to_level:
+        while self.exp >= self.exp_to_level:
             self.level_up()
             
     def level_up(self):
@@ -2733,6 +2762,7 @@ class BattleScreen:
         self.player_chill_turns = 0
         self.player_condition = None
         self.player_condition_timer = 0
+        self.boss_phase_announced = set()
         
     def start_transition(self):
         self.transition_state = "in"
@@ -2973,6 +3003,12 @@ class BattleScreen:
             enemy_name = font_small.render(self.enemy.name, True, (255, 215, 0))
             name_rect = enemy_name.get_rect(midtop=(enemy_x + 30, enemy_y - 25))
             temp_surface.blit(enemy_name, name_rect)
+
+        phase = self.get_boss_phase()
+        if phase:
+            phase_text = font_small.render(f"PHASE: {phase['name'].upper()}", True, phase["color"])
+            phase_rect = phase_text.get_rect(midtop=(enemy_x + 120, enemy_y + 155))
+            temp_surface.blit(phase_text, phase_rect)
         
         # Draw battle log
         pygame.draw.rect(temp_surface, UI_BG, (100, 50, 800, 100), border_radius=8)
@@ -3038,9 +3074,10 @@ class BattleScreen:
             temp_surface.blit(overlay, (0, 0))
             
             if self.result == "win":
+                exp_gain = getattr(self.enemy, "exp_reward", 25)
                 summary = [
                     "VICTORY!",
-                    f"EXP GAINED: 25",
+                    f"EXP GAINED: {exp_gain}",
                     f"KILLS: {self.player.kills}",
                     "Press ENTER to continue..."
                 ]
@@ -3210,6 +3247,10 @@ class BattleScreen:
                 return False
 
             damage = max(1, self.enemy.strength - self.player.defense // 3)
+            phase = self.get_boss_phase()
+            if phase:
+                damage += phase.get("strength_bonus", 0)
+                self.add_log(phase["attack_message"])
             self.player.health = max(0, self.player.health - damage)
             self.add_log(f"{self.enemy.name} attacks for {damage} damage!")
             self.damage_target = "player"
@@ -3313,6 +3354,30 @@ class BattleScreen:
         ):
             return "mana"
         return None
+
+    def get_boss_phase(self):
+        if not self.is_boss or not hasattr(self.enemy, "phase_thresholds"):
+            return None
+
+        health_ratio = self.enemy.health / max(1, self.enemy.max_health)
+        active_phase = None
+        for phase in self.enemy.phase_thresholds:
+            if health_ratio <= phase["threshold"]:
+                active_phase = phase
+        return active_phase
+
+    def check_boss_phase_transition(self):
+        phase = self.get_boss_phase()
+        if not phase or self.enemy.health <= 0 or phase["name"] in self.boss_phase_announced:
+            return
+
+        self.boss_phase_announced.add(phase["name"])
+        self.add_log(f"{self.enemy.name} enters {phase['name']} phase!")
+        self.add_screen_shake(phase.get("shake", 5), 12)
+        self.particle_system.add_explosion(
+            700 + 30, 250 + 30, phase["color"],
+            count=35, size_range=(3, 8), speed_range=(2, 6), lifetime_range=(20, 35)
+        )
     
     def handle_input(self, event, game=None):
         if self.waiting_for_continue:
@@ -3538,6 +3603,7 @@ class BattleScreen:
         self.damage_effect_timer = 20
         self.enemy.start_hit_animation()
         self.add_screen_shake(5, 8)
+        self.check_boss_phase_transition()
         
         self.state = "enemy_turn"
         self.action_cooldown = self.action_delay
@@ -3552,6 +3618,7 @@ class BattleScreen:
         self.damage_effect_timer = 20
         self.enemy.start_hit_animation()
         self.add_screen_shake(8, 10)
+        self.check_boss_phase_transition()
         
         self.particle_system.add_beam(
             200 + 25, 350 + 15,  # Staff top (adjusted for new player position)
@@ -3901,6 +3968,8 @@ class Game:
         self.area_effect_timer = 0
         self.area_effect_message = None
         self.area_effect_message_timer = 0
+        self.town_service_message = None
+        self.town_service_message_timer = 0
         
         # Initialize starfield
         for _ in range(150):
@@ -4032,6 +4101,70 @@ class Game:
                 x, y, profile["color"],
                 (random.uniform(-0.5, 0.5), random.uniform(-1, -0.5)),
                 3, 30
+            )
+
+    def set_town_service_message(self, message):
+        self.town_service_message = message
+        self.town_service_message_timer = 180
+
+    def apply_town_service(self, service):
+        service_type = service["type"]
+        npc_name = service["npc"]
+
+        if service_type == "inn":
+            restored_health = self.player.max_health - self.player.health
+            restored_mana = self.player.max_mana - self.player.mana
+            self.player.health = self.player.max_health
+            self.player.mana = self.player.max_mana
+            if restored_health or restored_mana:
+                self.set_town_service_message(f"{npc_name}: Restored {restored_health} HP and {restored_mana} MP.")
+            else:
+                self.set_town_service_message(f"{npc_name}: You already look rested.")
+        elif service_type == "shop":
+            health_added = self.player.add_inventory_item("health")
+            mana_added = self.player.add_inventory_item("mana")
+            if health_added or mana_added:
+                self.set_town_service_message(f"{npc_name}: Packed HP +{health_added}, MP +{mana_added}.")
+            else:
+                self.set_town_service_message(f"{npc_name}: Your potion pouch is full.")
+        elif service_type == "blacksmith":
+            claim_key = ("blacksmith", self.player.level)
+            if claim_key in self.player.town_service_claims:
+                self.set_town_service_message(f"{npc_name}: Your level {self.player.level} gear is already tuned.")
+            else:
+                self.player.town_service_claims.add(claim_key)
+                self.player.strength += 1
+                self.player.defense += 1
+                self.set_town_service_message(f"{npc_name}: Gear tuned. Strength and defense +1.")
+        elif service_type == "library":
+            claim_key = ("library", self.player.level)
+            if claim_key in self.player.town_service_claims:
+                self.set_town_service_message(f"{npc_name}: Study more after your next level.")
+            else:
+                self.player.town_service_claims.add(claim_key)
+                insight = 20 + self.player.level * 5
+                self.player.gain_exp(insight)
+                self.set_town_service_message(f"{npc_name}: Lore insight grants {insight} EXP.")
+        elif service_type == "town_hall":
+            if self.player.level >= 10 and not self.boss_defeated:
+                message = "Malakor waits beyond the next trial."
+            elif self.player.boss_cooldown:
+                message = "Recover before seeking the next dragon."
+            elif self.player.last_boss_level < self.player.level and self.player.level > 1:
+                message = f"Dragon Boss Lv.{self.player.level} has marked you."
+            else:
+                message = f"Next boss awakens after level {max(2, self.player.level + 1)}."
+            self.set_town_service_message(f"{npc_name}: {message}")
+        else:
+            self.set_town_service_message(f"{npc_name}: Safe travels.")
+
+        for _ in range(12):
+            x = random.randint(self.player.x, self.player.x + PLAYER_SIZE)
+            y = random.randint(self.player.y, self.player.y + PLAYER_SIZE)
+            self.particle_system.add_particle(
+                x, y, (255, 215, 0),
+                (random.uniform(-0.4, 0.4), random.uniform(-1, -0.2)),
+                2, 25
             )
 
     def emit_area_particles(self, current_area):
@@ -4230,6 +4363,8 @@ class Game:
                 self.pickup_message_timer -= 1
             if self.area_effect_message_timer > 0:
                 self.area_effect_message_timer -= 1
+            if self.town_service_message_timer > 0:
+                self.town_service_message_timer -= 1
             
             # Update camera to follow player
             self.world_map.update_camera(self.player.x, self.player.y)
@@ -4288,7 +4423,8 @@ class Game:
                 self.player.just_leveled_up and
                 self.player.level > 1 and
                 not self.player.boss_cooldown and
-                self.player.level > self.player.last_boss_level
+                self.player.level > self.player.last_boss_level and
+                current_area and current_area.area_type != "town"
             ):
                 # At level 10, spawn Malakor, else progressive boss
                 if self.player.level == 10:
@@ -4625,6 +4761,17 @@ class Game:
                 if self.area_effect_message and self.area_effect_message_timer > 0:
                     effect_message = font_tiny.render(self.area_effect_message, True, mechanic["color"] if mechanic else (220, 220, 180))
                     screen.blit(effect_message, (SCREEN_WIDTH - effect_message.get_width() - 20, 185))
+
+                service = current_area.get_nearby_town_service(self.player.x, self.player.y)
+                if service:
+                    service_text = font_tiny.render(service["prompt"], True, (255, 215, 0))
+                    screen.blit(service_text, (20, SCREEN_HEIGHT - 210))
+
+                if self.town_service_message and self.town_service_message_timer > 0:
+                    message_text = font_tiny.render(self.town_service_message, True, (255, 235, 160))
+                    pygame.draw.rect(screen, UI_BG, (20, SCREEN_HEIGHT - 245, max(420, message_text.get_width() + 24), 32), border_radius=6)
+                    pygame.draw.rect(screen, (255, 215, 0), (20, SCREEN_HEIGHT - 245, max(420, message_text.get_width() + 24), 32), 2, border_radius=6)
+                    screen.blit(message_text, (32, SCREEN_HEIGHT - 237))
                 
                 # Draw mini-map
                 mini_map_size = 80
@@ -4915,6 +5062,12 @@ class Game:
                             # Check if we've reached the end of dialogue
                             if current_area.guard["current_dialogue"] >= len(current_area.guard["dialogue"]):
                                 current_area.cutscene_phase = 2  # End cutscene
+                        elif current_area:
+                            service = current_area.get_nearby_town_service(self.player.x, self.player.y)
+                            if service:
+                                self.apply_town_service(service)
+                                if self.SFX_ITEM:
+                                    self.SFX_ITEM.play()
                     
                     # Pass input to battle screen
                     if self.state == "battle" and self.battle_screen:
@@ -4974,10 +5127,16 @@ class Game:
                         if self.battle_screen.result == "win":
                             self.player.just_leveled_up = False
                             self.player.kills += 1
-                            self.player.gain_exp(45)  # Boss gives more exp than regular enemies (25)
-                            self.score += 25  # Boss gives more score too
+                            defeated_boss_level = getattr(self.battle_screen.enemy, "boss_level", self.player.level)
+                            exp_reward = getattr(self.battle_screen.enemy, "exp_reward", 45)
+                            score_reward = getattr(self.battle_screen.enemy, "score_reward", 25)
+                            self.player.gain_exp(exp_reward)
+                            self.score += score_reward
+                            self.player.add_inventory_item("health")
+                            self.player.add_inventory_item("mana")
+                            self.set_town_service_message(f"Boss reward: {exp_reward} EXP, {score_reward} score, potions restocked.")
                             self.player.boss_cooldown = True  # Set cooldown after boss battle
-                            self.player.last_boss_level = self.player.level  # Set after the fight
+                            self.player.last_boss_level = max(self.player.last_boss_level, defeated_boss_level)
                             if self.battle_screen.enemy.enemy_type == "boss_dragon":
                                 self.boss_defeated = True
                                 self.state = "victory"
@@ -5448,6 +5607,27 @@ class DragonBoss(Enemy):
         self.hit_animation = 0
         self.fire_breathing = False
         self.fire_breath_timer = 0
+        self.boss_level = boss_level
+        self.exp_reward = 45 + boss_level * 15
+        self.score_reward = 25 + boss_level * 10
+        self.phase_thresholds = (
+            {
+                "name": "Wounded",
+                "threshold": 0.66,
+                "strength_bonus": 2 + boss_level,
+                "color": self.fire_color,
+                "shake": 5,
+                "attack_message": "The dragon's wounded fury intensifies!",
+            },
+            {
+                "name": "Enraged",
+                "threshold": 0.33,
+                "strength_bonus": 5 + boss_level,
+                "color": (255, 60, 40),
+                "shake": 8,
+                "attack_message": "The dragon erupts into an enraged assault!",
+            },
+        )
     def start_attack_animation(self):
         self.attack_animation = 20
         self.fire_breathing = True
@@ -5584,6 +5764,26 @@ class BossDragon(Enemy):
         self.hit_animation = 0
         self.fire_breathing = False
         self.fire_breath_timer = 0
+        self.exp_reward = 250
+        self.score_reward = 200
+        self.phase_thresholds = (
+            {
+                "name": "Ancient Wrath",
+                "threshold": 0.66,
+                "strength_bonus": 8,
+                "color": (255, 140, 0),
+                "shake": 8,
+                "attack_message": "Malakor's ancient wrath scorches the arena!",
+            },
+            {
+                "name": "Doomfire",
+                "threshold": 0.33,
+                "strength_bonus": 14,
+                "color": (255, 30, 20),
+                "shake": 12,
+                "attack_message": "Doomfire coils around Malakor's claws!",
+            },
+        )
     def start_attack_animation(self):
         self.attack_animation = 20
         self.fire_breathing = True

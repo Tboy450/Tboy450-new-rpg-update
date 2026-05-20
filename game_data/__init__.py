@@ -9,7 +9,7 @@ from .mechanics import (
     ITEM_SPAWN_TABLE,
     get_element_profile,
 )
-from .npcs import TOWN_GUARD_TEMPLATE, create_town_guard
+from .npcs import TOWN_GUARD_TEMPLATE, TOWN_SERVICES, create_town_guard
 from .world import (
     AREA_DESCRIPTIONS,
     AREA_ENEMY_TYPES,
