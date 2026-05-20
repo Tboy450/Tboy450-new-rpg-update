@@ -112,6 +112,74 @@ AREA_PARTICLE_PROFILES = {
     ],
 }
 
+AREA_MECHANICS = {
+    "forest": {
+        "label": "Verdant Cover",
+        "color": (120, 210, 90),
+        "interval": 420,
+        "health": 1,
+        "message": "Forest herbs restore {health} HP.",
+    },
+    "mountain": {
+        "label": "Thin Air",
+        "color": (180, 180, 220),
+        "interval": 420,
+        "mana": -1,
+        "message": "Thin air drains {mana} MP.",
+    },
+    "desert": {
+        "label": "Sunbaked",
+        "color": (230, 190, 100),
+        "interval": 360,
+        "health": -1,
+        "message": "Desert heat costs {health} HP.",
+    },
+    "swamp": {
+        "label": "Miasma",
+        "color": (140, 190, 140),
+        "interval": 360,
+        "health": -1,
+        "mana": -1,
+        "message": "Swamp miasma saps {health} HP and {mana} MP.",
+    },
+    "beach": {
+        "label": "Sea Breeze",
+        "color": (180, 230, 255),
+        "interval": 420,
+        "mana": 1,
+        "message": "Sea breeze restores {mana} MP.",
+    },
+    "volcano": {
+        "label": "Scorching Heat",
+        "color": (255, 120, 50),
+        "interval": 300,
+        "health": -2,
+        "message": "Scorching heat burns {health} HP.",
+    },
+    "ice": {
+        "label": "Biting Cold",
+        "color": (170, 230, 255),
+        "interval": 360,
+        "health": -1,
+        "message": "Biting cold costs {health} HP.",
+    },
+    "cave": {
+        "label": "Echo Focus",
+        "color": (170, 170, 210),
+        "interval": 420,
+        "mana": 1,
+        "message": "Echoing crystals restore {mana} MP.",
+    },
+    "town": {
+        "label": "Safe Rest",
+        "color": (140, 240, 140),
+        "interval": 240,
+        "health": 2,
+        "mana": 2,
+        "message": "Town safety restores {health} HP and {mana} MP.",
+    },
+}
+
 AREA_ENEMY_TYPES = {
     "forest": ["shadow", "ice"],
     "desert": ["fiery"],

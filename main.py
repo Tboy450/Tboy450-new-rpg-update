@@ -50,6 +50,7 @@ import io
 from game_data import (
     AREA_DESCRIPTIONS,
     AREA_ENEMY_TYPES,
+    AREA_MECHANICS,
     AREA_PARTICLE_PROFILES,
     BATTLE_RULES,
     CHARACTER_CLASS_STATS,
@@ -3897,6 +3898,9 @@ class Game:
         self.show_world_map = False
         self.pickup_message = None
         self.pickup_message_timer = 0
+        self.area_effect_timer = 0
+        self.area_effect_message = None
+        self.area_effect_message_timer = 0
         
         # Initialize starfield
         for _ in range(150):
@@ -4044,6 +4048,64 @@ class Game:
                     x, y, profile["color"], velocity,
                     profile["size"], profile["lifetime"]
                 )
+
+    def describe_area_effect(self, mechanic, health_delta, actual_health, mana_delta, actual_mana):
+        effects = []
+        if actual_health:
+            verb = "restores" if health_delta > 0 else "costs"
+            effects.append(f"{verb} {actual_health} HP")
+        if actual_mana:
+            verb = "restores" if mana_delta > 0 else "drains"
+            effects.append(f"{verb} {actual_mana} MP")
+        return f"{mechanic['label']} {' and '.join(effects)}."
+
+    def apply_area_mechanics(self, current_area):
+        mechanic = AREA_MECHANICS.get(current_area.area_type)
+        if not mechanic:
+            return
+
+        self.area_effect_timer += 1
+        if self.area_effect_timer < mechanic["interval"]:
+            return
+        self.area_effect_timer = 0
+
+        health_delta = mechanic.get("health", 0)
+        mana_delta = mechanic.get("mana", 0)
+        actual_health = 0
+        actual_mana = 0
+
+        if health_delta > 0:
+            before = self.player.health
+            self.player.health = min(self.player.max_health, self.player.health + health_delta)
+            actual_health = self.player.health - before
+        elif health_delta < 0:
+            before = self.player.health
+            self.player.health = max(1, self.player.health + health_delta)
+            actual_health = before - self.player.health
+
+        if mana_delta > 0:
+            before = self.player.mana
+            self.player.mana = min(self.player.max_mana, self.player.mana + mana_delta)
+            actual_mana = self.player.mana - before
+        elif mana_delta < 0:
+            before = self.player.mana
+            self.player.mana = max(0, self.player.mana + mana_delta)
+            actual_mana = before - self.player.mana
+
+        if actual_health or actual_mana:
+            self.area_effect_message = self.describe_area_effect(
+                mechanic, health_delta, actual_health, mana_delta, actual_mana
+            )
+            self.area_effect_message_timer = 120
+            color = mechanic["color"]
+            for _ in range(10):
+                x = random.randint(self.player.x, self.player.x + PLAYER_SIZE)
+                y = random.randint(self.player.y, self.player.y + PLAYER_SIZE)
+                self.particle_system.add_particle(
+                    x, y, color,
+                    (random.uniform(-0.4, 0.4), random.uniform(-0.9, -0.2)),
+                    2, 28
+                )
     
     def spawn_enemy(self):
         current_area = self.world_map.get_current_area()
@@ -4166,6 +4228,8 @@ class Game:
             self.player.update_animation()
             if self.pickup_message_timer > 0:
                 self.pickup_message_timer -= 1
+            if self.area_effect_message_timer > 0:
+                self.area_effect_message_timer -= 1
             
             # Update camera to follow player
             self.world_map.update_camera(self.player.x, self.player.y)
@@ -4179,6 +4243,7 @@ class Game:
                 current_area = self.world_map.get_current_area()
                 self.enemies = current_area.enemies
                 self.items = current_area.items
+                self.area_effect_timer = 0
                 
                 # If entering town area, position player at the gate (4 squares lower)
                 if current_area and current_area.area_type == "town":
@@ -4190,6 +4255,7 @@ class Game:
             # Add area-specific particle effects
             current_area = self.world_map.get_current_area()
             if current_area:
+                self.apply_area_mechanics(current_area)
                 current_area.particle_timer += 1
                 if current_area.particle_timer >= current_area.particle_interval:
                     current_area.particle_timer = 0
@@ -4550,11 +4616,20 @@ class Game:
                 if desc:
                     desc_text = font_tiny.render(desc, True, (180, 180, 200))
                     screen.blit(desc_text, (SCREEN_WIDTH - desc_text.get_width() - 20, 145))
+
+                mechanic = AREA_MECHANICS.get(current_area.area_type)
+                if mechanic:
+                    effect_text = font_tiny.render(f"EFFECT: {mechanic['label']}", True, mechanic["color"])
+                    screen.blit(effect_text, (SCREEN_WIDTH - effect_text.get_width() - 20, 165))
+
+                if self.area_effect_message and self.area_effect_message_timer > 0:
+                    effect_message = font_tiny.render(self.area_effect_message, True, mechanic["color"] if mechanic else (220, 220, 180))
+                    screen.blit(effect_message, (SCREEN_WIDTH - effect_message.get_width() - 20, 185))
                 
                 # Draw mini-map
                 mini_map_size = 80
                 mini_map_x = SCREEN_WIDTH - mini_map_size - 20
-                mini_map_y = 160
+                mini_map_y = 210
                 
                 # Draw mini-map background
                 pygame.draw.rect(screen, UI_BG, (mini_map_x, mini_map_y, mini_map_size, mini_map_size), border_radius=4)

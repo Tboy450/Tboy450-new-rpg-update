@@ -13,6 +13,7 @@ from .npcs import TOWN_GUARD_TEMPLATE, create_town_guard
 from .world import (
     AREA_DESCRIPTIONS,
     AREA_ENEMY_TYPES,
+    AREA_MECHANICS,
     AREA_PARTICLE_PROFILES,
     WORLD_LAYOUT,
 )
