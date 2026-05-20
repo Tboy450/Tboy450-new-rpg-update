@@ -937,8 +937,18 @@ class WorldArea:
         
         return False, None
 
+    def get_building_collision_rect(self, building):
+        inset_y = building.get("entry_depth", GRID_SIZE)
+        usable_height = max(1, building["height"] - inset_y * 2)
+        return pygame.Rect(
+            building["x"],
+            building["y"] + inset_y,
+            building["width"],
+            usable_height,
+        )
+
     def check_building_collision(self, player_x, player_y):
-        """Check if player is colliding with any buildings (allows 1 square inside)"""
+        """Block building sides while allowing shallow top/bottom visual overlap."""
         if self.area_type != "town":
             return False
             
@@ -946,15 +956,12 @@ class WorldArea:
         area_world_x, area_world_y = self.get_world_position()
         local_x = player_x - area_world_x
         local_y = player_y - area_world_y
+        player_rect = pygame.Rect(local_x, local_y, PLAYER_SIZE, PLAYER_SIZE)
         
-        # Check collision with buildings (allowing 1 square inside horizontally, full collision vertically)
         for building in self.buildings:
             if building.get("collision", False):
-                # Allow 1 square (60 pixels) inside horizontally, but full collision vertically
-                if (local_x < building["x"] + building["width"] - 60 and 
-                    local_x + 40 > building["x"] + 60 and 
-                    local_y < building["y"] + building["height"] and 
-                    local_y + 40 > building["y"]):
+                collision_rect = self.get_building_collision_rect(building)
+                if player_rect.colliderect(collision_rect):
                     return True
         return False
 
@@ -972,6 +979,8 @@ class WorldArea:
             if service_type not in TOWN_SERVICES:
                 continue
 
+            # This larger interaction zone is intentionally separate from collision
+            # so it can become an interior entrance trigger later.
             service_rect = pygame.Rect(
                 building["x"] - 45,
                 building["y"] - 45,
