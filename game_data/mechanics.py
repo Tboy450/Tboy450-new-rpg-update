@@ -57,14 +57,20 @@ ITEM_PROFILES = {
         "color": (255, 105, 180),
         "effect": "restore_health",
         "amount": 30,
+        "battle_usable": True,
+        "inventory_limit": 5,
         "message": "Restored {amount} HP!",
+        "stored_message": "Stored a health potion.",
     },
     "mana": {
         "label": "Mana",
         "color": (0, 255, 255),
         "effect": "restore_mana",
         "amount": 40,
+        "battle_usable": True,
+        "inventory_limit": 4,
         "message": "Restored {amount} MP!",
+        "stored_message": "Stored a mana tonic.",
     },
     "might": {
         "label": "Might",
@@ -91,7 +97,20 @@ ITEM_SPAWN_TABLE = (
     "ward",
 )
 
+BATTLE_RULES = {
+    "base_crit_chance": 0.05,
+    "speed_crit_bonus": 0.015,
+    "max_crit_chance": 0.35,
+    "crit_multiplier": 1.5,
+    "base_dodge_chance": 0.04,
+    "speed_dodge_bonus": 0.015,
+    "max_dodge_chance": 0.35,
+    "base_escape_chance": 0.55,
+    "speed_escape_bonus": 0.025,
+    "min_escape_chance": 0.25,
+    "max_escape_chance": 0.9,
+}
+
 def get_element_profile(element_type):
     """Return a visual/mechanical profile for an enemy element."""
     return ELEMENT_PROFILES.get(element_type, ELEMENT_PROFILES["neutral"])
-

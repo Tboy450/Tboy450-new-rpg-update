@@ -3,6 +3,7 @@
 from .characters import CHARACTER_CLASS_STATS
 from .enemies import DRAGON_BOSS_COLORS, ENEMY_NAME_POOLS
 from .mechanics import (
+    BATTLE_RULES,
     ELEMENT_PROFILES,
     ITEM_PROFILES,
     ITEM_SPAWN_TABLE,

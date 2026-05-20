@@ -51,6 +51,7 @@ from game_data import (
     AREA_DESCRIPTIONS,
     AREA_ENEMY_TYPES,
     AREA_PARTICLE_PROFILES,
+    BATTLE_RULES,
     CHARACTER_CLASS_STATS,
     DRAGON_BOSS_COLORS,
     ENEMY_NAME_POOLS,
@@ -1640,6 +1641,7 @@ class Character:
         self.attack_cooldown = 0
         self.kills = 0
         self.items_collected = 0
+        self.inventory = {"health": 2, "mana": 1}
         self.animation_offset = 0
         self.attack_animation = 0
         self.hit_animation = 0
@@ -2315,6 +2317,29 @@ class Character:
         
     def start_hit_animation(self):
         self.hit_animation = 5
+
+    def get_inventory_count(self, item_type):
+        return self.inventory.get(item_type, 0)
+
+    def add_inventory_item(self, item_type, amount=1):
+        profile = ITEM_PROFILES.get(item_type)
+        if not profile or not profile.get("battle_usable"):
+            return 0
+
+        limit = profile.get("inventory_limit", amount)
+        current = self.inventory.get(item_type, 0)
+        added = min(amount, max(0, limit - current))
+        if added:
+            self.inventory[item_type] = current + added
+        return added
+
+    def use_inventory_item(self, item_type):
+        current = self.inventory.get(item_type, 0)
+        if current <= 0:
+            return False
+
+        self.inventory[item_type] = current - 1
+        return True
         
     def take_damage(self, damage):
         actual_damage = max(1, damage - self.defense // 3)
@@ -2362,6 +2387,12 @@ class Character:
         
         stats_text = font_small.render(f"Str: {self.strength}  Def: {self.defense}  Spd: {self.speed}", True, TEXT_COLOR)
         surface.blit(stats_text, (x, y + 100))
+
+        bag_text = font_tiny.render(
+            f"Bag: HP x{self.get_inventory_count('health')}  MP x{self.get_inventory_count('mana')}",
+            True, (220, 220, 180)
+        )
+        surface.blit(bag_text, (x, y + 122))
 
 # ============================================================================
 # ENEMY SYSTEM - Various enemy types with AI and combat abilities
@@ -2962,6 +2993,16 @@ class BattleScreen:
             for i, button in enumerate(self.buttons):
                 button.selected = (i == self.selected_option)
                 button.draw(temp_surface)
+            bag_text = font_tiny.render(
+                f"HP x{self.player.get_inventory_count('health')}  MP x{self.player.get_inventory_count('mana')}",
+                True, (220, 220, 180)
+            )
+            bag_rect = bag_text.get_rect(center=(self.buttons[2].rect.centerx, self.buttons[2].rect.bottom + 14))
+            temp_surface.blit(bag_text, bag_rect)
+
+            escape_text = font_tiny.render(f"ESC {int(self.get_escape_chance() * 100)}%", True, (220, 220, 180))
+            escape_rect = escape_text.get_rect(center=(self.buttons[3].rect.centerx, self.buttons[3].rect.bottom + 14))
+            temp_surface.blit(escape_text, escape_rect)
         
         # Draw damage effect
         if self.damage_effect_timer > 0:
@@ -3160,6 +3201,13 @@ class BattleScreen:
             
         # Handle enemy turn if no actions are queued
         if self.state == "enemy_turn" and not self.battle_ended and not self.waiting_for_continue:
+            if self.roll_player_dodge():
+                self.add_log(f"You dodge {self.enemy.name}'s attack!")
+                self.state = "player_turn"
+                self.add_log("It's your turn!")
+                self.action_cooldown = self.action_delay
+                return False
+
             damage = max(1, self.enemy.strength - self.player.defense // 3)
             self.player.health = max(0, self.player.health - damage)
             self.add_log(f"{self.enemy.name} attacks for {damage} damage!")
@@ -3224,6 +3272,46 @@ class BattleScreen:
         reduced_damage = max(1, int(damage * multiplier))
         self.add_log("Chill weakens the strike.")
         return reduced_damage
+
+    def roll_player_damage(self, base_damage):
+        damage = self.apply_player_damage_modifiers(base_damage)
+        crit_chance = min(
+            BATTLE_RULES["max_crit_chance"],
+            BATTLE_RULES["base_crit_chance"] + self.player.speed * BATTLE_RULES["speed_crit_bonus"],
+        )
+        if random.random() < crit_chance:
+            damage = max(1, int(damage * BATTLE_RULES["crit_multiplier"]))
+            self.add_log("Critical hit!")
+        return damage
+
+    def roll_player_dodge(self):
+        speed_edge = max(0, self.player.speed - self.enemy.speed)
+        dodge_chance = min(
+            BATTLE_RULES["max_dodge_chance"],
+            BATTLE_RULES["base_dodge_chance"] + speed_edge * BATTLE_RULES["speed_dodge_bonus"],
+        )
+        return random.random() < dodge_chance
+
+    def get_escape_chance(self):
+        speed_edge = self.player.speed - self.enemy.speed
+        chance = BATTLE_RULES["base_escape_chance"] + speed_edge * BATTLE_RULES["speed_escape_bonus"]
+        return max(
+            BATTLE_RULES["min_escape_chance"],
+            min(BATTLE_RULES["max_escape_chance"], chance)
+        )
+
+    def choose_battle_item(self):
+        if (
+            self.player.get_inventory_count("health") > 0 and
+            self.player.health < self.player.max_health
+        ):
+            return "health"
+        if (
+            self.player.get_inventory_count("mana") > 0 and
+            self.player.mana < self.player.max_mana
+        ):
+            return "mana"
+        return None
     
     def handle_input(self, event, game=None):
         if self.waiting_for_continue:
@@ -3295,10 +3383,17 @@ class BattleScreen:
                 if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
                 self.add_log("Not enough mana!")
         elif self.selected_option == 2:  # Item
+            item_type = self.choose_battle_item()
+            if not item_type:
+                if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
+                self.add_log("No useful potion available right now.")
+                return
+
             if game and hasattr(game, 'SFX_ITEM') and game.SFX_ITEM: game.SFX_ITEM.play()
+            item_label = ITEM_PROFILES[item_type]["label"].lower()
             self.action_steps = [
-                lambda: self.add_log(f"You used a {ITEM_PROFILES['health']['label'].lower()} potion!"),
-                lambda: self.execute_item()
+                lambda item_label=item_label: self.add_log(f"You used a {item_label} potion!"),
+                lambda item_type=item_type: self.execute_item(item_type)
             ]
         elif self.selected_option == 3:  # Run
             if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
@@ -3418,7 +3513,7 @@ class BattleScreen:
             )
     
     def execute_attack(self):
-        damage = self.apply_player_damage_modifiers(self.player.strength)
+        damage = self.roll_player_damage(self.player.strength)
         self.enemy.health = max(0, self.enemy.health - damage)
         
         # Character-specific attack messages and effects
@@ -3431,22 +3526,11 @@ class BattleScreen:
         else:
             # Warrior/Paladin attack
             self.add_log(f"You dealt {damage} damage to {self.enemy.name}!")
-            # Default enemy-type based explosion
-            if self.enemy.enemy_type == "fiery":
-                self.particle_system.add_explosion(
-                    700 + 30, 250 + 30, FIRE_COLORS[0], 
-                    count=30, size_range=(2, 6), speed_range=(1, 4), lifetime_range=(15, 30)
-                )
-            elif self.enemy.enemy_type == "shadow":
-                self.particle_system.add_explosion(
-                    700 + 30, 250 + 30, SHADOW_COLORS[1], 
-                    count=20, size_range=(3, 8), speed_range=(0.5, 2), lifetime_range=(20, 40)
-                )
-            else:  # Ice
-                self.particle_system.add_explosion(
-                    700 + 30, 250 + 30, ICE_COLORS[2], 
-                    count=25, size_range=(2, 5), speed_range=(1, 3), lifetime_range=(15, 25)
-                )
+            profile = get_element_profile(self.enemy.enemy_type)
+            self.particle_system.add_explosion(
+                700 + 30, 250 + 30, random.choice(profile["particle_colors"]),
+                count=28, size_range=(2, 6), speed_range=(1, 4), lifetime_range=(15, 30)
+            )
         
         self.damage_target = "enemy"
         self.damage_amount = damage
@@ -3458,7 +3542,7 @@ class BattleScreen:
         self.action_cooldown = self.action_delay
     
     def execute_magic(self):
-        damage = self.apply_player_damage_modifiers(self.player.strength * 2)
+        damage = self.roll_player_damage(self.player.strength * 2)
         self.enemy.health = max(0, self.enemy.health - damage)
         self.player.mana -= 20
         self.add_log(f"Fireball dealt {damage} damage to {self.enemy.name}!")
@@ -3482,11 +3566,24 @@ class BattleScreen:
         self.state = "enemy_turn"
         self.action_cooldown = self.action_delay
     
-    def execute_item(self):
-        profile = ITEM_PROFILES["health"]
-        heal_amount = profile["amount"]
-        self.player.health = min(self.player.max_health, self.player.health + heal_amount)
-        self.add_log(profile["message"].format(amount=heal_amount))
+    def execute_item(self, item_type):
+        profile = ITEM_PROFILES[item_type]
+        if not self.player.use_inventory_item(item_type):
+            self.add_log(f"No {profile['label'].lower()} potions left!")
+            return
+
+        amount = profile["amount"]
+        if profile["effect"] == "restore_health":
+            before = self.player.health
+            self.player.health = min(self.player.max_health, self.player.health + amount)
+            restored = self.player.health - before
+        elif profile["effect"] == "restore_mana":
+            before = self.player.mana
+            self.player.mana = min(self.player.max_mana, self.player.mana + amount)
+            restored = self.player.mana - before
+        else:
+            restored = amount
+        self.add_log(profile["message"].format(amount=restored))
         
         for _ in range(20):
             x = random.randint(200, 200 + PLAYER_SIZE)
@@ -3501,7 +3598,7 @@ class BattleScreen:
         self.action_cooldown = self.action_delay
     
     def execute_run(self):
-        if random.random() < 0.7:  # 70% chance to escape
+        if random.random() < self.get_escape_chance():
             self.add_log("You successfully escaped!")
             self.battle_ended = True
             self.result = "escape"
@@ -3894,17 +3991,35 @@ class Game:
         profile = ITEM_PROFILES.get(item.type, ITEM_PROFILES["health"])
         amount = profile["amount"]
         effect = profile["effect"]
+        messages = []
 
         if effect == "restore_health":
+            before = self.player.health
             self.player.health = min(self.player.max_health, self.player.health + amount)
+            restored = self.player.health - before
+            if restored:
+                messages.append(profile["message"].format(amount=restored))
         elif effect == "restore_mana":
+            before = self.player.mana
             self.player.mana = min(self.player.max_mana, self.player.mana + amount)
+            restored = self.player.mana - before
+            if restored:
+                messages.append(profile["message"].format(amount=restored))
         elif effect == "raise_strength":
             self.player.strength += amount
+            messages.append(profile["message"].format(amount=amount))
         elif effect == "raise_defense":
             self.player.defense += amount
+            messages.append(profile["message"].format(amount=amount))
 
-        self.pickup_message = profile["message"].format(amount=amount)
+        if profile.get("battle_usable"):
+            added = self.player.add_inventory_item(item.type)
+            if added:
+                messages.append(profile["stored_message"])
+            elif not messages:
+                messages.append(f"{profile['label']} pouch is full.")
+
+        self.pickup_message = " ".join(messages) if messages else profile["message"].format(amount=amount)
         self.pickup_message_timer = 120
         for _ in range(18):
             x = random.randint(self.player.x, self.player.x + PLAYER_SIZE)
@@ -4402,8 +4517,8 @@ class Game:
                 screen.blit(instructions, (SCREEN_WIDTH//2 - instructions.get_width()//2, map_y + map_size + 10))
             
             # Draw UI panel
-            pygame.draw.rect(screen, UI_BG, (10, 10, 250, 130), border_radius=8)
-            pygame.draw.rect(screen, UI_BORDER, (10, 10, 250, 130), 3, border_radius=8)
+            pygame.draw.rect(screen, UI_BG, (10, 10, 250, 150), border_radius=8)
+            pygame.draw.rect(screen, UI_BORDER, (10, 10, 250, 150), 3, border_radius=8)
             
             # Draw player stats
             self.player.draw_stats(screen, 20, 20)
@@ -4411,9 +4526,9 @@ class Game:
             if self.pickup_message and self.pickup_message_timer > 0:
                 message_text = font_small.render(self.pickup_message, True, (255, 215, 0))
                 panel_width = max(260, message_text.get_width() + 24)
-                pygame.draw.rect(screen, UI_BG, (20, 150, panel_width, 38), border_radius=6)
-                pygame.draw.rect(screen, (255, 215, 0), (20, 150, panel_width, 38), 2, border_radius=6)
-                screen.blit(message_text, (32, 158))
+                pygame.draw.rect(screen, UI_BG, (20, 170, panel_width, 38), border_radius=6)
+                pygame.draw.rect(screen, (255, 215, 0), (20, 170, panel_width, 38), 2, border_radius=6)
+                screen.blit(message_text, (32, 178))
             
             # Draw score and other info
             score_text = font_medium.render(f"SCORE: {self.score}", True, TEXT_COLOR)
