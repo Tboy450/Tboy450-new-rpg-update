@@ -53,6 +53,7 @@ from game_data import (
     AREA_MECHANICS,
     AREA_PARTICLE_PROFILES,
     BATTLE_RULES,
+    FINAL_BOSS_LEVEL,
     CHARACTER_CLASS_STATS,
     DRAGON_BOSS_COLORS,
     ENEMY_NAME_POOLS,
@@ -62,7 +63,9 @@ from game_data import (
     TOWN_SERVICES,
     WORLD_LAYOUT,
     create_town_guard,
+    get_boss_profile,
     get_element_profile,
+    get_progression_status,
 )
 
 # Initialize Pygame
@@ -2773,6 +2776,11 @@ class BattleScreen:
         self.player_condition = None
         self.player_condition_timer = 0
         self.boss_phase_announced = set()
+        if self.is_boss:
+            self.battle_log = [
+                f"{self.enemy.name} descends!",
+                getattr(self.enemy, "boss_hint", "A dragon boss blocks your path."),
+            ]
         
     def start_transition(self):
         self.transition_state = "in"
@@ -3019,6 +3027,11 @@ class BattleScreen:
             phase_text = font_small.render(f"PHASE: {phase['name'].upper()}", True, phase["color"])
             phase_rect = phase_text.get_rect(midtop=(enemy_x + 120, enemy_y + 155))
             temp_surface.blit(phase_text, phase_rect)
+
+        if self.is_boss and getattr(self.enemy, "boss_title", None):
+            title_text = font_tiny.render(getattr(self.enemy, "boss_title"), True, (255, 225, 150))
+            title_rect = title_text.get_rect(midtop=(enemy_x + 120, enemy_y + 182))
+            temp_surface.blit(title_text, title_rect)
         
         # Draw battle log
         pygame.draw.rect(temp_surface, UI_BG, (100, 50, 800, 100), border_radius=8)
@@ -4121,6 +4134,16 @@ class Game:
         self.town_service_message = message
         self.town_service_message_timer = 180
 
+    def get_player_progression_status(self):
+        if not self.player:
+            return None
+        return get_progression_status(
+            self.player.level,
+            self.player.last_boss_level,
+            self.player.boss_cooldown,
+            self.boss_defeated,
+        )
+
     def apply_town_service(self, service):
         service_type = service["type"]
         npc_name = service["npc"]
@@ -4160,14 +4183,8 @@ class Game:
                 self.player.gain_exp(insight)
                 self.set_town_service_message(f"{npc_name}: Lore insight grants {insight} EXP.")
         elif service_type == "town_hall":
-            if self.player.level >= 10 and not self.boss_defeated:
-                message = "Malakor waits beyond the next trial."
-            elif self.player.boss_cooldown:
-                message = "Recover before seeking the next dragon."
-            elif self.player.last_boss_level < self.player.level and self.player.level > 1:
-                message = f"Dragon Boss Lv.{self.player.level} has marked you."
-            else:
-                message = f"Next boss awakens after level {max(2, self.player.level + 1)}."
+            progress = self.get_player_progression_status()
+            message = progress["lines"][0] if progress else "No active reports."
             self.set_town_service_message(f"{npc_name}: {message}")
         else:
             self.set_town_service_message(f"{npc_name}: Safe travels.")
@@ -4354,6 +4371,23 @@ class Game:
             pygame.draw.rect(screen, color, rect, border_radius=4)
             pygame.draw.rect(screen, dark, rect, 2, border_radius=4)
 
+    def draw_progression_board(self, screen):
+        progress = self.get_player_progression_status()
+        if not progress:
+            return
+
+        panel = pygame.Rect(250, 112, 500, 108)
+        color = progress["color"]
+        pygame.draw.rect(screen, UI_BG, panel, border_radius=8)
+        pygame.draw.rect(screen, color, panel, 3, border_radius=8)
+
+        title = font_small.render(progress["title"], True, color)
+        screen.blit(title, (panel.x + 16, panel.y + 10))
+
+        for index, line in enumerate(progress["lines"]):
+            text = font_tiny.render(line, True, (225, 225, 215))
+            screen.blit(text, (panel.x + 16, panel.y + 38 + index * 21))
+
     def draw_interior(self, screen):
         room = self.current_interior
         if not room:
@@ -4420,6 +4454,10 @@ class Game:
         subtitle = font_tiny.render(room["subtitle"], True, (220, 220, 210))
         screen.blit(title, (title_panel.centerx - title.get_width() // 2, title_panel.y + 12))
         screen.blit(subtitle, (title_panel.centerx - subtitle.get_width() // 2, title_panel.y + 43))
+
+        service_type = self.current_interior_service["type"] if self.current_interior_service else None
+        if service_type == "town_hall":
+            self.draw_progression_board(screen)
 
         if self.player:
             pygame.draw.rect(screen, UI_BG, (16, 16, 240, 132), border_radius=8)
@@ -4709,8 +4747,8 @@ class Game:
                 self.player.level > self.player.last_boss_level and
                 current_area and current_area.area_type != "town"
             ):
-                # At level 10, spawn Malakor, else progressive boss
-                if self.player.level == 10:
+                # At the final milestone, spawn Malakor; earlier levels use named drakes.
+                if self.player.level >= FINAL_BOSS_LEVEL:
                     self.battle_screen = BattleScreen(self.player, BossDragon())
                 else:
                     self.battle_screen = BattleScreen(self.player, DragonBoss(self.player.level))
@@ -5014,6 +5052,14 @@ class Game:
                 pygame.draw.rect(screen, UI_BG, (20, 170, panel_width, 38), border_radius=6)
                 pygame.draw.rect(screen, (255, 215, 0), (20, 170, panel_width, 38), 2, border_radius=6)
                 screen.blit(message_text, (32, 178))
+
+            progression = self.get_player_progression_status()
+            if progression:
+                quest_text = font_tiny.render(progression["short"], True, progression["color"])
+                panel_width = max(360, quest_text.get_width() + 24)
+                pygame.draw.rect(screen, UI_BG, (20, 215, panel_width, 30), border_radius=6)
+                pygame.draw.rect(screen, progression["color"], (20, 215, panel_width, 30), 2, border_radius=6)
+                screen.blit(quest_text, (32, 222))
             
             # Draw score and other info
             score_text = font_medium.render(f"SCORE: {self.score}", True, TEXT_COLOR)
@@ -5896,11 +5942,14 @@ class DragonBoss(Enemy):
     """
     def __init__(self, boss_level):
         super().__init__(player_level=5 + boss_level * 2)
+        boss_profile = get_boss_profile(boss_level)
         self.size = 120
         self.x = 700
         self.y = 180
         self.enemy_type = f"boss_dragon_{boss_level}"
-        self.name = f"Dragon Boss Lv.{boss_level}"
+        self.name = boss_profile["name"]
+        self.boss_title = boss_profile["title"]
+        self.boss_hint = boss_profile["hint"]
         # Stat scaling
         self.health = self.max_health = 200 + boss_level * 60
         self.strength = 18 + boss_level * 4
@@ -6056,11 +6105,14 @@ class BossDragon(Enemy):
     """
     def __init__(self):
         super().__init__(player_level=10)
+        boss_profile = get_boss_profile(FINAL_BOSS_LEVEL)
         self.size = 120
         self.x = 700
         self.y = 180
         self.enemy_type = "boss_dragon"
-        self.name = "Malakor, the Dragon"
+        self.name = boss_profile["name"]
+        self.boss_title = boss_profile["title"]
+        self.boss_hint = boss_profile["hint"]
         self.health = 400
         self.max_health = 400
         self.strength = 35

@@ -11,6 +11,12 @@ from .mechanics import (
     get_element_profile,
 )
 from .npcs import TOWN_GUARD_TEMPLATE, TOWN_SERVICES, create_town_guard
+from .progression import (
+    FINAL_BOSS_LEVEL,
+    BOSS_PROGRESSION,
+    get_boss_profile,
+    get_progression_status,
+)
 from .world import (
     AREA_DESCRIPTIONS,
     AREA_ENEMY_TYPES,
