@@ -1,4 +1,4 @@
-"""Enemy naming, spawn, and boss palette data."""
+"""Enemy naming, area spawn, and boss palette data."""
 
 ENEMY_NAME_POOLS = {
     "fiery": [
@@ -37,3 +37,14 @@ DRAGON_BOSS_COLORS = [
     ((139, 69, 19), (222, 184, 135)),
 ]
 
+AREA_ENEMY_TYPES = {
+    "forest": ["shadow", "ice"],
+    "desert": ["fiery"],
+    "mountain": ["fiery", "ice"],
+    "swamp": ["shadow", "ice"],
+    "volcano": ["fiery"],
+    "ice": ["ice"],
+    "town": [],
+    "castle": ["shadow", "fiery"],
+    "cave": ["shadow", "ice"],
+}

@@ -1,4 +1,4 @@
-"""World layout and spawn configuration."""
+"""World layout, area descriptions, visuals, and environmental mechanics."""
 
 WORLD_LAYOUT = (
     ("mountain", "forest", "desert"),
@@ -178,16 +178,4 @@ AREA_MECHANICS = {
         "mana": 2,
         "message": "Town safety restores {health} HP and {mana} MP.",
     },
-}
-
-AREA_ENEMY_TYPES = {
-    "forest": ["shadow", "ice"],
-    "desert": ["fiery"],
-    "mountain": ["fiery", "ice"],
-    "swamp": ["shadow", "ice"],
-    "volcano": ["fiery"],
-    "ice": ["ice"],
-    "town": [],
-    "castle": ["shadow", "fiery"],
-    "cave": ["shadow", "ice"],
 }
