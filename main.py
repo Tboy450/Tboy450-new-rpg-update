@@ -11,7 +11,7 @@ This is a complete RPG game built with Pygame featuring:
 - Boss battles and progression system
 
 GAME STRUCTURE:
-- Game States: start_menu → opening_cutscene → character_select → overworld → battle → game_over
+- Game States: start_menu → opening_cutscene → character_select → overworld → interior → battle → game_over
 - World System: 3x3 grid of areas, each with unique visuals and enemies
 - Combat System: Turn-based with attack, magic, item, and run options
 - Audio System: Procedurally generated music that changes based on game state
@@ -58,6 +58,7 @@ from game_data import (
     ENEMY_NAME_POOLS,
     ITEM_PROFILES,
     ITEM_SPAWN_TABLE,
+    TOWN_INTERIORS,
     TOWN_SERVICES,
     WORLD_LAYOUT,
     create_town_guard,
@@ -3944,6 +3945,7 @@ class Game:
     - opening_cutscene: Story introduction sequence
     - character_select: Choose character class
     - overworld: Main gameplay area with movement and exploration
+    - interior: Town building rooms with services and future NPC hooks
     - battle: Turn-based combat system
     - game_over: End game screen
     """
@@ -3979,6 +3981,9 @@ class Game:
         self.area_effect_message_timer = 0
         self.town_service_message = None
         self.town_service_message_timer = 0
+        self.current_interior = None
+        self.current_interior_service = None
+        self.interior_return_position = None
         
         # Initialize starfield
         for _ in range(150):
@@ -4176,6 +4181,269 @@ class Game:
                 2, 25
             )
 
+    @staticmethod
+    def shade_color(color, amount):
+        return tuple(max(0, min(255, value + amount)) for value in color)
+
+    def enter_town_interior(self, service):
+        room = TOWN_INTERIORS.get(service["type"])
+        if not room:
+            self.apply_town_service(service)
+            return
+
+        self.current_interior = room
+        self.current_interior_service = dict(service)
+        self.interior_return_position = (self.player.x, self.player.y) if self.player else None
+        self.show_world_map = False
+        self.state = "interior"
+        self.set_town_service_message(f"Entered {room['title']}.")
+        if self.SFX_ENTER:
+            self.SFX_ENTER.play()
+
+    def exit_town_interior(self):
+        room_title = self.current_interior["title"] if self.current_interior else "building"
+        if self.player and self.interior_return_position:
+            self.player.x, self.player.y = self.interior_return_position
+
+        self.current_interior = None
+        self.current_interior_service = None
+        self.interior_return_position = None
+        self.state = "overworld"
+        self.set_town_service_message(f"Left {room_title}.")
+        if self.SFX_ENTER:
+            self.SFX_ENTER.play()
+
+    def use_current_town_service(self):
+        if not self.current_interior_service:
+            return
+        self.apply_town_service(self.current_interior_service)
+        if self.SFX_ITEM:
+            self.SFX_ITEM.play()
+
+    def draw_interior_prop(self, screen, prop, room):
+        kind = prop["kind"]
+        rect = pygame.Rect(prop["rect"])
+        color = prop["color"]
+        accent = room["accent_color"]
+        shadow = self.shade_color(color, -35)
+        dark = self.shade_color(color, -55)
+        light = self.shade_color(color, 30)
+
+        if kind == "rug":
+            pygame.draw.ellipse(screen, shadow, rect.move(4, 5))
+            pygame.draw.ellipse(screen, color, rect)
+            pygame.draw.ellipse(screen, self.shade_color(color, -25), rect, 4)
+            pygame.draw.ellipse(screen, self.shade_color(color, 25), rect.inflate(-36, -22), 2)
+        elif kind == "bed":
+            pygame.draw.rect(screen, dark, rect.move(5, 5), border_radius=6)
+            pygame.draw.rect(screen, shadow, rect, border_radius=6)
+            mattress = rect.inflate(-18, -14)
+            pygame.draw.rect(screen, color, mattress, border_radius=5)
+            pillow = pygame.Rect(mattress.x + 10, mattress.y + 8, 42, 22)
+            pygame.draw.rect(screen, self.shade_color(color, 45), pillow, border_radius=5)
+            pygame.draw.rect(screen, dark, rect, 2, border_radius=6)
+        elif kind in ("counter", "table", "desk"):
+            pygame.draw.rect(screen, dark, rect.move(5, 6), border_radius=5)
+            pygame.draw.rect(screen, color, rect, border_radius=5)
+            pygame.draw.rect(screen, light, (rect.x, rect.y, rect.width, 12), border_radius=5)
+            pygame.draw.rect(screen, dark, rect, 3, border_radius=5)
+            if kind == "desk":
+                paper = pygame.Rect(rect.x + 22, rect.y + 15, 45, 26)
+                pygame.draw.rect(screen, (230, 218, 175), paper, border_radius=2)
+                pygame.draw.line(screen, (118, 90, 62), paper.midleft, paper.midright, 1)
+        elif kind in ("shelf", "bookcase"):
+            pygame.draw.rect(screen, dark, rect.move(5, 5))
+            pygame.draw.rect(screen, color, rect)
+            pygame.draw.rect(screen, dark, rect, 3)
+            shelf_count = 4 if kind == "bookcase" else 3
+            shelf_height = rect.height // shelf_count
+            book_colors = ((220, 80, 80), (80, 180, 220), (240, 200, 80), (130, 220, 130))
+            for shelf in range(shelf_count):
+                shelf_y = rect.y + shelf * shelf_height + shelf_height - 8
+                pygame.draw.line(screen, light, (rect.x + 8, shelf_y), (rect.right - 8, shelf_y), 4)
+                for i in range(5):
+                    book_x = rect.x + 14 + i * 23
+                    book_h = 24 + (i % 3) * 8
+                    book_y = shelf_y - book_h
+                    pygame.draw.rect(screen, book_colors[(shelf + i) % len(book_colors)], (book_x, book_y, 12, book_h))
+        elif kind == "hearth":
+            pygame.draw.rect(screen, dark, rect.move(4, 4), border_radius=5)
+            pygame.draw.rect(screen, color, rect, border_radius=5)
+            pygame.draw.rect(screen, self.shade_color(color, -20), rect.inflate(-18, -14), border_radius=4)
+            flame_offset = int(math.sin(self.game_time * 0.15) * 4)
+            flame = [
+                (rect.centerx, rect.y + 18 + flame_offset),
+                (rect.centerx - 22, rect.bottom - 16),
+                (rect.centerx + 22, rect.bottom - 16),
+            ]
+            pygame.draw.polygon(screen, (255, 98, 38), flame)
+            pygame.draw.polygon(screen, (255, 210, 72), [(rect.centerx, rect.y + 30), (rect.centerx - 12, rect.bottom - 18), (rect.centerx + 12, rect.bottom - 18)])
+        elif kind == "forge":
+            pygame.draw.rect(screen, dark, rect.move(6, 6), border_radius=8)
+            pygame.draw.rect(screen, color, rect, border_radius=8)
+            mouth = pygame.Rect(rect.x + 28, rect.y + 58, rect.width - 56, rect.height - 82)
+            pygame.draw.rect(screen, (36, 22, 16), mouth, border_radius=8)
+            flame_top = mouth.y + 10 + int(math.sin(self.game_time * 0.2) * 5)
+            pygame.draw.polygon(screen, (255, 72, 30), [(mouth.centerx, flame_top), (mouth.x + 12, mouth.bottom - 8), (mouth.right - 12, mouth.bottom - 8)])
+            pygame.draw.polygon(screen, (255, 208, 58), [(mouth.centerx, flame_top + 18), (mouth.x + 34, mouth.bottom - 8), (mouth.right - 34, mouth.bottom - 8)])
+            pygame.draw.rect(screen, dark, rect, 3, border_radius=8)
+        elif kind == "anvil":
+            base = pygame.Rect(rect.x + 34, rect.y + 45, rect.width - 68, 22)
+            pygame.draw.rect(screen, dark, base.move(4, 4))
+            pygame.draw.rect(screen, color, base)
+            top = [
+                (rect.x + 12, rect.y + 26),
+                (rect.x + 42, rect.y + 14),
+                (rect.x + rect.width - 20, rect.y + 16),
+                (rect.x + rect.width - 8, rect.y + 34),
+                (rect.x + 34, rect.y + 42),
+            ]
+            pygame.draw.polygon(screen, dark, [(x + 4, y + 4) for x, y in top])
+            pygame.draw.polygon(screen, color, top)
+            pygame.draw.polygon(screen, light, top, 2)
+        elif kind == "rack":
+            pygame.draw.rect(screen, dark, rect.move(4, 4))
+            pygame.draw.rect(screen, color, rect)
+            pygame.draw.rect(screen, dark, rect, 3)
+            for i in range(4):
+                x = rect.x + 28 + i * 28
+                pygame.draw.line(screen, (200, 200, 190), (x, rect.y + 22), (x - 12, rect.bottom - 18), 4)
+                pygame.draw.polygon(screen, accent, [(x, rect.y + 12), (x - 7, rect.y + 28), (x + 7, rect.y + 28)])
+        elif kind == "crystal":
+            points = [
+                (rect.centerx, rect.y),
+                (rect.right, rect.y + rect.height // 3),
+                (rect.centerx + 18, rect.bottom),
+                (rect.centerx - 18, rect.bottom),
+                (rect.x, rect.y + rect.height // 3),
+            ]
+            pygame.draw.polygon(screen, self.shade_color(color, -35), [(x + 4, y + 5) for x, y in points])
+            pygame.draw.polygon(screen, color, points)
+            pygame.draw.polygon(screen, self.shade_color(color, 45), points, 3)
+            pygame.draw.circle(screen, color, rect.center, rect.width // 2, 1)
+        elif kind == "crate":
+            pygame.draw.rect(screen, dark, rect.move(4, 4))
+            pygame.draw.rect(screen, color, rect)
+            pygame.draw.rect(screen, dark, rect, 3)
+            pygame.draw.line(screen, dark, rect.topleft, rect.bottomright, 2)
+            pygame.draw.line(screen, dark, rect.topright, rect.bottomleft, 2)
+        elif kind == "banner":
+            pygame.draw.rect(screen, dark, rect.move(4, 4))
+            banner_points = [(rect.x, rect.y), (rect.right, rect.y), (rect.right, rect.bottom - 25), (rect.centerx, rect.bottom), (rect.x, rect.bottom - 25)]
+            pygame.draw.polygon(screen, color, banner_points)
+            pygame.draw.polygon(screen, accent, [(rect.centerx, rect.y + 26), (rect.x + 18, rect.y + 78), (rect.right - 18, rect.y + 78)])
+            pygame.draw.polygon(screen, dark, banner_points, 3)
+        elif kind == "map":
+            pygame.draw.rect(screen, dark, rect.move(5, 5), border_radius=4)
+            pygame.draw.rect(screen, color, rect, border_radius=4)
+            pygame.draw.rect(screen, dark, rect, 3, border_radius=4)
+            route = [(rect.x + 25, rect.y + 95), (rect.x + 78, rect.y + 58), (rect.x + 128, rect.y + 82), (rect.x + 196, rect.y + 32)]
+            pygame.draw.lines(screen, (138, 48, 42), False, route, 4)
+            for point in route:
+                pygame.draw.circle(screen, (80, 36, 32), point, 6)
+        elif kind == "notice":
+            pygame.draw.rect(screen, dark, rect.move(5, 5), border_radius=4)
+            pygame.draw.rect(screen, color, rect, border_radius=4)
+            pygame.draw.rect(screen, dark, rect, 3, border_radius=4)
+            for i in range(3):
+                note = pygame.Rect(rect.x + 18, rect.y + 16 + i * 42, rect.width - 36, 28)
+                pygame.draw.rect(screen, (224, 202, 156), note, border_radius=2)
+                pygame.draw.line(screen, (98, 70, 48), (note.x + 8, note.y + 9), (note.right - 8, note.y + 9), 1)
+        else:
+            pygame.draw.rect(screen, dark, rect.move(4, 4), border_radius=4)
+            pygame.draw.rect(screen, color, rect, border_radius=4)
+            pygame.draw.rect(screen, dark, rect, 2, border_radius=4)
+
+    def draw_interior(self, screen):
+        room = self.current_interior
+        if not room:
+            return
+
+        wall_color = room["wall_color"]
+        floor_color = room["floor_color"]
+        trim_color = room["trim_color"]
+        accent_color = room["accent_color"]
+
+        for y in range(0, SCREEN_HEIGHT, 4):
+            amount = -50 + int((y / SCREEN_HEIGHT) * 45)
+            pygame.draw.rect(screen, self.shade_color(wall_color, amount), (0, y, SCREEN_WIDTH, 4))
+
+        room_rect = pygame.Rect(85, 105, 830, 500)
+        back_wall = pygame.Rect(room_rect.x, room_rect.y, room_rect.width, 190)
+        floor_top = back_wall.bottom
+        floor_points = [
+            (room_rect.x, floor_top),
+            (room_rect.right, floor_top),
+            (room_rect.right + 50, room_rect.bottom),
+            (room_rect.x - 50, room_rect.bottom),
+        ]
+        left_wall = [(room_rect.x, room_rect.y), (room_rect.x, floor_top), (room_rect.x - 50, room_rect.bottom), (room_rect.x - 25, room_rect.y + 35)]
+        right_wall = [(room_rect.right, room_rect.y), (room_rect.right, floor_top), (room_rect.right + 50, room_rect.bottom), (room_rect.right + 25, room_rect.y + 35)]
+
+        pygame.draw.rect(screen, self.shade_color(wall_color, -70), room_rect.move(8, 8), border_radius=8)
+        pygame.draw.polygon(screen, self.shade_color(wall_color, -18), left_wall)
+        pygame.draw.polygon(screen, self.shade_color(wall_color, -28), right_wall)
+        pygame.draw.rect(screen, wall_color, back_wall)
+        pygame.draw.polygon(screen, floor_color, floor_points)
+        pygame.draw.rect(screen, trim_color, room_rect, 5, border_radius=8)
+        pygame.draw.line(screen, trim_color, (room_rect.x, floor_top), (room_rect.right, floor_top), 5)
+
+        for x in range(room_rect.x - 40, room_rect.right + 80, 80):
+            pygame.draw.line(screen, self.shade_color(floor_color, -18), (x, room_rect.bottom), (room_rect.centerx, floor_top), 1)
+        for y in range(floor_top + 45, room_rect.bottom, 45):
+            pygame.draw.line(screen, self.shade_color(floor_color, -18), (room_rect.x - 30, y), (room_rect.right + 30, y), 1)
+
+        for prop in room["props"]:
+            self.draw_interior_prop(screen, prop, room)
+
+        npc_x, npc_y = room["npc_position"]
+        pygame.draw.ellipse(screen, (20, 18, 18), (npc_x - 22, npc_y + 42, 54, 16))
+        pygame.draw.rect(screen, self.shade_color(accent_color, -35), (npc_x - 18, npc_y + 8, 36, 48), border_radius=8)
+        pygame.draw.circle(screen, (224, 174, 126), (npc_x, npc_y), 18)
+        pygame.draw.circle(screen, self.shade_color(accent_color, 25), (npc_x - 6, npc_y - 5), 4)
+        pygame.draw.circle(screen, self.shade_color(accent_color, 25), (npc_x + 6, npc_y - 5), 4)
+        npc_name = self.current_interior_service["npc"] if self.current_interior_service else "Townsperson"
+        npc_text = font_tiny.render(npc_name, True, accent_color)
+        screen.blit(npc_text, (npc_x - npc_text.get_width() // 2, npc_y + 68))
+
+        if self.player:
+            original_x, original_y = self.player.x, self.player.y
+            self.player.x = SCREEN_WIDTH // 2 - PLAYER_SIZE // 2
+            self.player.y = 500
+            self.player.draw(screen)
+            self.player.x, self.player.y = original_x, original_y
+
+        title_panel = pygame.Rect(270, 24, 460, 70)
+        pygame.draw.rect(screen, UI_BG, title_panel, border_radius=8)
+        pygame.draw.rect(screen, accent_color, title_panel, 3, border_radius=8)
+        title = font_medium.render(room["title"], True, accent_color)
+        subtitle = font_tiny.render(room["subtitle"], True, (220, 220, 210))
+        screen.blit(title, (title_panel.centerx - title.get_width() // 2, title_panel.y + 12))
+        screen.blit(subtitle, (title_panel.centerx - subtitle.get_width() // 2, title_panel.y + 43))
+
+        if self.player:
+            pygame.draw.rect(screen, UI_BG, (16, 16, 240, 132), border_radius=8)
+            pygame.draw.rect(screen, UI_BORDER, (16, 16, 240, 132), 3, border_radius=8)
+            self.player.draw_stats(screen, 26, 26)
+
+        message_panel = pygame.Rect(145, SCREEN_HEIGHT - 84, 710, 56)
+        pygame.draw.rect(screen, UI_BG, message_panel, border_radius=8)
+        pygame.draw.rect(screen, accent_color, message_panel, 2, border_radius=8)
+        if self.town_service_message and self.town_service_message_timer > 0:
+            message = self.town_service_message
+            message_color = (255, 235, 160)
+        else:
+            flavor = room["flavor"]
+            message = flavor[(self.game_time // 240) % len(flavor)]
+            message_color = (210, 210, 200)
+        message_text = font_tiny.render(message, True, message_color)
+        screen.blit(message_text, (message_panel.centerx - message_text.get_width() // 2, message_panel.y + 10))
+
+        prompt_text = font_tiny.render(room["service_prompt"], True, accent_color)
+        exit_text = font_tiny.render("ENTER/ESC: exit to town", True, (200, 200, 210))
+        screen.blit(prompt_text, (message_panel.x + 22, message_panel.y + 34))
+        screen.blit(exit_text, (message_panel.right - exit_text.get_width() - 22, message_panel.y + 34))
+
     def emit_area_particles(self, current_area):
         area_world_x, area_world_y = current_area.get_world_position()
         for profile in AREA_PARTICLE_PROFILES.get(current_area.area_type, ()):
@@ -4360,6 +4628,12 @@ class Game:
         elif self.state == "character_select":
             # Character selection screen (no updates needed)
             pass
+
+        elif self.state == "interior" and self.player:
+            self.game_time += 1
+            self.player.update_animation()
+            if self.town_service_message_timer > 0:
+                self.town_service_message_timer -= 1
                 
         elif self.state == "overworld" and self.player:
             # Main gameplay area with movement and exploration
@@ -4830,6 +5104,9 @@ class Game:
             for i, line in enumerate(controls):
                 text = font_tiny.render(line, True, (180, 180, 200))
                 screen.blit(text, (20, SCREEN_HEIGHT - 140 + i * 25))
+
+        elif self.state == "interior" and self.player:
+            self.draw_interior(screen)
             
         elif self.state == "battle" and self.battle_screen:
             self.battle_screen.draw(screen)
@@ -4992,7 +5269,10 @@ class Game:
                 
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
-                        if self.state == "overworld":
+                        if self.state == "interior":
+                            self.exit_town_interior()
+                            continue
+                        elif self.state == "overworld":
                             self.state = "game_over"
                         elif self.state == "game_over":
                             self.state = "start_menu"
@@ -5004,6 +5284,13 @@ class Game:
                     # Handle skip for cutscene
                     if self.state == "opening_cutscene":
                         self.opening_cutscene.skip()
+
+                    if self.state == "interior" and event.key == pygame.K_SPACE:
+                        self.use_current_town_service()
+                        continue
+                    elif self.state == "interior" and event.key == pygame.K_RETURN:
+                        self.exit_town_interior()
+                        continue
                     
                     # Handle world map toggle
                     if self.state == "overworld" and event.key == pygame.K_m:
@@ -5061,7 +5348,7 @@ class Game:
                                 self.movement_cooldown = self.movement_delay
                     
                     # Handle town cutscene dialogue advancement
-                    if self.state == "overworld" and event.key == pygame.K_SPACE:
+                    if self.state == "overworld" and event.key in [pygame.K_SPACE, pygame.K_RETURN]:
                         current_area = self.world_map.get_current_area()
                         if current_area and current_area.cutscene_active and current_area.guard:
                             # Advance dialogue
@@ -5074,9 +5361,7 @@ class Game:
                         elif current_area:
                             service = current_area.get_nearby_town_service(self.player.x, self.player.y)
                             if service:
-                                self.apply_town_service(service)
-                                if self.SFX_ITEM:
-                                    self.SFX_ITEM.play()
+                                self.enter_town_interior(service)
                     
                     # Pass input to battle screen
                     if self.state == "battle" and self.battle_screen:
@@ -5245,6 +5530,9 @@ class Game:
         self.movement_cooldown = 0
         self.boss_battle_triggered = False
         self.boss_defeated = False
+        self.current_interior = None
+        self.current_interior_service = None
+        self.interior_return_position = None
         
         # Reset world map
         self.world_map = WorldMap()
@@ -5280,6 +5568,7 @@ class MusicSystem:
     def __init__(self):
         self.current_track = None
         self.last_state = None
+        self.last_area_type = None
         self.boss_battle_active = False
         self.town_music_bytes = None
         self.start_menu_music_bytes = None
@@ -5345,12 +5634,19 @@ class MusicSystem:
         if not pygame.mixer.get_init():
             return
 
+        area_type = current_area.area_type if current_area else None
+
         # Only update when state or boss battle status changes
-        if game_state == self.last_state and is_boss_battle == self.boss_battle_active:
+        if (
+            game_state == self.last_state and
+            is_boss_battle == self.boss_battle_active and
+            area_type == self.last_area_type
+        ):
             return
         
         print(f'MusicSystem: State change detected! "{self.last_state}" -> "{game_state}", boss: {self.boss_battle_active} -> {is_boss_battle}')
         self.last_state = game_state
+        self.last_area_type = area_type
         self.boss_battle_active = is_boss_battle
         pygame.mixer.music.stop()
         pygame.mixer.music.set_volume(0.5)
@@ -5378,6 +5674,10 @@ class MusicSystem:
                     print('MusicSystem: Playing overworld music')
                     pygame.mixer.music.load(io.BytesIO(self.overworld_music_bytes))
                     pygame.mixer.music.play(-1)
+            elif game_state == "interior" and self.town_music_bytes:
+                print('MusicSystem: Playing town interior music')
+                pygame.mixer.music.load(io.BytesIO(self.town_music_bytes))
+                pygame.mixer.music.play(-1)
             elif game_state == "battle":
                 if is_boss_battle and self.boss_music_bytes:
                     print('MusicSystem: Playing boss music')

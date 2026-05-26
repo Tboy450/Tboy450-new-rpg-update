@@ -25,27 +25,27 @@ TOWN_SERVICES = {
     "inn": {
         "name": "Warm Hearth Inn",
         "npc": "Innkeeper Mara",
-        "prompt": "SPACE: rest at the inn",
+        "prompt": "SPACE/ENTER: enter the inn",
     },
     "shop": {
         "name": "Mooncap Market",
         "npc": "Peddler Nix",
-        "prompt": "SPACE: restock potions",
+        "prompt": "SPACE/ENTER: enter the market",
     },
     "blacksmith": {
         "name": "Ironroot Forge",
         "npc": "Borin the Smith",
-        "prompt": "SPACE: train gear",
+        "prompt": "SPACE/ENTER: enter the forge",
     },
     "library": {
         "name": "Starwell Library",
         "npc": "Archivist Luma",
-        "prompt": "SPACE: study lore",
+        "prompt": "SPACE/ENTER: enter the library",
     },
     "town_hall": {
         "name": "Dragonwatch Hall",
         "npc": "Captain Marcus",
-        "prompt": "SPACE: ask about bosses",
+        "prompt": "SPACE/ENTER: enter town hall",
     },
 }
 

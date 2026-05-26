@@ -2,6 +2,7 @@
 
 from .characters import CHARACTER_CLASS_STATS
 from .enemies import DRAGON_BOSS_COLORS, ENEMY_NAME_POOLS
+from .interiors import TOWN_INTERIORS
 from .mechanics import (
     BATTLE_RULES,
     ELEMENT_PROFILES,
