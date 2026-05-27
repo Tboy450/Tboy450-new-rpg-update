@@ -6,8 +6,11 @@ This game is still using procedural shapes and generated audio. When we start re
 assets/
   source/       raw downloads kept as-is
   processed/    resized / converted files ready for the game
+  manifest.json category plan for future asset ports
   credits.md    attribution notes for any non-CC0 items
 ```
+
+The current placeholder folders are split into `characters`, `enemies`, `sounds`, `music`, and `ui`. Keep raw packs under `assets/source/<category>/`, then copy converted game-ready files to `assets/processed/<category>/`.
 
 ## Character Animation Sources
 

@@ -32,6 +32,8 @@ CONTROLS:
 - Enter/Space: Confirm actions
 - Escape: Menu navigation
 - M: Toggle world map view
+- J: Toggle quest journal
+- F5/F9: Save/load game
 """
 
 import os
@@ -66,7 +68,21 @@ from game_data import (
     get_boss_profile,
     get_element_profile,
     get_progression_status,
+    get_town_service_dialogue,
 )
+from systems.input_actions import (
+    CANCEL,
+    CONFIRM,
+    INTERACT,
+    JOURNAL,
+    LOAD,
+    MAP,
+    MOVE_DELTAS,
+    SAVE,
+    action_for_key,
+    key_for_android_button,
+)
+from systems.save_load import DEFAULT_SAVE_PATH, load_game_state, save_game_state
 
 # Initialize Pygame
 pygame.mixer.pre_init(44100, -16, 2, 512)
@@ -190,6 +206,8 @@ except:
 GRID_SIZE = 50                    # Size of each grid square
 GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE   # Number of grid columns
 GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE # Number of grid rows
+INTERIOR_WALK_BOUNDS = pygame.Rect(120, 300, 760, 280)
+INTERIOR_EXIT_ZONE = pygame.Rect(SCREEN_WIDTH // 2 - 80, 548, 160, 40)
 
 # World Map System (3x3 grid of areas)
 WORLD_SIZE = 3                    # 3x3 world grid
@@ -4030,6 +4048,7 @@ class Game:
         self.boss_battle_triggered = False
         self.boss_defeated = False
         self.show_world_map = False
+        self.show_journal = False
         self.pickup_message = None
         self.pickup_message_timer = 0
         self.area_effect_timer = 0
@@ -4040,6 +4059,9 @@ class Game:
         self.current_interior = None
         self.current_interior_service = None
         self.interior_return_position = None
+        self.interior_player_x = SCREEN_WIDTH // 2 - PLAYER_SIZE // 2
+        self.interior_player_y = 500
+        self.npc_dialogue_index = 0
         
         # Initialize starfield
         for _ in range(150):
@@ -4061,8 +4083,9 @@ class Game:
             })
         
         # UI Elements
-        self.start_button = Button(SCREEN_WIDTH//2 - 120, 500, 240, 60, "START QUEST", UI_BORDER)
-        self.quit_button = Button(SCREEN_WIDTH//2 - 120, 580, 240, 60, "QUIT", UI_BORDER)
+        self.start_button = Button(SCREEN_WIDTH//2 - 120, 455, 240, 55, "START QUEST", UI_BORDER)
+        self.load_button = Button(SCREEN_WIDTH//2 - 120, 525, 240, 55, "LOAD SAVE", (110, 220, 255))
+        self.quit_button = Button(SCREEN_WIDTH//2 - 120, 595, 240, 55, "QUIT", UI_BORDER)
         self.back_button = Button(20, 20, 100, 40, "BACK")
         
         # Character buttons
@@ -4177,6 +4200,99 @@ class Game:
         self.town_service_message = message
         self.town_service_message_timer = 180
 
+    def set_button(self, button, text, rect=None):
+        if rect is not None:
+            button.rect = rect
+        if button.text != text:
+            button.text = text
+        button.text_surf = font_medium.render(button.text, True, TEXT_COLOR)
+        button.text_rect = button.text_surf.get_rect(center=button.rect.center)
+
+    def reset_menu_buttons(self):
+        self.set_button(self.start_button, "START QUEST", pygame.Rect(SCREEN_WIDTH//2 - 120, 455, 240, 55))
+        self.set_button(self.load_button, "LOAD SAVE", pygame.Rect(SCREEN_WIDTH//2 - 120, 525, 240, 55))
+        self.set_button(self.quit_button, "QUIT", pygame.Rect(SCREEN_WIDTH//2 - 120, 595, 240, 55))
+
+    def save_current_game(self):
+        if not self.player:
+            self.set_town_service_message("No active hero to save.")
+            return False
+        try:
+            path = save_game_state(self)
+        except Exception as exc:
+            self.set_town_service_message(f"Save failed: {exc}")
+            return False
+        self.set_town_service_message(f"Saved game to {path.name}.")
+        if self.SFX_ITEM:
+            self.SFX_ITEM.play()
+        return True
+
+    def load_saved_game(self):
+        try:
+            data = load_game_state()
+        except FileNotFoundError:
+            self.set_town_service_message(f"No save found at {DEFAULT_SAVE_PATH}.")
+            return False
+        except Exception as exc:
+            self.set_town_service_message(f"Load failed: {exc}")
+            return False
+
+        player_data = data["player"]
+        self.player = Character(player_data.get("type", "Warrior"))
+        for field in (
+            "level", "exp", "exp_to_level", "max_health", "health",
+            "max_mana", "mana", "strength", "defense", "speed",
+            "x", "y", "kills", "items_collected", "last_boss_level",
+            "boss_cooldown",
+        ):
+            if field in player_data:
+                setattr(self.player, field, player_data[field])
+        self.player.inventory = dict(player_data.get("inventory", self.player.inventory))
+        self.player.town_service_claims = {
+            (claim[0], claim[1])
+            for claim in player_data.get("town_service_claims", [])
+            if isinstance(claim, list) and len(claim) == 2
+        }
+        self.player.just_leveled_up = False
+
+        self.score = data.get("score", 0)
+        self.game_time = data.get("game_time", 0)
+        self.boss_defeated = data.get("boss_defeated", False)
+        self.boss_battle_triggered = False
+        self.battle_screen = None
+        self.current_interior = None
+        self.current_interior_service = None
+        self.interior_return_position = None
+        self.show_world_map = False
+        self.show_journal = False
+        self.npc_dialogue_index = 0
+        self.world_map = WorldMap()
+
+        for area in self.world_map.areas.values():
+            area.visited = False
+        for area_x, area_y in data.get("world", {}).get("visited_areas", []):
+            area = self.world_map.areas.get((area_x, area_y))
+            if area:
+                area.visited = True
+
+        area_x, area_y = data.get("world", {}).get("current_area", [1, 1])
+        self.world_map.current_area_x = max(0, min(WORLD_SIZE - 1, int(area_x)))
+        self.world_map.current_area_y = max(0, min(WORLD_SIZE - 1, int(area_y)))
+        current_area = self.world_map.get_current_area()
+        if current_area:
+            current_area.visited = True
+            self.enemies = current_area.enemies
+            self.items = current_area.items
+        else:
+            self.enemies = []
+            self.items = []
+        self.world_map.update_camera(self.player.x, self.player.y)
+        self.state = "overworld"
+        self.set_town_service_message("Save loaded.")
+        if self.SFX_ENTER:
+            self.SFX_ENTER.play()
+        return True
+
     def get_player_progression_status(self):
         if not self.player:
             return None
@@ -4254,7 +4370,11 @@ class Game:
         self.current_interior = room
         self.current_interior_service = dict(service)
         self.interior_return_position = (self.player.x, self.player.y) if self.player else None
+        self.interior_player_x = SCREEN_WIDTH // 2 - PLAYER_SIZE // 2
+        self.interior_player_y = 500
+        self.npc_dialogue_index = 0
         self.show_world_map = False
+        self.show_journal = False
         self.state = "interior"
         self.set_town_service_message(f"Entered {room['title']}.")
         if self.SFX_ENTER:
@@ -4268,6 +4388,7 @@ class Game:
         self.current_interior = None
         self.current_interior_service = None
         self.interior_return_position = None
+        self.show_journal = False
         self.state = "overworld"
         self.set_town_service_message(f"Left {room_title}.")
         if self.SFX_ENTER:
@@ -4279,6 +4400,146 @@ class Game:
         self.apply_town_service(self.current_interior_service)
         if self.SFX_ITEM:
             self.SFX_ITEM.play()
+
+    def get_interior_blockers(self):
+        if not self.current_interior:
+            return []
+        blocking_kinds = {
+            "bed", "counter", "table", "desk", "shelf", "bookcase", "hearth",
+            "forge", "anvil", "rack", "crate", "crystal", "map", "notice",
+        }
+        blockers = []
+        for prop in self.current_interior["props"]:
+            if prop["kind"] in blocking_kinds:
+                rect = pygame.Rect(prop["rect"])
+                blockers.append(rect.inflate(8, 8))
+        return blockers
+
+    def move_interior_player(self, dx, dy):
+        new_x = self.interior_player_x + dx * GRID_SIZE
+        new_y = self.interior_player_y + dy * GRID_SIZE
+        player_rect = pygame.Rect(new_x, new_y, PLAYER_SIZE, PLAYER_SIZE)
+        if not INTERIOR_WALK_BOUNDS.contains(player_rect):
+            return False
+        for blocker in self.get_interior_blockers():
+            if player_rect.colliderect(blocker):
+                return False
+        self.interior_player_x = new_x
+        self.interior_player_y = new_y
+        if self.SFX_ARROW:
+            self.SFX_ARROW.play()
+        return True
+
+    def interior_player_near_npc(self):
+        if not self.current_interior:
+            return False
+        npc_x, npc_y = self.current_interior["npc_position"]
+        player_center = (self.interior_player_x + PLAYER_SIZE // 2, self.interior_player_y + PLAYER_SIZE // 2)
+        return math.hypot(player_center[0] - npc_x, player_center[1] - npc_y) <= 210
+
+    def talk_to_current_npc(self):
+        if not self.current_interior_service:
+            return
+        service_type = self.current_interior_service["type"]
+        dialogue = get_town_service_dialogue(service_type)
+        if not dialogue:
+            self.set_town_service_message(f"{self.current_interior_service['npc']}: Safe travels.")
+            return
+        message = dialogue[self.npc_dialogue_index % len(dialogue)]
+        self.npc_dialogue_index += 1
+        self.set_town_service_message(message)
+        if self.SFX_CLICK:
+            self.SFX_CLICK.play()
+
+    def draw_journal_line(self, screen, text, x, y, color=(225, 225, 215), font_obj=font_tiny):
+        rendered = font_obj.render(text, True, color)
+        screen.blit(rendered, (x, y))
+        return y + rendered.get_height() + 7
+
+    def draw_journal(self, screen):
+        if not self.player:
+            return
+
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 188))
+        screen.blit(overlay, (0, 0))
+
+        panel = pygame.Rect(95, 54, 810, 574)
+        pygame.draw.rect(screen, UI_BG, panel, border_radius=12)
+        pygame.draw.rect(screen, UI_BORDER, panel, 3, border_radius=12)
+
+        title = font_large.render("QUEST JOURNAL", True, (255, 215, 0))
+        screen.blit(title, (panel.centerx - title.get_width() // 2, panel.y + 18))
+
+        progress = self.get_player_progression_status()
+        left_x = panel.x + 34
+        right_x = panel.x + 420
+        y = panel.y + 92
+
+        if progress:
+            quest_panel = pygame.Rect(left_x, y, 342, 136)
+            pygame.draw.rect(screen, (20, 20, 30), quest_panel, border_radius=8)
+            pygame.draw.rect(screen, progress["color"], quest_panel, 2, border_radius=8)
+            line_y = self.draw_journal_line(screen, progress["title"], left_x + 14, y + 12, progress["color"], font_small)
+            for line in progress["lines"]:
+                line_y = self.draw_journal_line(screen, line, left_x + 14, line_y, (225, 225, 215))
+
+        hero_panel = pygame.Rect(right_x, y, 336, 136)
+        pygame.draw.rect(screen, (20, 20, 30), hero_panel, border_radius=8)
+        pygame.draw.rect(screen, TEXT_COLOR, hero_panel, 2, border_radius=8)
+        line_y = self.draw_journal_line(screen, f"HERO: {self.player.type}  LV.{self.player.level}", right_x + 14, y + 12, TEXT_COLOR, font_small)
+        line_y = self.draw_journal_line(screen, f"HP {self.player.health}/{self.player.max_health}   MP {self.player.mana}/{self.player.max_mana}", right_x + 14, line_y)
+        line_y = self.draw_journal_line(screen, f"STR {self.player.strength}   DEF {self.player.defense}   SPD {self.player.speed}", right_x + 14, line_y)
+        self.draw_journal_line(
+            screen,
+            f"Bag: HP x{self.player.get_inventory_count('health')}  MP x{self.player.get_inventory_count('mana')}",
+            right_x + 14,
+            line_y,
+        )
+
+        y += 160
+        current_area = self.world_map.get_current_area()
+        area_panel = pygame.Rect(left_x, y, 342, 150)
+        pygame.draw.rect(screen, (20, 20, 30), area_panel, border_radius=8)
+        pygame.draw.rect(screen, (150, 230, 150), area_panel, 2, border_radius=8)
+        if current_area:
+            visited_count = sum(1 for area in self.world_map.areas.values() if area.visited)
+            line_y = self.draw_journal_line(screen, f"AREA: {current_area.area_type.upper()}", left_x + 14, y + 12, (150, 230, 150), font_small)
+            line_y = self.draw_journal_line(screen, AREA_DESCRIPTIONS.get(current_area.area_type, "Unknown region"), left_x + 14, line_y)
+            mechanic = AREA_MECHANICS.get(current_area.area_type)
+            if mechanic:
+                line_y = self.draw_journal_line(screen, f"Effect: {mechanic['label']}", left_x + 14, line_y, mechanic["color"])
+            self.draw_journal_line(screen, f"Visited areas: {visited_count}/{WORLD_SIZE * WORLD_SIZE}", left_x + 14, line_y)
+
+        service_panel = pygame.Rect(right_x, y, 336, 150)
+        pygame.draw.rect(screen, (20, 20, 30), service_panel, border_radius=8)
+        pygame.draw.rect(screen, (255, 215, 0), service_panel, 2, border_radius=8)
+        line_y = self.draw_journal_line(screen, "TOWN / NPC", right_x + 14, y + 12, (255, 215, 0), font_small)
+        if self.state == "interior" and self.current_interior_service:
+            line_y = self.draw_journal_line(screen, f"Inside: {self.current_interior_service['name']}", right_x + 14, line_y)
+            line_y = self.draw_journal_line(screen, f"NPC: {self.current_interior_service['npc']}", right_x + 14, line_y)
+            self.draw_journal_line(screen, "SPACE service, ENTER talk/exit", right_x + 14, line_y)
+        elif current_area:
+            service = current_area.get_nearby_town_service(self.player.x, self.player.y)
+            if service:
+                line_y = self.draw_journal_line(screen, f"Nearby: {service['name']}", right_x + 14, line_y)
+                line_y = self.draw_journal_line(screen, f"NPC: {service['npc']}", right_x + 14, line_y)
+                self.draw_journal_line(screen, "SPACE/ENTER enters building", right_x + 14, line_y)
+            else:
+                self.draw_journal_line(screen, "No town service nearby.", right_x + 14, line_y)
+
+        y += 178
+        controls_panel = pygame.Rect(left_x, y, 722, 92)
+        pygame.draw.rect(screen, (20, 20, 30), controls_panel, border_radius=8)
+        pygame.draw.rect(screen, (180, 180, 220), controls_panel, 2, border_radius=8)
+        controls = (
+            "Move: arrows/WASD    Interact: SPACE    Confirm/Talk: ENTER",
+            "Journal: J    Map: M    Save: F5    Load: F9    Close/Menu: ESC",
+            "Save path: " + str(DEFAULT_SAVE_PATH),
+        )
+        line_y = y + 14
+        for line in controls:
+            line_y = self.draw_journal_line(screen, line, left_x + 14, line_y, (210, 210, 225))
 
     def draw_interior_prop(self, screen, prop, room):
         kind = prop["kind"]
@@ -4470,6 +4731,12 @@ class Game:
         for y in range(floor_top + 45, room_rect.bottom, 45):
             pygame.draw.line(screen, self.shade_color(floor_color, -18), (room_rect.x - 30, y), (room_rect.right + 30, y), 1)
 
+        exit_rect = INTERIOR_EXIT_ZONE
+        pygame.draw.rect(screen, self.shade_color(floor_color, -25), exit_rect, border_radius=6)
+        pygame.draw.rect(screen, trim_color, exit_rect, 2, border_radius=6)
+        exit_label = font_tiny.render("EXIT", True, (220, 220, 210))
+        screen.blit(exit_label, (exit_rect.centerx - exit_label.get_width() // 2, exit_rect.y + 10))
+
         for prop in room["props"]:
             self.draw_interior_prop(screen, prop, room)
 
@@ -4485,8 +4752,8 @@ class Game:
 
         if self.player:
             original_x, original_y = self.player.x, self.player.y
-            self.player.x = SCREEN_WIDTH // 2 - PLAYER_SIZE // 2
-            self.player.y = 500
+            self.player.x = self.interior_player_x
+            self.player.y = self.interior_player_y
             self.player.draw(screen)
             self.player.x, self.player.y = original_x, original_y
 
@@ -4521,7 +4788,11 @@ class Game:
         screen.blit(message_text, (message_panel.centerx - message_text.get_width() // 2, message_panel.y + 10))
 
         prompt_text = font_tiny.render(room["service_prompt"], True, accent_color)
-        exit_text = font_tiny.render("ENTER/ESC: exit to town", True, (200, 200, 210))
+        if self.interior_player_near_npc():
+            exit_label = "ENTER: talk   ESC/exit mat: leave"
+        else:
+            exit_label = "ENTER/ESC: exit to town"
+        exit_text = font_tiny.render(exit_label, True, (200, 200, 210))
         screen.blit(prompt_text, (message_panel.x + 22, message_panel.y + 34))
         screen.blit(exit_text, (message_panel.right - exit_text.get_width() - 22, message_panel.y + 34))
 
@@ -4663,6 +4934,8 @@ class Game:
         # ========================================
         # Update particle effects
         self.particle_system.update()
+        if self.state not in ["overworld", "interior"] and self.town_service_message_timer > 0:
+            self.town_service_message_timer -= 1
         
         # Update dynamic music system based on game state
         is_boss_battle = (
@@ -4877,10 +5150,7 @@ class Game:
             )
         
         if self.state == "start_menu":
-            if self.start_button.text != "START QUEST":
-                self.start_button.text = "START QUEST"
-                self.start_button.text_surf = font_medium.render(self.start_button.text, True, TEXT_COLOR)
-                self.start_button.text_rect = self.start_button.text_surf.get_rect(center=self.start_button.rect.center)
+            self.reset_menu_buttons()
             
             title = font_large.render("DRAGON'S LAIR", True, (255, 50, 50))
             screen.blit(title, (SCREEN_WIDTH//2 - title.get_width()//2, 80))
@@ -4891,21 +5161,28 @@ class Game:
             self.dragon.draw(screen)
             
             self.start_button.draw(screen)
+            self.load_button.draw(screen)
             self.quit_button.draw(screen)
             
             instructions = [
                 "SELECT YOUR HERO AND EMBARK ON A QUEST",
                 "DEFEAT THE DRAGON'S MINIONS AND SURVIVE!",
                 "",
-                "CONTROLS:",
-                "ARROWS/WASD - MOVE",
-                "ENTER - SELECT",
-                "ESC - QUIT"
+                "ARROWS/WASD: MOVE    ENTER/SPACE: SELECT",
+                "J: JOURNAL    M: MAP    F5/F9: SAVE/LOAD",
+                "ESC: QUIT OR BACK"
             ]
             
             for i, line in enumerate(instructions):
                 text = font_tiny.render(line, True, TEXT_COLOR)
                 screen.blit(text, (SCREEN_WIDTH//2 - text.get_width()//2, 350 + i*25))
+
+            if self.town_service_message and self.town_service_message_timer > 0:
+                message_text = font_tiny.render(self.town_service_message, True, (255, 235, 160))
+                msg_rect = pygame.Rect(SCREEN_WIDTH//2 - 260, 650, 520, 30)
+                pygame.draw.rect(screen, UI_BG, msg_rect, border_radius=6)
+                pygame.draw.rect(screen, (255, 215, 0), msg_rect, 2, border_radius=6)
+                screen.blit(message_text, (msg_rect.centerx - message_text.get_width() // 2, msg_rect.y + 6))
             
         elif self.state == "opening_cutscene":
             # Draw the opening cutscene
@@ -5185,8 +5462,9 @@ class Game:
             controls = [
                 "CONTROLS:",
                 "ARROWS/WASD - MOVE",
-                "ENTER - SELECT",
-                "M - WORLD MAP",
+                "SPACE/ENTER - INTERACT",
+                "J - JOURNAL / M - MAP",
+                "F5 SAVE / F9 LOAD",
                 "ESC - MENU"
             ]
             
@@ -5237,6 +5515,9 @@ class Game:
             self.back_button.text_rect = self.back_button.text_surf.get_rect(center=self.back_button.rect.center)
             self.back_button.draw(screen)
             
+        if self.show_journal and self.state in ["overworld", "interior"] and self.player:
+            self.draw_journal(screen)
+
         if self.state in ["character_select", "game_over"]:
             self.back_button.draw(screen)
             
@@ -5337,107 +5618,99 @@ class Game:
                         mx, my = event.pos
                         for name, rect in self.android_buttons.items():
                             if rect.collidepoint(mx, my):
-                                if name == 'up':
-                                    fake_event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_UP)
-                                    pygame.event.post(fake_event)
-                                elif name == 'down':
-                                    fake_event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_DOWN)
-                                    pygame.event.post(fake_event)
-                                elif name == 'left':
-                                    fake_event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_LEFT)
-                                    pygame.event.post(fake_event)
-                                elif name == 'right':
-                                    fake_event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RIGHT)
-                                    pygame.event.post(fake_event)
-                                elif name == 'enter':
-                                    fake_event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN)
-                                    pygame.event.post(fake_event)
-                                elif name == 'space':
-                                    fake_event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE)
+                                key = key_for_android_button(name)
+                                if key is not None:
+                                    fake_event = pygame.event.Event(pygame.KEYDOWN, key=key)
                                     pygame.event.post(fake_event)
                 
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
+                    action = action_for_key(event.key)
+
+                    if action == LOAD and self.state in ["start_menu", "overworld", "interior", "game_over", "victory"]:
+                        self.load_saved_game()
+                        continue
+                    if action == SAVE and self.state in ["overworld", "interior"]:
+                        self.save_current_game()
+                        continue
+
+                    if self.show_journal and self.state in ["overworld", "interior"]:
+                        if action in [CANCEL, CONFIRM, INTERACT, JOURNAL, MAP]:
+                            self.show_journal = False
+                            if self.SFX_CLICK:
+                                self.SFX_CLICK.play()
+                        continue
+
+                    if action == JOURNAL and self.state in ["overworld", "interior"] and self.player:
+                        self.show_journal = True
+                        self.show_world_map = False
+                        if self.SFX_CLICK:
+                            self.SFX_CLICK.play()
+                        continue
+
+                    if action == CANCEL:
                         if self.state == "interior":
                             self.exit_town_interior()
                             continue
                         elif self.state == "overworld":
                             self.state = "game_over"
+                            continue
                         elif self.state == "game_over":
                             self.state = "start_menu"
+                            continue
                         elif self.state == "character_select":
                             self.state = "start_menu"
+                            continue
                         elif self.state == "opening_cutscene":
                             self.opening_cutscene.skip()
+                            continue
                     
                     # Handle skip for cutscene
                     if self.state == "opening_cutscene":
                         self.opening_cutscene.skip()
+                        continue
 
-                    if self.state == "interior" and event.key == pygame.K_SPACE:
-                        self.use_current_town_service()
-                        continue
-                    elif self.state == "interior" and event.key == pygame.K_RETURN:
-                        self.exit_town_interior()
-                        continue
+                    if self.state == "interior" and self.player:
+                        if action in MOVE_DELTAS:
+                            dx, dy = MOVE_DELTAS[action]
+                            self.move_interior_player(dx, dy)
+                            continue
+                        if action == INTERACT:
+                            self.use_current_town_service()
+                            continue
+                        if action == CONFIRM:
+                            player_rect = pygame.Rect(self.interior_player_x, self.interior_player_y, PLAYER_SIZE, PLAYER_SIZE)
+                            if self.interior_player_near_npc():
+                                self.talk_to_current_npc()
+                            elif player_rect.colliderect(INTERIOR_EXIT_ZONE):
+                                self.exit_town_interior()
+                            else:
+                                self.exit_town_interior()
+                            continue
                     
                     # Handle world map toggle
-                    if self.state == "overworld" and event.key == pygame.K_m:
+                    if self.state == "overworld" and action == MAP:
                         self.show_world_map = not self.show_world_map
+                        continue
                     
                     # Handle movement in overworld
-                    if self.state == "overworld" and self.player and self.movement_cooldown <= 0:
-                        # Store original position for collision detection
+                    if self.state == "overworld" and self.player and self.movement_cooldown <= 0 and action in MOVE_DELTAS:
                         original_x = self.player.x
                         original_y = self.player.y
-                        
-                        if event.key in [pygame.K_UP, pygame.K_w]:
-                            if self.SFX_ARROW: self.SFX_ARROW.play()
-                            self.player.move(0, -1)
-                            # Check collision and revert if needed
-                            current_area = self.world_map.get_current_area()
-                            if current_area and current_area.check_building_collision(self.player.x, self.player.y):
-                                self.player.x = original_x
-                                self.player.y = original_y
-                            else:
-                                self.player_moved = True
-                                self.movement_cooldown = self.movement_delay
-                        elif event.key in [pygame.K_DOWN, pygame.K_s]:
-                            if self.SFX_ARROW: self.SFX_ARROW.play()
-                            self.player.move(0, 1)
-                            # Check collision and revert if needed
-                            current_area = self.world_map.get_current_area()
-                            if current_area and current_area.check_building_collision(self.player.x, self.player.y):
-                                self.player.x = original_x
-                                self.player.y = original_y
-                            else:
-                                self.player_moved = True
-                                self.movement_cooldown = self.movement_delay
-                        elif event.key in [pygame.K_LEFT, pygame.K_a]:
-                            if self.SFX_ARROW: self.SFX_ARROW.play()
-                            self.player.move(-1, 0)
-                            # Check collision and revert if needed
-                            current_area = self.world_map.get_current_area()
-                            if current_area and current_area.check_building_collision(self.player.x, self.player.y):
-                                self.player.x = original_x
-                                self.player.y = original_y
-                            else:
-                                self.player_moved = True
-                                self.movement_cooldown = self.movement_delay
-                        elif event.key in [pygame.K_RIGHT, pygame.K_d]:
-                            if self.SFX_ARROW: self.SFX_ARROW.play()
-                            self.player.move(1, 0)
-                            # Check collision and revert if needed
-                            current_area = self.world_map.get_current_area()
-                            if current_area and current_area.check_building_collision(self.player.x, self.player.y):
-                                self.player.x = original_x
-                                self.player.y = original_y
-                            else:
-                                self.player_moved = True
-                                self.movement_cooldown = self.movement_delay
+                        dx, dy = MOVE_DELTAS[action]
+                        if self.SFX_ARROW:
+                            self.SFX_ARROW.play()
+                        self.player.move(dx, dy)
+                        current_area = self.world_map.get_current_area()
+                        if current_area and current_area.check_building_collision(self.player.x, self.player.y):
+                            self.player.x = original_x
+                            self.player.y = original_y
+                        else:
+                            self.player_moved = True
+                            self.movement_cooldown = self.movement_delay
+                        continue
                     
-                    # Handle town cutscene dialogue advancement
-                    if self.state == "overworld" and event.key in [pygame.K_SPACE, pygame.K_RETURN]:
+                    # Handle town cutscene dialogue advancement and town service entry
+                    if self.state == "overworld" and action in [INTERACT, CONFIRM] and self.player:
                         current_area = self.world_map.get_current_area()
                         if (
                             current_area and
@@ -5445,19 +5718,20 @@ class Game:
                             current_area.cutscene_phase < 2 and
                             current_area.guard
                         ):
-                            # Advance dialogue
                             current_area.guard["current_dialogue"] += 1
                             current_area.cutscene_timer = 0
-                            
-                            # Check if we've reached the end of dialogue
                             if current_area.guard["current_dialogue"] >= len(current_area.guard["dialogue"]):
-                                current_area.cutscene_phase = 2  # End cutscene
+                                current_area.cutscene_phase = 2
                                 current_area.cutscene_active = False
                                 current_area.guard["visible"] = False
                         elif current_area:
                             service = current_area.get_nearby_town_service(self.player.x, self.player.y)
                             if service:
                                 self.enter_town_interior(service)
+                            elif action == CONFIRM:
+                                self.show_journal = True
+                                self.show_world_map = False
+                        continue
                     
                     # Pass input to battle screen
                     if self.state == "battle" and self.battle_screen:
@@ -5466,12 +5740,17 @@ class Game:
             # Handle button clicks
             if self.state == "start_menu":
                 self.start_button.update(mouse_pos)
+                self.load_button.update(mouse_pos)
                 self.quit_button.update(mouse_pos)
                 
                 if self.start_button.is_clicked(mouse_pos, mouse_click):
                     if self.SFX_CLICK: self.SFX_CLICK.play()
                     self.state = "opening_cutscene"
                     self.opening_cutscene = OpeningCutscene()  # Reset cutscene
+
+                if self.load_button.is_clicked(mouse_pos, mouse_click):
+                    if self.SFX_CLICK: self.SFX_CLICK.play()
+                    self.load_saved_game()
                     
                 if self.quit_button.is_clicked(mouse_pos, mouse_click):
                     if self.SFX_CLICK: self.SFX_CLICK.play()
@@ -5626,9 +5905,21 @@ class Game:
         self.movement_cooldown = 0
         self.boss_battle_triggered = False
         self.boss_defeated = False
+        self.show_world_map = False
+        self.show_journal = False
+        self.pickup_message = None
+        self.pickup_message_timer = 0
+        self.area_effect_timer = 0
+        self.area_effect_message = None
+        self.area_effect_message_timer = 0
+        self.town_service_message = None
+        self.town_service_message_timer = 0
         self.current_interior = None
         self.current_interior_service = None
         self.interior_return_position = None
+        self.interior_player_x = SCREEN_WIDTH // 2 - PLAYER_SIZE // 2
+        self.interior_player_y = 500
+        self.npc_dialogue_index = 0
         
         # Reset world map
         self.world_map = WorldMap()

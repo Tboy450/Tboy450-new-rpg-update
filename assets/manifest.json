@@ -1,0 +1,33 @@
+{
+  "characters": {
+    "status": "planned",
+    "source_dir": "assets/source/characters",
+    "processed_dir": "assets/processed/characters",
+    "notes": "Drop raw hero/NPC animation packs here before converting them to game-ready sprites."
+  },
+  "enemies": {
+    "status": "planned",
+    "source_dir": "assets/source/enemies",
+    "processed_dir": "assets/processed/enemies",
+    "notes": "Enemy and boss sprites should be grouped by element or boss name."
+  },
+  "sounds": {
+    "status": "planned",
+    "source_dir": "assets/source/sounds",
+    "processed_dir": "assets/processed/sounds",
+    "notes": "Use short WAV/OGG files for UI, attacks, hits, doors, and boss roars."
+  },
+  "music": {
+    "status": "planned",
+    "source_dir": "assets/source/music",
+    "processed_dir": "assets/processed/music",
+    "notes": "Loopable themes can replace the procedural music system later."
+  },
+  "ui": {
+    "status": "planned",
+    "source_dir": "assets/source/ui",
+    "processed_dir": "assets/processed/ui",
+    "notes": "Panels, icons, potion graphics, and map markers belong here."
+  }
+}
+

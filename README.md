@@ -29,10 +29,25 @@ Run the game with:
 python main.py
 ```
 
+On Windows, use `Run Dragons Lair RPG.cmd` to auto-update active game files, set up the local Python environment, install requirements, and launch the game.
+
+Controls:
+
+- `ARROWS/WASD`: move
+- `SPACE/ENTER`: interact or confirm
+- `J`: quest journal
+- `M`: world map
+- `F5`: save
+- `F9`: load
+- `ESC`: back/menu
+
+The default save file is stored at `~/.dragons_lair_rpg_save.json`. Set `DRAGONS_LAIR_SAVE` to choose a different save path.
+
 Repository layout:
 
 - `main.py` is the active game file.
 - `game_data/` holds active modular data. See `game_data/README.md` for where character, enemy, world, NPC, town interior, mechanic, and progression data belongs.
+- `systems/` holds active helper systems such as input mapping and JSON save/load.
 - `assets/` is the intake area for future art/audio ports. Keep raw downloads in `assets/source/`, game-ready files in `assets/processed/`, and non-CC0 attribution in `assets/credits.md`.
 - `scripts/` holds setup helpers.
 - `archive/` contains older snapshot files and experiments kept for reference only. It is not the active game source.

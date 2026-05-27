@@ -10,7 +10,12 @@ from .mechanics import (
     ITEM_SPAWN_TABLE,
     get_element_profile,
 )
-from .npcs import TOWN_GUARD_TEMPLATE, TOWN_SERVICES, create_town_guard
+from .npcs import (
+    TOWN_GUARD_TEMPLATE,
+    TOWN_SERVICES,
+    create_town_guard,
+    get_town_service_dialogue,
+)
 from .progression import (
     FINAL_BOSS_LEVEL,
     BOSS_PROGRESSION,
@@ -43,6 +48,7 @@ __all__ = [
     "TOWN_SERVICES",
     "WORLD_LAYOUT",
     "create_town_guard",
+    "get_town_service_dialogue",
     "get_boss_profile",
     "get_element_profile",
     "get_progression_status",
