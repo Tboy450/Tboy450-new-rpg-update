@@ -333,19 +333,19 @@ class WorldArea:
         # Create main buildings with better spacing and reduced clustering
         self.buildings = [
             # Town Hall (center, grand and surreal) - physical building
-            {"type": "town_hall", "x": 400, "y": 380, "width": 200, "height": 140, "color": (200, 180, 160), "style": "grand", "collision": True},
+            {"type": "town_hall", "x": 400, "y": 380, "width": 200, "height": 140, "color": (200, 180, 160), "style": "grand", "collision": True, "entry_depth": 42, "door_width": 96},
             # Shop (left side, colorful and inviting) - physical building
-            {"type": "shop", "x": 60, "y": 430, "width": 140, "height": 90, "color": (180, 160, 200), "style": "magical", "collision": True},
+            {"type": "shop", "x": 60, "y": 430, "width": 140, "height": 90, "color": (180, 160, 200), "style": "magical", "collision": True, "entry_depth": 30, "door_width": 72},
             # Inn (right side, cozy and warm) - physical building
-            {"type": "inn", "x": 800, "y": 430, "width": 140, "height": 90, "color": (200, 160, 140), "style": "cozy", "collision": True},
+            {"type": "inn", "x": 800, "y": 430, "width": 140, "height": 90, "color": (200, 160, 140), "style": "cozy", "collision": True, "entry_depth": 30, "door_width": 72},
             # Blacksmith (bottom left, industrial) - physical building
-            {"type": "blacksmith", "x": 100, "y": 570, "width": 120, "height": 80, "color": (140, 120, 100), "style": "industrial", "collision": True},
+            {"type": "blacksmith", "x": 100, "y": 570, "width": 120, "height": 80, "color": (140, 120, 100), "style": "industrial", "collision": True, "entry_depth": 24, "door_width": 68},
             # Library (bottom right, mystical) - physical building
-            {"type": "library", "x": 780, "y": 570, "width": 120, "height": 80, "color": (160, 180, 200), "style": "mystical", "collision": True},
+            {"type": "library", "x": 780, "y": 570, "width": 120, "height": 80, "color": (160, 180, 200), "style": "mystical", "collision": True, "entry_depth": 24, "door_width": 64},
             # House (single residential building, asymmetrical placement in grass)
-            {"type": "house", "x": 750, "y": 340, "width": 70, "height": 60, "color": (150, 130, 110), "style": "cottage", "collision": True},
+            {"type": "house", "x": 750, "y": 340, "width": 70, "height": 60, "color": (150, 130, 110), "style": "cottage", "collision": True, "entry_depth": 18, "door_width": 46},
             # Market stall (reduced from 2 to 1) - physical object
-            {"type": "stall", "x": 450, "y": 530, "width": 100, "height": 50, "color": (170, 150, 130), "style": "market", "collision": True},
+            {"type": "stall", "x": 450, "y": 530, "width": 100, "height": 50, "color": (170, 150, 130), "style": "market", "collision": True, "entry_depth": 16, "door_width": 88},
         ]
         
         # Create decorative elements (no collision)
@@ -883,7 +883,17 @@ class WorldArea:
                 pygame.draw.rect(surface, (color[0]-20, color[1]-20, color[2]-20), (counter_x + 1, counter_y + 1, counter_w, counter_h))
                 pygame.draw.rect(surface, (color[0]-10, color[1]-10, color[2]-10), (counter_x, counter_y, counter_w, counter_h))
                 pygame.draw.rect(surface, (color[0]-40, color[1]-40, color[2]-40), (counter_x, counter_y, counter_w, counter_h), 1)
-        
+
+            if building["type"] in TOWN_SERVICES:
+                entry_rect = self.get_building_entry_rect(building, depth=38)
+                pygame.draw.rect(surface, (92, 54, 28), entry_rect, border_radius=5)
+                pygame.draw.rect(surface, (140, 86, 42), entry_rect, 2, border_radius=5)
+                label = TOWN_SERVICES[building["type"]]["name"].split()[0].upper()
+                label_text = font_tiny.render(label, True, (255, 235, 180))
+                screen_x = entry_rect.centerx - label_text.get_width() // 2
+                screen_y = entry_rect.y + entry_rect.height // 2 - label_text.get_height() // 2
+                surface.blit(label_text, (screen_x, screen_y))
+
         # Draw decorative elements with 3D effect
         for decoration in self.decorations:
             x, y, w, h = decoration["x"], decoration["y"], decoration["width"], decoration["height"]
@@ -995,13 +1005,23 @@ class WorldArea:
         return False, None
 
     def get_building_collision_rect(self, building):
-        inset_y = building.get("entry_depth", GRID_SIZE)
+        max_overlap = max(12, building["height"] // 3)
+        inset_y = min(building.get("entry_depth", GRID_SIZE), max_overlap)
         usable_height = max(1, building["height"] - inset_y * 2)
         return pygame.Rect(
             building["x"],
             building["y"] + inset_y,
             building["width"],
             usable_height,
+        )
+
+    def get_building_entry_rect(self, building, depth=95):
+        door_width = min(building.get("door_width", building["width"]), building["width"] + 40)
+        return pygame.Rect(
+            building["x"] + building["width"] // 2 - door_width // 2,
+            building["y"] + building["height"] - 18,
+            door_width,
+            depth,
         )
 
     def check_building_collision(self, player_x, player_y):
@@ -1013,12 +1033,12 @@ class WorldArea:
         area_world_x, area_world_y = self.get_world_position()
         local_x = player_x - area_world_x
         local_y = player_y - area_world_y
-        player_rect = pygame.Rect(local_x, local_y, PLAYER_SIZE, PLAYER_SIZE)
+        player_center = (local_x + PLAYER_SIZE // 2, local_y + PLAYER_SIZE // 2)
         
         for building in self.buildings:
             if building.get("collision", False):
                 collision_rect = self.get_building_collision_rect(building)
-                if player_rect.colliderect(collision_rect):
+                if collision_rect.collidepoint(player_center):
                     return True
         return False
 
@@ -1036,22 +1056,10 @@ class WorldArea:
             if service_type not in TOWN_SERVICES:
                 continue
 
-            door_width = min(130, building["width"] + 40)
-            door_rect = pygame.Rect(
-                building["x"] + building["width"] // 2 - door_width // 2,
-                building["y"] + building["height"] - 35,
-                door_width,
-                95,
-            )
+            door_rect = self.get_building_entry_rect(building)
 
-            # This larger interaction zone stays separate from collision so players
-            # can press SPACE near the visible doorway instead of finding one exact tile.
-            service_rect = pygame.Rect(
-                building["x"] - 60,
-                building["y"] - 45,
-                building["width"] + 120,
-                building["height"] + 105,
-            )
+            # Keep interaction doorway-focused so side walls still behave like walls.
+            service_rect = door_rect.inflate(70, 70)
             if player_rect.colliderect(door_rect) or player_rect.colliderect(service_rect):
                 service = dict(TOWN_SERVICES[service_type])
                 service["type"] = service_type
@@ -1110,7 +1118,7 @@ class WorldArea:
         elif self.cutscene_phase == 1:  # Guard speaks
             # Dialogue progression is now handled by SPACE key input
             # Only auto-advance to phase 2 if player reaches the last dialogue
-            pass
+            return
         elif self.cutscene_phase == 2:  # Cutscene ends
             if self.cutscene_timer > 60:  # 1 second
                 self.cutscene_active = False
@@ -1479,30 +1487,20 @@ class WorldArea:
             pygame.draw.rect(surface, (80, 80, 120), (box_x, box_y, box_w, box_h), 3)
             
             # Dialogue text
-            try:
-                text = font_small.render(dialogue, True, (255, 255, 255))
-                text_rect = text.get_rect(center=(box_x + box_w//2, box_y + box_h//2))
-                surface.blit(text, text_rect)
-            except:
-                # Fallback if font not available
-                pass
+            text = font_small.render(dialogue, True, (255, 255, 255))
+            text_rect = text.get_rect(center=(box_x + box_w//2, box_y + box_h//2))
+            surface.blit(text, text_rect)
             
             # Dragon Knight name
-            try:
-                name_text = font_tiny.render("Sir Marcus - Dragon Knight", True, (255, 215, 0))
-                name_rect = name_text.get_rect(center=(box_x + box_w//2, box_y + 20))
-                surface.blit(name_text, name_rect)
-            except:
-                pass
+            name_text = font_tiny.render("Sir Marcus - Dragon Knight", True, (255, 215, 0))
+            name_rect = name_text.get_rect(center=(box_x + box_w//2, box_y + 20))
+            surface.blit(name_text, name_rect)
         
         # Draw "Press SPACE to continue" prompt
         if self.cutscene_phase == 1 and self.cutscene_timer > 60:
-            try:
-                prompt_text = font_tiny.render("Press SPACE to continue", True, (200, 200, 200))
-                prompt_rect = prompt_text.get_rect(center=(500, 620))
-                surface.blit(prompt_text, prompt_rect)
-            except:
-                pass
+            prompt_text = font_tiny.render("Press SPACE to continue", True, (200, 200, 200))
+            prompt_rect = prompt_text.get_rect(center=(500, 620))
+            surface.blit(prompt_text, prompt_rect)
 
 # ============================================================================
 # WORLD MAP CLASS - Manages the 3x3 world grid and camera system
@@ -4345,6 +4343,23 @@ class Game:
             progress = self.get_player_progression_status()
             message = progress["lines"][0] if progress else "No active reports."
             self.set_town_service_message(f"{npc_name}: {message}")
+        elif service_type == "house":
+            claim_key = ("house", self.player.level)
+            if claim_key in self.player.town_service_claims:
+                self.set_town_service_message(f"{npc_name}: The stew pot needs time before another meal.")
+            else:
+                self.player.town_service_claims.add(claim_key)
+                healed = min(12 + self.player.level * 2, self.player.max_health - self.player.health)
+                restored_mana = min(8 + self.player.level, self.player.max_mana - self.player.mana)
+                self.player.health += healed
+                self.player.mana += restored_mana
+                self.set_town_service_message(f"{npc_name}: Shared a meal. HP +{healed}, MP +{restored_mana}.")
+        elif service_type == "stall":
+            healed = min(10 + self.player.level, self.player.max_health - self.player.health)
+            restored_mana = min(6 + self.player.level, self.player.max_mana - self.player.mana)
+            self.player.health += healed
+            self.player.mana += restored_mana
+            self.set_town_service_message(f"{npc_name}: Travel stew warms you. HP +{healed}, MP +{restored_mana}.")
         else:
             self.set_town_service_message(f"{npc_name}: Safe travels.")
 
@@ -4407,6 +4422,7 @@ class Game:
         blocking_kinds = {
             "bed", "counter", "table", "desk", "shelf", "bookcase", "hearth",
             "forge", "anvil", "rack", "crate", "crystal", "map", "notice",
+            "barrel", "plant", "lamp", "chest", "stool", "cauldron", "sign",
         }
         blockers = []
         for prop in self.current_interior["props"]:
@@ -4450,6 +4466,25 @@ class Game:
         self.set_town_service_message(message)
         if self.SFX_CLICK:
             self.SFX_CLICK.play()
+
+    def get_nearby_interior_inspect(self):
+        if not self.current_interior:
+            return None
+        player_rect = pygame.Rect(self.interior_player_x, self.interior_player_y, PLAYER_SIZE, PLAYER_SIZE)
+        for point in self.current_interior.get("inspect_points", ()):
+            inspect_rect = pygame.Rect(point["rect"]).inflate(70, 70)
+            if player_rect.colliderect(inspect_rect):
+                return point
+        return None
+
+    def inspect_current_interior_point(self):
+        point = self.get_nearby_interior_inspect()
+        if not point:
+            return False
+        self.set_town_service_message(point["message"])
+        if self.SFX_CLICK:
+            self.SFX_CLICK.play()
+        return True
 
     def draw_journal_line(self, screen, text, x, y, color=(225, 225, 215), font_obj=font_tiny):
         rendered = font_obj.render(text, True, color)
@@ -4648,6 +4683,61 @@ class Game:
             pygame.draw.rect(screen, dark, rect, 3)
             pygame.draw.line(screen, dark, rect.topleft, rect.bottomright, 2)
             pygame.draw.line(screen, dark, rect.topright, rect.bottomleft, 2)
+        elif kind == "barrel":
+            pygame.draw.ellipse(screen, dark, rect.move(4, 5))
+            pygame.draw.ellipse(screen, color, rect)
+            pygame.draw.rect(screen, color, (rect.x, rect.y + rect.height // 4, rect.width, rect.height // 2))
+            pygame.draw.arc(screen, dark, rect, 0, math.pi, 3)
+            pygame.draw.arc(screen, dark, rect, math.pi, math.tau, 3)
+            for band_y in (rect.y + rect.height // 3, rect.y + rect.height * 2 // 3):
+                pygame.draw.line(screen, dark, (rect.x + 4, band_y), (rect.right - 4, band_y), 3)
+        elif kind == "plant":
+            pot = pygame.Rect(rect.x + rect.width // 4, rect.y + rect.height - 26, rect.width // 2, 24)
+            pygame.draw.rect(screen, dark, pot.move(3, 3), border_radius=4)
+            pygame.draw.rect(screen, self.shade_color(color, -35), pot, border_radius=4)
+            for i in range(5):
+                angle = -70 + i * 35
+                leaf_x = rect.centerx + int(math.cos(math.radians(angle)) * 22)
+                leaf_y = pot.y - 5 + int(math.sin(math.radians(angle)) * 26)
+                pygame.draw.ellipse(screen, color, (leaf_x - 13, leaf_y - 18, 26, 36))
+                pygame.draw.ellipse(screen, self.shade_color(color, -45), (leaf_x - 13, leaf_y - 18, 26, 36), 2)
+        elif kind == "lamp":
+            stem_x = rect.centerx
+            pygame.draw.line(screen, dark, (stem_x + 3, rect.bottom), (stem_x + 3, rect.y + 18), 5)
+            pygame.draw.line(screen, color, (stem_x, rect.bottom), (stem_x, rect.y + 18), 4)
+            pygame.draw.circle(screen, self.shade_color(color, 35), (stem_x, rect.y + 16), 16)
+            pygame.draw.circle(screen, color, (stem_x, rect.y + 16), 10)
+        elif kind == "chest":
+            pygame.draw.rect(screen, dark, rect.move(4, 4), border_radius=5)
+            pygame.draw.rect(screen, color, rect, border_radius=5)
+            pygame.draw.rect(screen, dark, rect, 3, border_radius=5)
+            pygame.draw.arc(screen, self.shade_color(color, 35), (rect.x, rect.y - 10, rect.width, 32), math.pi, math.tau, 4)
+            pygame.draw.rect(screen, (220, 180, 70), (rect.centerx - 6, rect.centery - 4, 12, 10), border_radius=2)
+        elif kind == "stool":
+            pygame.draw.ellipse(screen, dark, rect.move(4, 5))
+            seat = pygame.Rect(rect.x + 3, rect.y, rect.width - 6, rect.height // 2)
+            pygame.draw.ellipse(screen, color, seat)
+            pygame.draw.ellipse(screen, dark, seat, 2)
+            for leg_x in (rect.x + 10, rect.right - 14):
+                pygame.draw.line(screen, dark, (leg_x, rect.y + rect.height // 2), (leg_x - 4, rect.bottom), 4)
+        elif kind == "cauldron":
+            pygame.draw.ellipse(screen, dark, rect.move(5, 5))
+            pygame.draw.ellipse(screen, color, rect)
+            mouth = rect.inflate(-10, -rect.height // 2)
+            mouth.y += 4
+            pygame.draw.ellipse(screen, self.shade_color(color, -35), mouth)
+            pygame.draw.ellipse(screen, (100, 220, 150), mouth.inflate(-10, -8))
+            for i in range(3):
+                bubble_x = mouth.x + 15 + i * 14
+                bubble_y = mouth.y + 4 - (self.game_time + i * 9) % 12
+                pygame.draw.circle(screen, (150, 255, 190), (bubble_x, bubble_y), 3)
+        elif kind == "sign":
+            pygame.draw.rect(screen, dark, rect.move(4, 4), border_radius=4)
+            pygame.draw.rect(screen, color, rect, border_radius=4)
+            pygame.draw.rect(screen, dark, rect, 3, border_radius=4)
+            for i in range(2):
+                line_y = rect.y + 14 + i * 14
+                pygame.draw.line(screen, self.shade_color(color, -55), (rect.x + 12, line_y), (rect.right - 12, line_y), 2)
         elif kind == "banner":
             pygame.draw.rect(screen, dark, rect.move(4, 4))
             banner_points = [(rect.x, rect.y), (rect.right, rect.y), (rect.right, rect.bottom - 25), (rect.centerx, rect.bottom), (rect.x, rect.bottom - 25)]
@@ -4740,6 +4830,13 @@ class Game:
         for prop in room["props"]:
             self.draw_interior_prop(screen, prop, room)
 
+        nearby_inspect = self.get_nearby_interior_inspect()
+        for point in room.get("inspect_points", ()):
+            rect = pygame.Rect(point["rect"])
+            marker_color = (255, 245, 160) if point is nearby_inspect else self.shade_color(accent_color, 15)
+            pygame.draw.circle(screen, marker_color, (rect.centerx, rect.y - 8), 7)
+            pygame.draw.circle(screen, UI_BG, (rect.centerx, rect.y - 8), 3)
+
         npc_x, npc_y = room["npc_position"]
         pygame.draw.ellipse(screen, (20, 18, 18), (npc_x - 22, npc_y + 42, 54, 16))
         pygame.draw.rect(screen, self.shade_color(accent_color, -35), (npc_x - 18, npc_y + 8, 36, 48), border_radius=8)
@@ -4790,6 +4887,8 @@ class Game:
         prompt_text = font_tiny.render(room["service_prompt"], True, accent_color)
         if self.interior_player_near_npc():
             exit_label = "ENTER: talk   ESC/exit mat: leave"
+        elif nearby_inspect:
+            exit_label = f"ENTER: inspect {nearby_inspect['label']}"
         else:
             exit_label = "ENTER/ESC: exit to town"
         exit_text = font_tiny.render(exit_label, True, (200, 200, 210))
@@ -4981,7 +5080,7 @@ class Game:
                 
         elif self.state == "character_select":
             # Character selection screen (no updates needed)
-            pass
+            return
 
         elif self.state == "interior" and self.player:
             self.game_time += 1
@@ -5681,6 +5780,8 @@ class Game:
                             player_rect = pygame.Rect(self.interior_player_x, self.interior_player_y, PLAYER_SIZE, PLAYER_SIZE)
                             if self.interior_player_near_npc():
                                 self.talk_to_current_npc()
+                            elif self.inspect_current_interior_point():
+                                continue
                             elif player_rect.colliderect(INTERIOR_EXIT_ZONE):
                                 self.exit_town_interior()
                             else:
@@ -5783,9 +5884,6 @@ class Game:
                 if self.back_button.is_clicked(mouse_pos, mouse_click):
                     if self.SFX_CLICK: self.SFX_CLICK.play()
                     self.state = "start_menu"
-                    
-            elif self.state == "overworld":
-                pass
                     
             elif self.state == "battle":
                 battle_ended = self.battle_screen.update()

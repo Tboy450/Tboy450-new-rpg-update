@@ -35,6 +35,7 @@ Controls:
 
 - `ARROWS/WASD`: move
 - `SPACE/ENTER`: interact or confirm
+- `ENTER` inside buildings: talk, inspect nearby marked details, or exit
 - `J`: quest journal
 - `M`: world map
 - `F5`: save

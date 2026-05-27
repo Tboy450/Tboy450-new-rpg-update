@@ -72,6 +72,26 @@ TOWN_SERVICES = {
             "Captain Marcus: Malakor waits beyond the lesser dragons. Do not rush that gate.",
         ),
     },
+    "house": {
+        "name": "Mossroof Cottage",
+        "npc": "Toma the Gardener",
+        "prompt": "SPACE/ENTER: knock on the cottage",
+        "dialogue": (
+            "Toma the Gardener: The safest paths are not always the cleanest ones.",
+            "Toma the Gardener: I leave herbs near the gate when the roads get bad.",
+            "Toma the Gardener: Dragons hate prepared villages more than brave heroes.",
+        ),
+    },
+    "stall": {
+        "name": "Sunstripe Stall",
+        "npc": "Meri the Cook",
+        "prompt": "SPACE/ENTER: visit the food stall",
+        "dialogue": (
+            "Meri the Cook: Hot stew before cold steel. That is my rule.",
+            "Meri the Cook: Adventurers fight better when they stop skipping meals.",
+            "Meri the Cook: If you hear wings, get under stone before you look up.",
+        ),
+    },
 }
 
 def create_town_guard():
