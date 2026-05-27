@@ -1,5 +1,28 @@
 Dragon's Lair RPG
 
+## Windows desktop icon
+
+The easiest Windows setup is the installer script. It creates a local game folder,
+installs the needed Python packages, and adds a desktop shortcut named
+`Dragon's Lair RPG`.
+
+Open PowerShell and run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/scripts/install_windows.ps1 -UseBasicParsing | iex"
+```
+
+After that, double-click `Dragon's Lair RPG` on the desktop.
+
+The desktop shortcut runs `scripts/run_windows.ps1`, which checks GitHub for the
+latest `main` branch files before launching the game. When this repository is
+updated, the desktop version updates the next time the icon is opened.
+
+Requirements:
+
+- Git for Windows: https://git-scm.com/download/win
+- Python 3: https://www.python.org/downloads/
+
 Run the game with:
 
 ```bash

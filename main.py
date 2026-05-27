@@ -36,7 +36,7 @@ CONTROLS:
 
 import os
 if os.name == "nt":
-    os.environ.setdefault("SDL_AUDIODRIVER", "directsound")
+    os.environ.setdefault("SDL_AUDIODRIVER", "wasapi")
 import pygame
 import sys
 import random
@@ -69,15 +69,50 @@ from game_data import (
 )
 
 # Initialize Pygame
+pygame.mixer.pre_init(44100, -16, 2, 512)
 pygame.init()
 pygame.font.init()
-try:
-    pygame.mixer.init()
-    pygame.mixer.music.set_volume(1.0)
-    AUDIO_AVAILABLE = True
-except pygame.error as exc:
-    AUDIO_AVAILABLE = False
-    print(f"[WARN] Audio disabled: {exc}")
+
+
+def initialize_audio():
+    if pygame.mixer.get_init():
+        pygame.mixer.music.set_volume(0.8)
+        return True
+
+    preferred_drivers = []
+    if os.name == "nt":
+        preferred_drivers.extend(("wasapi", "directsound", "winmm"))
+    preferred_drivers.append(None)
+
+    original_driver = os.environ.get("SDL_AUDIODRIVER")
+    if original_driver:
+        preferred_drivers.insert(0, original_driver)
+
+    tried = set()
+    for driver in preferred_drivers:
+        if driver in tried:
+            continue
+        tried.add(driver)
+        if driver:
+            os.environ["SDL_AUDIODRIVER"] = driver
+        else:
+            os.environ.pop("SDL_AUDIODRIVER", None)
+
+        try:
+            pygame.mixer.quit()
+            pygame.mixer.init(44100, -16, 2, 512)
+            pygame.mixer.music.set_volume(0.8)
+            print(f"Audio initialized with SDL driver: {driver or 'default'}")
+            return True
+        except pygame.error as exc:
+            print(f"[WARN] Audio driver {driver or 'default'} failed: {exc}")
+
+    return False
+
+
+AUDIO_AVAILABLE = initialize_audio()
+if not AUDIO_AVAILABLE:
+    print("[WARN] Audio disabled: no working SDL audio driver found.")
 
 # ============================================================================
 # GAME CONSTANTS AND CONFIGURATION
@@ -983,15 +1018,23 @@ class WorldArea:
             if service_type not in TOWN_SERVICES:
                 continue
 
-            # This larger interaction zone is intentionally separate from collision
-            # so it can become an interior entrance trigger later.
-            service_rect = pygame.Rect(
-                building["x"] - 45,
-                building["y"] - 45,
-                building["width"] + 90,
-                building["height"] + 90,
+            door_width = min(130, building["width"] + 40)
+            door_rect = pygame.Rect(
+                building["x"] + building["width"] // 2 - door_width // 2,
+                building["y"] + building["height"] - 35,
+                door_width,
+                95,
             )
-            if player_rect.colliderect(service_rect):
+
+            # This larger interaction zone stays separate from collision so players
+            # can press SPACE near the visible doorway instead of finding one exact tile.
+            service_rect = pygame.Rect(
+                building["x"] - 60,
+                building["y"] - 45,
+                building["width"] + 120,
+                building["height"] + 105,
+            )
+            if player_rect.colliderect(door_rect) or player_rect.colliderect(service_rect):
                 service = dict(TOWN_SERVICES[service_type])
                 service["type"] = service_type
                 return service
@@ -5396,7 +5439,12 @@ class Game:
                     # Handle town cutscene dialogue advancement
                     if self.state == "overworld" and event.key in [pygame.K_SPACE, pygame.K_RETURN]:
                         current_area = self.world_map.get_current_area()
-                        if current_area and current_area.cutscene_active and current_area.guard:
+                        if (
+                            current_area and
+                            current_area.cutscene_active and
+                            current_area.cutscene_phase < 2 and
+                            current_area.guard
+                        ):
                             # Advance dialogue
                             current_area.guard["current_dialogue"] += 1
                             current_area.cutscene_timer = 0
@@ -5404,6 +5452,8 @@ class Game:
                             # Check if we've reached the end of dialogue
                             if current_area.guard["current_dialogue"] >= len(current_area.guard["dialogue"]):
                                 current_area.cutscene_phase = 2  # End cutscene
+                                current_area.cutscene_active = False
+                                current_area.guard["visible"] = False
                         elif current_area:
                             service = current_area.get_nearby_town_service(self.player.x, self.player.y)
                             if service:
@@ -5676,6 +5726,11 @@ class MusicSystem:
         except Exception as e:
             print(f"Error converting sound to WAV: {e}")
             return None
+
+    def play_music_bytes(self, music_bytes, loops=-1):
+        pygame.mixer.music.load(io.BytesIO(music_bytes), "wav")
+        pygame.mixer.music.play(loops)
+
     def update(self, game_state, is_boss_battle=False, current_area=None):
         if not pygame.mixer.get_init():
             return
@@ -5700,49 +5755,39 @@ class MusicSystem:
         try:
             if game_state == "start_menu" and self.start_menu_music_bytes:
                 print('MusicSystem: Playing start menu music')
-                pygame.mixer.music.load(io.BytesIO(self.start_menu_music_bytes))
-                pygame.mixer.music.play(-1)
+                self.play_music_bytes(self.start_menu_music_bytes)
             elif game_state == "opening_cutscene" and self.start_menu_music_bytes:
                 print('MusicSystem: Playing cutscene music')
-                pygame.mixer.music.load(io.BytesIO(self.start_menu_music_bytes))
-                pygame.mixer.music.play(-1)
+                self.play_music_bytes(self.start_menu_music_bytes)
             elif game_state == "character_select" and self.start_menu_music_bytes:
                 print('MusicSystem: Playing character select music')
-                pygame.mixer.music.load(io.BytesIO(self.start_menu_music_bytes))
-                pygame.mixer.music.play(-1)
+                self.play_music_bytes(self.start_menu_music_bytes)
             elif game_state == "overworld":
                 # Check if we're in a town area
                 if current_area and current_area.area_type == "town" and self.town_music_bytes:
                     print('MusicSystem: Playing town music')
-                    pygame.mixer.music.load(io.BytesIO(self.town_music_bytes))
-                    pygame.mixer.music.play(-1)
+                    self.play_music_bytes(self.town_music_bytes)
                 elif self.overworld_music_bytes:
                     print('MusicSystem: Playing overworld music')
-                    pygame.mixer.music.load(io.BytesIO(self.overworld_music_bytes))
-                    pygame.mixer.music.play(-1)
+                    self.play_music_bytes(self.overworld_music_bytes)
             elif game_state == "interior" and self.town_music_bytes:
                 print('MusicSystem: Playing town interior music')
-                pygame.mixer.music.load(io.BytesIO(self.town_music_bytes))
-                pygame.mixer.music.play(-1)
+                self.play_music_bytes(self.town_music_bytes)
             elif game_state == "battle":
                 if is_boss_battle and self.boss_music_bytes:
                     print('MusicSystem: Playing boss music')
-                    pygame.mixer.music.load(io.BytesIO(self.boss_music_bytes))
-                    pygame.mixer.music.play(-1)
+                    self.play_music_bytes(self.boss_music_bytes)
                 elif self.battle_music_bytes:
                     print('MusicSystem: Playing battle music')
-                    pygame.mixer.music.load(io.BytesIO(self.battle_music_bytes))
-                    pygame.mixer.music.play(-1)
+                    self.play_music_bytes(self.battle_music_bytes)
                 else:
                     print('MusicSystem: WARNING - No battle music available!')
             elif game_state == "victory" and self.victory_music_bytes:
                 print('MusicSystem: Playing victory music')
-                pygame.mixer.music.load(io.BytesIO(self.victory_music_bytes))
-                pygame.mixer.music.play(0)
+                self.play_music_bytes(self.victory_music_bytes, 0)
             elif game_state == "game_over" and self.game_over_music_bytes:
                 print('MusicSystem: Playing game over music')
-                pygame.mixer.music.load(io.BytesIO(self.game_over_music_bytes))
-                pygame.mixer.music.play(0)
+                self.play_music_bytes(self.game_over_music_bytes, 0)
             else:
                 print(f'MusicSystem: No music for state: {game_state}')
         except Exception as e:
@@ -5951,9 +5996,9 @@ class DragonBoss(Enemy):
         self.boss_title = boss_profile["title"]
         self.boss_hint = boss_profile["hint"]
         # Stat scaling
-        self.health = self.max_health = 200 + boss_level * 60
-        self.strength = 18 + boss_level * 4
-        self.speed = 6 + boss_level // 2
+        self.health = self.max_health = 180 + boss_level * 52
+        self.strength = int(17 + boss_level * 3.5)
+        self.speed = 5 + boss_level // 2
         # Color cycling
         color_idx = (boss_level - 1) % len(DRAGON_BOSS_COLORS)
         self.dragon_color, self.fire_color = DRAGON_BOSS_COLORS[color_idx]
@@ -5972,7 +6017,7 @@ class DragonBoss(Enemy):
             {
                 "name": "Wounded",
                 "threshold": 0.66,
-                "strength_bonus": 2 + boss_level,
+                "strength_bonus": 1 + boss_level,
                 "color": self.fire_color,
                 "shake": 5,
                 "attack_message": "The dragon's wounded fury intensifies!",
@@ -5980,7 +6025,7 @@ class DragonBoss(Enemy):
             {
                 "name": "Enraged",
                 "threshold": 0.33,
-                "strength_bonus": 5 + boss_level,
+                "strength_bonus": 3 + boss_level,
                 "color": (255, 60, 40),
                 "shake": 8,
                 "attack_message": "The dragon erupts into an enraged assault!",
@@ -6113,10 +6158,10 @@ class BossDragon(Enemy):
         self.name = boss_profile["name"]
         self.boss_title = boss_profile["title"]
         self.boss_hint = boss_profile["hint"]
-        self.health = 400
-        self.max_health = 400
-        self.strength = 35
-        self.speed = 10
+        self.health = 360
+        self.max_health = 360
+        self.strength = 31
+        self.speed = 9
         self.color = (255, 69, 0)
         self.movement_cooldown = 0
         self.movement_delay = 40
@@ -6131,7 +6176,7 @@ class BossDragon(Enemy):
             {
                 "name": "Ancient Wrath",
                 "threshold": 0.66,
-                "strength_bonus": 8,
+                "strength_bonus": 6,
                 "color": (255, 140, 0),
                 "shake": 8,
                 "attack_message": "Malakor's ancient wrath scorches the arena!",
@@ -6139,7 +6184,7 @@ class BossDragon(Enemy):
             {
                 "name": "Doomfire",
                 "threshold": 0.33,
-                "strength_bonus": 14,
+                "strength_bonus": 11,
                 "color": (255, 30, 20),
                 "shake": 12,
                 "attack_message": "Doomfire coils around Malakor's claws!",
