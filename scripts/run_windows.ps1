@@ -8,8 +8,7 @@ $ActivePaths = @(
     "requirements.txt",
     "game_data",
     "assets",
-    "scripts",
-    ".gitignore"
+    "scripts"
 )
 
 function Invoke-Checked {
