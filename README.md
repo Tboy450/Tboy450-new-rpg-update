@@ -44,6 +44,8 @@ Controls:
 
 The default save file is stored at `~/.dragons_lair_rpg_save.json`. Set `DRAGONS_LAIR_SAVE` to choose a different save path.
 
+Town services now also complete one-time errands for town reputation, score, experience, and occasional potion rewards. Inspecting marked details inside interiors grants a small one-time insight reward.
+
 Repository layout:
 
 - `main.py` is the active game file.

@@ -68,6 +68,8 @@ from game_data import (
     get_boss_profile,
     get_element_profile,
     get_progression_status,
+    get_town_errand,
+    get_town_errand_count,
     get_town_service_dialogue,
 )
 from systems.input_actions import (
@@ -4060,6 +4062,9 @@ class Game:
         self.interior_player_x = SCREEN_WIDTH // 2 - PLAYER_SIZE // 2
         self.interior_player_y = 500
         self.npc_dialogue_index = 0
+        self.town_reputation = 0
+        self.completed_town_errands = set()
+        self.inspected_town_details = set()
         
         # Initialize starfield
         for _ in range(150):
@@ -4256,6 +4261,14 @@ class Game:
         self.score = data.get("score", 0)
         self.game_time = data.get("game_time", 0)
         self.boss_defeated = data.get("boss_defeated", False)
+        town_data = data.get("town", {})
+        self.town_reputation = town_data.get("reputation", 0)
+        self.completed_town_errands = set(town_data.get("completed_errands", []))
+        self.inspected_town_details = {
+            (detail[0], detail[1])
+            for detail in town_data.get("inspected_details", [])
+            if isinstance(detail, list) and len(detail) == 2
+        }
         self.boss_battle_triggered = False
         self.battle_screen = None
         self.current_interior = None
@@ -4300,6 +4313,47 @@ class Game:
             self.player.boss_cooldown,
             self.boss_defeated,
         )
+
+    def apply_town_reward(self, reward):
+        messages = []
+        exp = reward.get("exp", 0)
+        score = reward.get("score", 0)
+        reputation = reward.get("reputation", 0)
+
+        if exp:
+            self.player.gain_exp(exp)
+            messages.append(f"{exp} EXP")
+        if score:
+            self.score += score
+            messages.append(f"{score} score")
+        if reputation:
+            self.town_reputation += reputation
+            messages.append(f"+{reputation} town rep")
+
+        for item_type, amount in reward.get("items", {}).items():
+            added = self.player.add_inventory_item(item_type, amount)
+            if added:
+                messages.append(f"{item_type} x{added}")
+
+        return ", ".join(messages)
+
+    def complete_town_errand(self, service_type):
+        errand = get_town_errand(service_type)
+        if not errand or service_type in self.completed_town_errands:
+            return None
+
+        self.completed_town_errands.add(service_type)
+        reward_text = self.apply_town_reward(errand["reward"])
+        if reward_text:
+            return f"Errand complete: {errand['title']} ({reward_text})."
+        return f"Errand complete: {errand['title']}."
+
+    def append_town_service_message(self, extra_message):
+        if not extra_message:
+            return
+        base_message = self.town_service_message or ""
+        separator = " " if base_message else ""
+        self.set_town_service_message(f"{base_message}{separator}{extra_message}")
 
     def apply_town_service(self, service):
         service_type = service["type"]
@@ -4362,6 +4416,8 @@ class Game:
             self.set_town_service_message(f"{npc_name}: Travel stew warms you. HP +{healed}, MP +{restored_mana}.")
         else:
             self.set_town_service_message(f"{npc_name}: Safe travels.")
+
+        self.append_town_service_message(self.complete_town_errand(service_type))
 
         for _ in range(12):
             x = random.randint(self.player.x, self.player.x + PLAYER_SIZE)
@@ -4481,7 +4537,15 @@ class Game:
         point = self.get_nearby_interior_inspect()
         if not point:
             return False
+        service_type = self.current_interior_service["type"] if self.current_interior_service else "town"
+        detail_key = (service_type, point["label"])
         self.set_town_service_message(point["message"])
+        if detail_key not in self.inspected_town_details:
+            self.inspected_town_details.add(detail_key)
+            insight = 3 + self.player.level
+            self.player.gain_exp(insight)
+            self.score += 1
+            self.append_town_service_message(f"Insight gained: {insight} EXP, 1 score.")
         if self.SFX_CLICK:
             self.SFX_CLICK.play()
         return True
@@ -4525,12 +4589,13 @@ class Game:
         line_y = self.draw_journal_line(screen, f"HERO: {self.player.type}  LV.{self.player.level}", right_x + 14, y + 12, TEXT_COLOR, font_small)
         line_y = self.draw_journal_line(screen, f"HP {self.player.health}/{self.player.max_health}   MP {self.player.mana}/{self.player.max_mana}", right_x + 14, line_y)
         line_y = self.draw_journal_line(screen, f"STR {self.player.strength}   DEF {self.player.defense}   SPD {self.player.speed}", right_x + 14, line_y)
-        self.draw_journal_line(
+        line_y = self.draw_journal_line(
             screen,
             f"Bag: HP x{self.player.get_inventory_count('health')}  MP x{self.player.get_inventory_count('mana')}",
             right_x + 14,
             line_y,
         )
+        self.draw_journal_line(screen, f"Town rep: {self.town_reputation}", right_x + 14, line_y, (255, 215, 0))
 
         y += 160
         current_area = self.world_map.get_current_area()
@@ -4550,10 +4615,15 @@ class Game:
         pygame.draw.rect(screen, (20, 20, 30), service_panel, border_radius=8)
         pygame.draw.rect(screen, (255, 215, 0), service_panel, 2, border_radius=8)
         line_y = self.draw_journal_line(screen, "TOWN / NPC", right_x + 14, y + 12, (255, 215, 0), font_small)
+        completed_count = len(self.completed_town_errands)
+        total_count = get_town_errand_count()
+        line_y = self.draw_journal_line(screen, f"Errands: {completed_count}/{total_count}", right_x + 14, line_y)
         if self.state == "interior" and self.current_interior_service:
             line_y = self.draw_journal_line(screen, f"Inside: {self.current_interior_service['name']}", right_x + 14, line_y)
             line_y = self.draw_journal_line(screen, f"NPC: {self.current_interior_service['npc']}", right_x + 14, line_y)
-            self.draw_journal_line(screen, "SPACE service, ENTER talk/exit", right_x + 14, line_y)
+            service_type = self.current_interior_service["type"]
+            errand_status = "done" if service_type in self.completed_town_errands else "open"
+            self.draw_journal_line(screen, f"Current errand: {errand_status}", right_x + 14, line_y)
         elif current_area:
             service = current_area.get_nearby_town_service(self.player.x, self.player.y)
             if service:
@@ -4782,6 +4852,36 @@ class Game:
             text = font_tiny.render(line, True, (225, 225, 215))
             screen.blit(text, (panel.x + 16, panel.y + 38 + index * 21))
 
+    def draw_town_errand_board(self, screen):
+        completed_count = len(self.completed_town_errands)
+        total_count = get_town_errand_count()
+        panel = pygame.Rect(250, 230, 500, 116)
+        pygame.draw.rect(screen, UI_BG, panel, border_radius=8)
+        pygame.draw.rect(screen, (255, 215, 92), panel, 3, border_radius=8)
+
+        title = font_small.render(
+            f"TOWN ERRANDS {completed_count}/{total_count}  REP {self.town_reputation}",
+            True,
+            (255, 215, 92),
+        )
+        screen.blit(title, (panel.x + 16, panel.y + 10))
+
+        service_order = ("inn", "shop", "blacksmith", "library", "house", "stall", "town_hall")
+        visible = service_order[:3]
+        if completed_count >= 3:
+            visible = service_order[3:6]
+        if completed_count >= 6:
+            visible = service_order[-3:]
+
+        for index, service_type in enumerate(visible):
+            errand = get_town_errand(service_type)
+            if not errand:
+                continue
+            status = "DONE" if service_type in self.completed_town_errands else "OPEN"
+            color = (150, 230, 150) if status == "DONE" else (225, 225, 215)
+            text = font_tiny.render(f"{status}: {errand['title']}", True, color)
+            screen.blit(text, (panel.x + 16, panel.y + 42 + index * 22))
+
     def draw_interior(self, screen):
         room = self.current_interior
         if not room:
@@ -4865,6 +4965,7 @@ class Game:
         service_type = self.current_interior_service["type"] if self.current_interior_service else None
         if service_type == "town_hall":
             self.draw_progression_board(screen)
+            self.draw_town_errand_board(screen)
 
         if self.player:
             pygame.draw.rect(screen, UI_BG, (16, 16, 240, 132), border_radius=8)
@@ -6018,6 +6119,9 @@ class Game:
         self.interior_player_x = SCREEN_WIDTH // 2 - PLAYER_SIZE // 2
         self.interior_player_y = 500
         self.npc_dialogue_index = 0
+        self.town_reputation = 0
+        self.completed_town_errands = set()
+        self.inspected_town_details = set()
         
         # Reset world map
         self.world_map = WorldMap()

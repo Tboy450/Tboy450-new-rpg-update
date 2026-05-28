@@ -14,6 +14,11 @@ def _claim_to_list(claim):
         return [str(claim[0]), int(claim[1])]
     return None
 
+def _pair_to_list(pair):
+    if isinstance(pair, (list, tuple)) and len(pair) == 2:
+        return [str(pair[0]), str(pair[1])]
+    return None
+
 def build_save_data(game):
     """Build a JSON-safe snapshot from a Game instance."""
     if not game.player:
@@ -29,6 +34,12 @@ def build_save_data(game):
         claim_record = _claim_to_list(claim)
         if claim_record:
             claims.append(claim_record)
+
+    inspected_details = []
+    for detail in getattr(game, "inspected_town_details", set()):
+        detail_record = _pair_to_list(detail)
+        if detail_record:
+            inspected_details.append(detail_record)
 
     return {
         "version": SAVE_VERSION,
@@ -60,6 +71,11 @@ def build_save_data(game):
             "current_area": [game.world_map.current_area_x, game.world_map.current_area_y],
             "visited_areas": visited,
         },
+        "town": {
+            "reputation": getattr(game, "town_reputation", 0),
+            "completed_errands": sorted(getattr(game, "completed_town_errands", set())),
+            "inspected_details": sorted(inspected_details),
+        },
     }
 
 def save_game_state(game, path=DEFAULT_SAVE_PATH):
@@ -77,4 +93,3 @@ def load_game_state(path=DEFAULT_SAVE_PATH):
     if data.get("version") != SAVE_VERSION:
         raise ValueError(f"Unsupported save version: {data.get('version')}")
     return data
-

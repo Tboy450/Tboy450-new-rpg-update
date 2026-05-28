@@ -22,6 +22,7 @@ from .progression import (
     get_boss_profile,
     get_progression_status,
 )
+from .quests import TOWN_ERRANDS, get_town_errand, get_town_errand_count
 from .world import (
     AREA_DESCRIPTIONS,
     AREA_MECHANICS,
@@ -45,6 +46,7 @@ __all__ = [
     "ITEM_SPAWN_TABLE",
     "TOWN_GUARD_TEMPLATE",
     "TOWN_INTERIORS",
+    "TOWN_ERRANDS",
     "TOWN_SERVICES",
     "WORLD_LAYOUT",
     "create_town_guard",
@@ -52,4 +54,6 @@ __all__ = [
     "get_boss_profile",
     "get_element_profile",
     "get_progression_status",
+    "get_town_errand",
+    "get_town_errand_count",
 ]
