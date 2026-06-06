@@ -23,10 +23,18 @@ from .progression import (
     get_progression_status,
 )
 from .quests import TOWN_ERRANDS, get_town_errand, get_town_errand_count
+from .town import (
+    TOWN_BOUNDARIES,
+    TOWN_BUILDINGS,
+    TOWN_DECORATIONS,
+    TOWN_SMOKE_SOURCES,
+    clone_town_layout,
+)
 from .world import (
     AREA_DESCRIPTIONS,
     AREA_MECHANICS,
     AREA_PARTICLE_PROFILES,
+    AREA_VISUALS,
     WORLD_LAYOUT,
 )
 
@@ -35,6 +43,7 @@ __all__ = [
     "AREA_ENEMY_TYPES",
     "AREA_MECHANICS",
     "AREA_PARTICLE_PROFILES",
+    "AREA_VISUALS",
     "BATTLE_RULES",
     "BOSS_PROGRESSION",
     "CHARACTER_CLASS_STATS",
@@ -47,8 +56,13 @@ __all__ = [
     "TOWN_GUARD_TEMPLATE",
     "TOWN_INTERIORS",
     "TOWN_ERRANDS",
+    "TOWN_BOUNDARIES",
+    "TOWN_BUILDINGS",
+    "TOWN_DECORATIONS",
     "TOWN_SERVICES",
+    "TOWN_SMOKE_SOURCES",
     "WORLD_LAYOUT",
+    "clone_town_layout",
     "create_town_guard",
     "get_town_service_dialogue",
     "get_boss_profile",

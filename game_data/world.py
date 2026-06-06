@@ -19,6 +19,49 @@ AREA_DESCRIPTIONS = {
     "town": "Safe haven",
 }
 
+AREA_VISUALS = {
+    "forest": {
+        "background_color": (20, 40, 20),
+        "grid_color": (40, 60, 40),
+    },
+    "desert": {
+        "background_color": (80, 70, 40),
+        "grid_color": (100, 90, 60),
+    },
+    "mountain": {
+        "background_color": (50, 50, 60),
+        "grid_color": (70, 70, 80),
+    },
+    "swamp": {
+        "background_color": (25, 35, 25),
+        "grid_color": (45, 55, 45),
+    },
+    "volcano": {
+        "background_color": (60, 25, 25),
+        "grid_color": (80, 45, 45),
+    },
+    "ice": {
+        "background_color": (35, 45, 65),
+        "grid_color": (55, 65, 85),
+    },
+    "castle": {
+        "background_color": (45, 35, 45),
+        "grid_color": (65, 55, 65),
+    },
+    "cave": {
+        "background_color": (15, 15, 25),
+        "grid_color": (35, 35, 45),
+    },
+    "beach": {
+        "background_color": (75, 65, 45),
+        "grid_color": (95, 85, 65),
+    },
+    "town": {
+        "background_color": (80, 120, 60),
+        "grid_color": (100, 140, 80),
+    },
+}
+
 AREA_PARTICLE_PROFILES = {
     "volcano": [
         {

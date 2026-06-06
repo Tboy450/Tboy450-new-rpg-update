@@ -13,13 +13,15 @@ Import active data through `game_data/__init__.py` when possible. That file is t
 - `npcs.py`: town guard template/dialogue, town service NPC metadata, and rotating interior NPC dialogue.
 - `progression.py`: boss names, boss hints, final boss level, and player-facing quest status.
 - `quests.py`: town errand names, summaries, and rewards.
-- `world.py`: world grid layout, area descriptions, area particles, and environmental area effects.
+- `town.py`: town overworld buildings, boundaries, decorations, and smoke sources.
+- `world.py`: world grid layout, area descriptions, area visuals, area particles, and environmental area effects.
 
 ## Placement Rules
 
 - Enemy or boss resource data belongs in `enemies.py` or `progression.py`, not `world.py`.
-- Area behavior that affects the map belongs in `world.py`.
+- Area visuals or behavior that affect the map belong in `world.py`.
 - Town NPC/service text and dialogue belongs in `npcs.py`; town room layout and inspect text belongs in `interiors.py`.
+- Town overworld layout belongs in `town.py`; building room contents belong in `interiors.py`.
 - Town errand/reward data belongs in `quests.py`.
 - Reusable combat or pickup tuning belongs in `mechanics.py`.
 - Do not add new active gameplay data to `archive/`.

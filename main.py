@@ -54,6 +54,7 @@ from game_data import (
     AREA_ENEMY_TYPES,
     AREA_MECHANICS,
     AREA_PARTICLE_PROFILES,
+    AREA_VISUALS,
     BATTLE_RULES,
     FINAL_BOSS_LEVEL,
     CHARACTER_CLASS_STATS,
@@ -64,6 +65,7 @@ from game_data import (
     TOWN_INTERIORS,
     TOWN_SERVICES,
     WORLD_LAYOUT,
+    clone_town_layout,
     create_town_guard,
     get_boss_profile,
     get_element_profile,
@@ -236,40 +238,11 @@ class WorldArea:
         self.items = []
         self.visited = False
         
-        # ========================================
-        # AREA-SPECIFIC VISUAL PROPERTIES
-        # ========================================
-        # Each area type has unique colors and visual characteristics
-        if area_type == "forest":
-            self.background_color = (20, 40, 20)  # Dark green forest
-            self.grid_color = (40, 60, 40)
-        elif area_type == "desert":
-            self.background_color = (80, 70, 40)  # Sandy yellow desert
-            self.grid_color = (100, 90, 60)
-        elif area_type == "mountain":
-            self.background_color = (50, 50, 60)  # Gray-blue mountains
-            self.grid_color = (70, 70, 80)
-        elif area_type == "swamp":
-            self.background_color = (25, 35, 25)  # Dark swamp green
-            self.grid_color = (45, 55, 45)
-        elif area_type == "volcano":
-            self.background_color = (60, 25, 25)  # Dark red volcanic
-            self.grid_color = (80, 45, 45)
-        elif area_type == "ice":
-            self.background_color = (35, 45, 65)  # Ice blue
-            self.grid_color = (55, 65, 85)
-        elif area_type == "castle":
-            self.background_color = (45, 35, 45)  # Purple-gray
-            self.grid_color = (65, 55, 65)
-        elif area_type == "cave":
-            self.background_color = (15, 15, 25)  # Very dark blue
-            self.grid_color = (35, 35, 45)
-        elif area_type == "beach":
-            self.background_color = (75, 65, 45)  # Sandy brown
-            self.grid_color = (95, 85, 65)
-        elif area_type == "town":
-            self.background_color = (80, 120, 60)  # Grass green for town
-            self.grid_color = (100, 140, 80)
+        visual_profile = AREA_VISUALS.get(area_type, AREA_VISUALS["forest"])
+        self.background_color = visual_profile["background_color"]
+        self.grid_color = visual_profile["grid_color"]
+
+        if area_type == "town":
             # Town-specific buildings and structures
             self.buildings = []
             self.town_boundaries = []
@@ -290,12 +263,6 @@ class WorldArea:
         # Town-specific particle effects
         if area_type == "town":
             self.particle_interval = 15  # More frequent particles for town
-            self.smoke_sources = [
-                {"x": 150, "y": 430},  # Shop chimney
-                {"x": 850, "y": 430},  # Inn chimney
-                {"x": 180, "y": 570},  # Blacksmith chimney
-                {"x": 820, "y": 570},  # Library chimney
-            ]
             # Create town guard for cutscene
             self._create_town_guard()
     
@@ -318,64 +285,12 @@ class WorldArea:
         """Generate detailed town layout with buildings, boundaries, and decorations"""
         if self.area_type != "town":
             return
-            
-        # Create town boundaries (walls/gates at the top)
-        self.town_boundaries = [
-            # Main gate at the top center (moved down 2 squares)
-            {"type": "gate", "x": 450, "y": 200, "width": 100, "height": 60},
-            # Left wall section
-            {"type": "wall", "x": 0, "y": 200, "width": 450, "height": 20},
-            # Right wall section  
-            {"type": "wall", "x": 550, "y": 200, "width": 450, "height": 20},
-            # Decorative towers
-            {"type": "tower", "x": 400, "y": 180, "width": 40, "height": 80},
-            {"type": "tower", "x": 560, "y": 180, "width": 40, "height": 80},
-        ]
-        
-        # Create main buildings with better spacing and reduced clustering
-        self.buildings = [
-            # Town Hall (center, grand and surreal) - physical building
-            {"type": "town_hall", "x": 400, "y": 380, "width": 200, "height": 140, "color": (200, 180, 160), "style": "grand", "collision": True, "entry_depth": 42, "door_width": 96},
-            # Shop (left side, colorful and inviting) - physical building
-            {"type": "shop", "x": 60, "y": 430, "width": 140, "height": 90, "color": (180, 160, 200), "style": "magical", "collision": True, "entry_depth": 30, "door_width": 72},
-            # Inn (right side, cozy and warm) - physical building
-            {"type": "inn", "x": 800, "y": 430, "width": 140, "height": 90, "color": (200, 160, 140), "style": "cozy", "collision": True, "entry_depth": 30, "door_width": 72},
-            # Blacksmith (bottom left, industrial) - physical building
-            {"type": "blacksmith", "x": 100, "y": 570, "width": 120, "height": 80, "color": (140, 120, 100), "style": "industrial", "collision": True, "entry_depth": 24, "door_width": 68},
-            # Library (bottom right, mystical) - physical building
-            {"type": "library", "x": 780, "y": 570, "width": 120, "height": 80, "color": (160, 180, 200), "style": "mystical", "collision": True, "entry_depth": 24, "door_width": 64},
-            # House (single residential building, asymmetrical placement in grass)
-            {"type": "house", "x": 750, "y": 340, "width": 70, "height": 60, "color": (150, 130, 110), "style": "cottage", "collision": True, "entry_depth": 18, "door_width": 46},
-            # Market stall (reduced from 2 to 1) - physical object
-            {"type": "stall", "x": 450, "y": 530, "width": 100, "height": 50, "color": (170, 150, 130), "style": "market", "collision": True, "entry_depth": 16, "door_width": 88},
-        ]
-        
-        # Create decorative elements (no collision)
-        self.decorations = [
-            # Street lamps (decorative only)
-            {"type": "lamp", "x": 150, "y": 300, "width": 20, "height": 60},
-            {"type": "lamp", "x": 850, "y": 300, "width": 20, "height": 60},
-            {"type": "lamp", "x": 150, "y": 650, "width": 20, "height": 60},
-            {"type": "lamp", "x": 850, "y": 650, "width": 20, "height": 60},
-            # Trees and plants (decorative only)
-            {"type": "tree", "x": 50, "y": 250, "width": 30, "height": 50},
-            {"type": "tree", "x": 920, "y": 250, "width": 30, "height": 50},
-            {"type": "tree", "x": 50, "y": 700, "width": 30, "height": 50},
-            {"type": "tree", "x": 920, "y": 700, "width": 30, "height": 50},
-            # Flower beds (decorative only)
-            {"type": "flowers", "x": 200, "y": 270, "width": 40, "height": 20},
-            {"type": "flowers", "x": 760, "y": 270, "width": 40, "height": 20},
-            {"type": "flowers", "x": 200, "y": 730, "width": 40, "height": 20},
-            {"type": "flowers", "x": 760, "y": 730, "width": 40, "height": 20},
-        ]
-        
-        # Create smoke sources for buildings
-        self.smoke_sources = [
-            {"x": 150, "y": 430},  # Shop chimney
-            {"x": 850, "y": 430},  # Inn chimney
-            {"x": 180, "y": 570},  # Blacksmith chimney
-            {"x": 820, "y": 570},  # Library chimney
-        ]
+
+        layout = clone_town_layout()
+        self.town_boundaries = layout["boundaries"]
+        self.buildings = layout["buildings"]
+        self.decorations = layout["decorations"]
+        self.smoke_sources = layout["smoke_sources"]
     
     def _draw_scenic_background(self, surface):
         """Draw scenic background with massive fantasy castle and sunset"""
