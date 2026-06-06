@@ -4,17 +4,46 @@
 
 Import active data through `game_data/__init__.py` when possible. That file is the compatibility boundary, so data can move between modules without breaking `main.py`.
 
+For beginners: this folder mostly contains Python dictionaries and tuples.
+Changing values here usually changes the game without changing control flow.
+For example, changing a color tuple changes how something looks, while changing
+an enemy list changes what can spawn in an area.
+
 ## Modules
 
-- `characters.py`: playable class starting stats.
+- `__init__.py`: re-exports active data so `main.py` can import from one stable place.
+- `characters.py`: playable class starting stats. Edit this to tune Warrior, Mage, or Rogue.
 - `enemies.py`: enemy names, area enemy spawn tables, and dragon boss color palettes.
 - `interiors.py`: town building interior layouts, props, inspect points, colors, and room prompts.
 - `mechanics.py`: combat tuning, elemental status effects, pickup item profiles, and item spawn tables.
 - `npcs.py`: town guard template/dialogue, town service NPC metadata, and rotating interior NPC dialogue.
 - `progression.py`: boss names, boss hints, final boss level, and player-facing quest status.
 - `quests.py`: town errand names, summaries, and rewards.
-- `town.py`: town overworld buildings, boundaries, decorations, and smoke sources.
+- `town.py`: town overworld buildings, boundaries, decorations, smoke sources, and building collision tuning.
 - `world.py`: world grid layout, area descriptions, area visuals, area particles, and environmental area effects.
+
+## Beginner Data Glossary
+
+- `x`, `y`: pixel position on the screen. `x` moves right. `y` moves down.
+- `width`, `height`: size in pixels.
+- `rect`: a rectangle written as `(x, y, width, height)`.
+- `color`: an RGB tuple like `(255, 0, 0)`, where each number is 0-255.
+- `type`: a short key string used to connect data across modules.
+- `style`: a drawing hint used by `main.py` to choose a visual style.
+- `collision`: whether the player should be blocked by an object.
+- `entry_depth`: how far the player can visually step into the front or back of a building.
+- `door_width`: how wide the entrance trigger should be.
+- `reward`: score, experience, reputation, or item prizes granted by a quest or errand.
+- `message`: text shown to the player.
+
+## Cross-File Keys
+
+Some strings must match across modules:
+
+- Town building `type` values in `town.py` should match `TOWN_INTERIORS`, `TOWN_SERVICES`, and optional `TOWN_ERRANDS` keys.
+- Enemy element names like `fiery`, `shadow`, and `ice` should match entries in `ELEMENT_PROFILES`.
+- Item keys like `health` and `mana` should match entries in `ITEM_PROFILES`.
+- Area names like `forest`, `town`, and `volcano` should match entries in `WORLD_LAYOUT`, `AREA_VISUALS`, and `AREA_ENEMY_TYPES`.
 
 ## Placement Rules
 
@@ -25,6 +54,15 @@ Import active data through `game_data/__init__.py` when possible. That file is t
 - Town errand/reward data belongs in `quests.py`.
 - Reusable combat or pickup tuning belongs in `mechanics.py`.
 - Do not add new active gameplay data to `archive/`.
+
+## Safe Editing Examples
+
+- To make Warrior tougher, raise `Warrior` `max_health` in `characters.py`.
+- To make volcano enemies more dangerous by variety, add another element key to `AREA_ENEMY_TYPES["volcano"]` in `enemies.py`.
+- To move the shop outdoors, edit the shop record in `TOWN_BUILDINGS` in `town.py`.
+- To add a line of shopkeeper dialogue, edit the `shop` `dialogue` tuple in `npcs.py`.
+- To add an inspectable object inside the inn, edit `TOWN_INTERIORS["inn"]["inspect_points"]` in `interiors.py`.
+- To tune critical hits, edit `BATTLE_RULES` in `mechanics.py`.
 
 ## Asset Intake
 

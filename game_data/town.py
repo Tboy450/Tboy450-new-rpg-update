@@ -1,5 +1,21 @@
-"""Town overworld layout data."""
+"""Town overworld layout data.
 
+Beginner note:
+    This file describes the outside town map only. The rooms inside buildings
+    are described in `game_data/interiors.py`.
+
+Common fields:
+    type: key used by services, interiors, errands, drawing, and collision.
+    x/y: top-left pixel position on the town screen.
+    width/height: size in pixels.
+    color: RGB fill color used by the drawing code.
+    style: drawing style hint used by `WorldArea.draw_town` in `main.py`.
+    collision: whether the player should be blocked by the object.
+    entry_depth: how far the player can overlap the top/bottom for visual depth.
+    door_width: width of the entrance interaction zone.
+"""
+
+# Walls, gate, and towers near the top edge of the town screen.
 TOWN_BOUNDARIES = (
     {"type": "gate", "x": 450, "y": 200, "width": 100, "height": 60},
     {"type": "wall", "x": 0, "y": 200, "width": 450, "height": 20},
@@ -8,6 +24,8 @@ TOWN_BOUNDARIES = (
     {"type": "tower", "x": 560, "y": 180, "width": 40, "height": 80},
 )
 
+# Outdoor buildings and structures. The `type` values must match the keys used
+# by `TOWN_INTERIORS`, `TOWN_SERVICES`, and optional `TOWN_ERRANDS`.
 TOWN_BUILDINGS = (
     {
         "type": "town_hall",
@@ -95,6 +113,7 @@ TOWN_BUILDINGS = (
     },
 )
 
+# Decorative records are visual only and do not block player movement.
 TOWN_DECORATIONS = (
     {"type": "lamp", "x": 150, "y": 300, "width": 20, "height": 60},
     {"type": "lamp", "x": 850, "y": 300, "width": 20, "height": 60},
@@ -110,6 +129,7 @@ TOWN_DECORATIONS = (
     {"type": "flowers", "x": 760, "y": 730, "width": 40, "height": 20},
 )
 
+# Chimney/smoke emitters. These are read by the town particle generator.
 TOWN_SMOKE_SOURCES = (
     {"x": 150, "y": 430},
     {"x": 850, "y": 430},
@@ -119,7 +139,11 @@ TOWN_SMOKE_SOURCES = (
 
 
 def clone_town_layout():
-    """Return mutable copies of town layout records used by WorldArea."""
+    """Return mutable copies of town layout records used by WorldArea.
+
+    The source constants above are tuples so they stay stable. `WorldArea` gets
+    copies because runtime code may safely attach or adjust per-area values.
+    """
     return {
         "boundaries": [dict(item) for item in TOWN_BOUNDARIES],
         "buildings": [dict(item) for item in TOWN_BUILDINGS],

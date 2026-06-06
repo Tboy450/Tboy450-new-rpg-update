@@ -1,5 +1,22 @@
-"""Room layout data for town building interiors."""
+"""Room layout data for town building interiors.
 
+Beginner note:
+    These records describe what appears after the player enters a town building.
+    Outdoor building positions live in `game_data/town.py`; indoor room contents
+    live here.
+
+Common fields:
+    title/subtitle: text shown in the interior UI.
+    wall_color/floor_color/trim_color/accent_color: RGB colors used by drawing.
+    service_prompt: help text shown for the building's main action.
+    flavor: rotating descriptive lines.
+    npc_position: where the room NPC is drawn.
+    props: furniture and decorative objects. Each prop has a kind and rect.
+    inspect_points: invisible/marked rectangles that give one-time flavor rewards.
+"""
+
+# Keys such as `inn`, `shop`, and `town_hall` must match building `type` values
+# in `game_data/town.py` and service keys in `game_data/npcs.py`.
 TOWN_INTERIORS = {
     "inn": {
         "title": "Warm Hearth Inn",

@@ -1,11 +1,26 @@
-"""World layout, area descriptions, visuals, and environmental mechanics."""
+"""World layout, area descriptions, visuals, and environmental mechanics.
 
+Beginner note:
+    This file describes the 3x3 overworld and area-wide effects. It does not
+    contain player movement code; `WorldMap` and `WorldArea` in `main.py` read
+    these tables.
+
+Common fields:
+    background_color: RGB color used to fill the area background.
+    grid_color: RGB color used for grid/path lines.
+    count: how many particles to spawn at once.
+    interval: frames between environmental mechanic ticks.
+    health/mana: amount restored or drained by an area effect.
+"""
+
+# 3 rows by 3 columns. Row index is y, column index is x.
 WORLD_LAYOUT = (
     ("mountain", "forest", "desert"),
     ("swamp", "beach", "volcano"),
     ("ice", "town", "cave"),
 )
 
+# Short labels shown on the map and journal.
 AREA_DESCRIPTIONS = {
     "forest": "Dense woodland",
     "mountain": "Rocky peaks",
@@ -19,6 +34,7 @@ AREA_DESCRIPTIONS = {
     "town": "Safe haven",
 }
 
+# Color profiles for each area type. Area names should match `WORLD_LAYOUT`.
 AREA_VISUALS = {
     "forest": {
         "background_color": (20, 40, 20),
@@ -62,6 +78,8 @@ AREA_VISUALS = {
     },
 }
 
+# Optional ambient particles for areas. Missing area keys simply have no custom
+# particle profile.
 AREA_PARTICLE_PROFILES = {
     "volcano": [
         {
@@ -155,6 +173,8 @@ AREA_PARTICLE_PROFILES = {
     ],
 }
 
+# Environmental effects applied while the player spends time in an area.
+# Positive health/mana restores resources; negative values drain resources.
 AREA_MECHANICS = {
     "forest": {
         "label": "Verdant Cover",

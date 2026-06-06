@@ -1,5 +1,17 @@
-"""Town errands and lightweight quest reward data."""
+"""Town errands and lightweight quest reward data.
 
+Beginner note:
+    Town errands are one-time tasks tied to town services. Completing one gives
+    small rewards and town reputation.
+
+Reward fields:
+    score: points added to the total score.
+    exp: experience added to the player.
+    reputation: town reputation added to the town tracker.
+    items: optional inventory items, keyed by item name.
+"""
+
+# Keys should match `TOWN_SERVICES`, `TOWN_INTERIORS`, and building types.
 TOWN_ERRANDS = {
     "inn": {
         "title": "Warm Beds Ready",
@@ -39,10 +51,12 @@ TOWN_ERRANDS = {
 }
 
 def get_town_errand(service_type):
-    """Return the town errand tied to a service type."""
+    """Return the town errand tied to a service type.
+
+    Missing services return None, which means there is no errand to complete.
+    """
     return TOWN_ERRANDS.get(service_type)
 
 def get_town_errand_count():
-    """Return the number of available town errands."""
+    """Return the number of available town errands for journal progress text."""
     return len(TOWN_ERRANDS)
-

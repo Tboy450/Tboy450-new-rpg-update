@@ -1,5 +1,15 @@
-"""Enemy naming, area spawn, and boss palette data."""
+"""Enemy naming, area spawn, and boss palette data.
 
+Beginner note:
+    This file does not contain enemy behavior. It contains labels and lookup
+    tables that `Enemy` and `Dragon` in `main.py` use when creating enemies.
+
+Key ideas:
+    Enemy element keys such as `fiery`, `shadow`, and `ice` must match keys in
+    `ELEMENT_PROFILES` from `game_data/mechanics.py`.
+"""
+
+# Random regular enemy names are chosen from these pools by element type.
 ENEMY_NAME_POOLS = {
     "fiery": [
         "Fire Imp",
@@ -24,6 +34,7 @@ ENEMY_NAME_POOLS = {
     ],
 }
 
+# Boss dragon drawing uses these color pairs as primary/secondary palettes.
 DRAGON_BOSS_COLORS = [
     ((255, 69, 0), (255, 140, 0)),
     ((0, 191, 255), (0, 255, 255)),
@@ -37,6 +48,8 @@ DRAGON_BOSS_COLORS = [
     ((139, 69, 19), (222, 184, 135)),
 ]
 
+# Area names here should match `WORLD_LAYOUT` and `AREA_VISUALS` in `world.py`.
+# A town has no random enemies because it is the safe hub.
 AREA_ENEMY_TYPES = {
     "forest": ["shadow", "ice"],
     "desert": ["fiery"],

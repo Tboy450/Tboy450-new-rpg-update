@@ -1,7 +1,20 @@
-"""Boss and quest progression data."""
+"""Boss and quest progression data.
 
+Beginner note:
+    Boss progress is tied mostly to player level. The game asks this module what
+    the next boss should be called and what quest text should be displayed.
+
+Common fields:
+    name: boss name used in battle and quest text.
+    title: short quest title.
+    hint: longer player-facing clue.
+    area_hint: where the player should go to trigger the fight.
+"""
+
+# Reaching this level points progression at the final boss profile.
 FINAL_BOSS_LEVEL = 10
 
+# Boss profiles keyed by the player level where they become relevant.
 BOSS_PROGRESSION = {
     2: {
         "name": "Ashwing Drake",
@@ -61,7 +74,11 @@ BOSS_PROGRESSION = {
 
 
 def get_boss_profile(level):
-    """Return boss naming and hint data for a level."""
+    """Return boss naming and hint data for a level.
+
+    If a level has no custom entry, the fallback still gives the game usable
+    text instead of crashing.
+    """
     if level >= FINAL_BOSS_LEVEL:
         return BOSS_PROGRESSION[FINAL_BOSS_LEVEL]
     return BOSS_PROGRESSION.get(
@@ -76,7 +93,10 @@ def get_boss_profile(level):
 
 
 def get_next_boss_level(player_level, last_boss_level):
-    """Return the level of the next boss-relevant objective."""
+    """Return the level of the next boss-relevant objective.
+
+    `last_boss_level` prevents the same level boss from being repeated forever.
+    """
     if player_level >= FINAL_BOSS_LEVEL and last_boss_level < FINAL_BOSS_LEVEL:
         return FINAL_BOSS_LEVEL
     if player_level > 1 and player_level > last_boss_level:
@@ -85,7 +105,10 @@ def get_next_boss_level(player_level, last_boss_level):
 
 
 def get_progression_status(player_level, last_boss_level, boss_cooldown, final_boss_defeated):
-    """Build player-facing quest status text for HUDs and town hall."""
+    """Build player-facing quest status text for HUDs and town hall.
+
+    The return value is a dictionary so the HUD can use text and color together.
+    """
     if final_boss_defeated:
         return {
             "state": "complete",

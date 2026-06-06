@@ -1,5 +1,10 @@
 Dragon's Lair RPG
 
+If you are new to this codebase, start with
+`docs/beginner_code_map.md`. It explains which files are active, what each
+module owns, and where to safely add characters, enemies, town buildings,
+quests, items, saves, and future assets.
+
 ## Windows desktop icon
 
 The easiest Windows setup is the installer script. It creates a local game folder,
@@ -49,8 +54,9 @@ Town services now also complete one-time errands for town reputation, score, exp
 Repository layout:
 
 - `main.py` is the active game file.
+- `docs/` holds beginner-facing code maps and project notes.
 - `game_data/` holds active modular data. See `game_data/README.md` for where character, enemy, world, NPC, town interior, mechanic, and progression data belongs.
-- `systems/` holds active helper systems such as input mapping and JSON save/load.
+- `systems/` holds active helper systems such as input mapping and JSON save/load. See `systems/README.md` before changing helper code.
 - `assets/` is the intake area for future art/audio ports. Keep raw downloads in `assets/source/`, game-ready files in `assets/processed/`, and non-CC0 attribution in `assets/credits.md`.
 - `scripts/` holds setup helpers.
 - `archive/` contains older snapshot files and experiments kept for reference only. It is not the active game source.

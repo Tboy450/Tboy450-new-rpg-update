@@ -34,6 +34,13 @@ CONTROLS:
 - M: Toggle world map view
 - J: Toggle quest journal
 - F5/F9: Save/load game
+
+BEGINNER ORIENTATION:
+- `main.py` is still the active game controller and renderer.
+- `game_data/` stores facts, numbers, colors, dialogue, layouts, and tuning.
+- `systems/` stores reusable helper logic such as input mapping and save/load.
+- `archive/` is reference material only and is not part of the active game.
+- Start with `docs/beginner_code_map.md` if you need a safer editing path.
 """
 
 import os
@@ -49,6 +56,8 @@ import tempfile
 import wave
 import io
 
+# Active game data is imported through `game_data/__init__.py`. That file keeps
+# this import list stable even if data gets moved between smaller modules later.
 from game_data import (
     AREA_DESCRIPTIONS,
     AREA_ENEMY_TYPES,
@@ -74,6 +83,9 @@ from game_data import (
     get_town_errand_count,
     get_town_service_dialogue,
 )
+
+# Runtime helpers split out of `main.py`. These are logic helpers, not pure
+# data tables, so they live in `systems/` instead of `game_data/`.
 from systems.input_actions import (
     CANCEL,
     CONFIRM,
@@ -229,6 +241,12 @@ class WorldArea:
     Each area has its own terrain type, enemies, items, and visual style.
     
     Area Types: forest, desert, mountain, swamp, volcano, town
+
+    Beginner note:
+    - `area_x` and `area_y` are grid coordinates from 0 to 2.
+    - `area_type` is a key such as `forest` or `town`.
+    - Visual colors come from `game_data/world.py`.
+    - Town building records come from `game_data/town.py`.
     """
     def __init__(self, area_x, area_y, area_type="forest"):
         self.area_x = area_x  # Grid position (0-2)
@@ -238,6 +256,8 @@ class WorldArea:
         self.items = []
         self.visited = False
         
+        # AREA_VISUALS keeps color tuning out of this class. Unknown area types
+        # fall back to forest colors so testing new area names will not crash.
         visual_profile = AREA_VISUALS.get(area_type, AREA_VISUALS["forest"])
         self.background_color = visual_profile["background_color"]
         self.grid_color = visual_profile["grid_color"]
@@ -282,10 +302,15 @@ class WorldArea:
         return (world_x - area_world_x, world_y - area_world_y)
     
     def _generate_town_layout(self):
-        """Generate detailed town layout with buildings, boundaries, and decorations"""
+        """Generate detailed town layout with buildings, boundaries, and decorations.
+
+        The layout data lives in `game_data/town.py`. This method only copies
+        that data onto the active `WorldArea` object.
+        """
         if self.area_type != "town":
             return
 
+        # Clone data so runtime changes never mutate the shared module constants.
         layout = clone_town_layout()
         self.town_boundaries = layout["boundaries"]
         self.buildings = layout["buildings"]
@@ -1426,6 +1451,10 @@ class WorldMap:
     """
     Manages the entire 3x3 world grid, camera positioning, and area transitions.
     Handles coordinate conversion between world and screen space.
+
+    Beginner note:
+    `WORLD_LAYOUT` from `game_data/world.py` decides which area type appears in
+    each grid cell. This class turns those strings into live `WorldArea` objects.
     """
     def __init__(self):
         self.areas = {}
@@ -1436,7 +1465,8 @@ class WorldMap:
         self.area_transition_alpha = 0
         self.transitioning = False
         
-        # Initialize all areas
+        # Initialize all areas from the data table. The tuple key `(x, y)` makes
+        # it easy to fetch an area by grid coordinate later.
         for y in range(WORLD_SIZE):
             for x in range(WORLD_SIZE):
                 area_type = WORLD_LAYOUT[y][x]
@@ -3937,9 +3967,16 @@ class Game:
     - interior: Town building rooms with services and future NPC hooks
     - battle: Turn-based combat system
     - game_over: End game screen
+
+    Beginner note:
+    This class is the hub. Most features eventually connect here because this
+    object owns the player, world, UI state, battle screen, and save/load calls.
     """
     def __init__(self):
+        # Current screen/state. Many update and draw methods branch on this.
         self.state = "start_menu"
+
+        # Core gameplay objects.
         self.player = None
         self.world_map = WorldMap()
         self.enemies = []
@@ -3948,6 +3985,8 @@ class Game:
         self.game_time = 0
         self.spawn_timer = 0
         self.item_timer = 0
+
+        # Visual/background state used by menus and transitions.
         self.starfield = []
         self.dragon = Dragon(SCREEN_WIDTH//2 - 250, SCREEN_HEIGHT//2 - 120)
         self.fire_timer = 0
@@ -3955,11 +3994,15 @@ class Game:
         self.transition_alpha = 0
         self.transition_state = "none"
         self.transition_speed = 10
+
+        # Movement and effects.
         self.player_moved = False
         self.movement_cooldown = 0
         self.movement_delay = 10
         self.particle_system = ParticleSystem()
         self.opening_cutscene = OpeningCutscene()
+
+        # Progression and UI toggles.
         self.boss_battle_triggered = False
         self.boss_defeated = False
         self.show_world_map = False
@@ -3971,12 +4014,16 @@ class Game:
         self.area_effect_message_timer = 0
         self.town_service_message = None
         self.town_service_message_timer = 0
+
+        # Interior state tracks which town building room the player is inside.
         self.current_interior = None
         self.current_interior_service = None
         self.interior_return_position = None
         self.interior_player_x = SCREEN_WIDTH // 2 - PLAYER_SIZE // 2
         self.interior_player_y = 500
         self.npc_dialogue_index = 0
+
+        # Town progression saved by `systems/save_load.py`.
         self.town_reputation = 0
         self.completed_town_errands = set()
         self.inspected_town_details = set()

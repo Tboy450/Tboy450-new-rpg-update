@@ -1,5 +1,20 @@
-"""Player character class stats."""
+"""Player character class stats.
 
+Beginner note:
+    Each key in `CHARACTER_CLASS_STATS` is a class name shown to the player.
+    Each value is a dictionary of starting stats copied into `Character` in
+    `main.py`.
+
+Field meanings:
+    max_health: highest HP the character can have.
+    max_mana: highest MP the character can have.
+    strength: improves physical attack damage.
+    defense: reduces incoming damage.
+    speed: improves dodge, escape, and some battle timing.
+"""
+
+# Add a new playable class here first, then add a matching select button in
+# `Game.__init__` and character select drawing/input in `main.py`.
 CHARACTER_CLASS_STATS = {
     "Warrior": {
         "max_health": 120,

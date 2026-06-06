@@ -1,5 +1,18 @@
-"""NPC data used by cutscenes and town interactions."""
+"""NPC data used by cutscenes and town interactions.
 
+Beginner note:
+    This file stores NPC facts and dialogue. It does not draw NPCs. Drawing and
+    input handling still happen in `main.py`.
+
+Common fields:
+    name: building or service name shown to the player.
+    npc: character name used for dialogue.
+    prompt: interaction hint shown near the building.
+    dialogue: lines rotated when the player talks to the NPC.
+"""
+
+# Template copied when the town guard is created. The copy prevents one game's
+# animation/dialogue timers from mutating this shared default record.
 TOWN_GUARD_TEMPLATE = {
     "x": 300,
     "y": 270,
@@ -13,6 +26,7 @@ TOWN_GUARD_TEMPLATE = {
     "visible": True,
 }
 
+# Cutscene lines for the guard at the town entrance.
 TOWN_GUARD_DIALOGUE = (
     "Halt! Welcome to our fair town, traveler.",
     "I am Captain Marcus, keeper of the peace.",
@@ -21,6 +35,7 @@ TOWN_GUARD_DIALOGUE = (
     "Safe travels, adventurer!",
 )
 
+# Keys here must match outdoor building `type` values in `town.py`.
 TOWN_SERVICES = {
     "inn": {
         "name": "Warm Hearth Inn",
@@ -95,12 +110,18 @@ TOWN_SERVICES = {
 }
 
 def create_town_guard():
-    """Return a fresh town guard NPC record."""
+    """Return a fresh town guard NPC record.
+
+    `dict(...)` and `list(...)` make mutable copies for the active game.
+    """
     guard = dict(TOWN_GUARD_TEMPLATE)
     guard["dialogue"] = list(TOWN_GUARD_DIALOGUE)
     return guard
 
 def get_town_service_dialogue(service_type):
-    """Return rotating NPC dialogue for a town service."""
+    """Return rotating NPC dialogue for a town service.
+
+    Missing service keys return an empty tuple, which lets callers fail safely.
+    """
     service = TOWN_SERVICES.get(service_type, {})
     return service.get("dialogue", ())

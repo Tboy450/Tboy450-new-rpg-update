@@ -1,5 +1,19 @@
-"""Shared mechanics data for combat, pickups, and matching visuals."""
+"""Shared mechanics data for combat, pickups, and matching visuals.
 
+Beginner note:
+    This file stores reusable tuning values. The combat code in `main.py` reads
+    these dictionaries instead of hardcoding every number in battle methods.
+
+Common fields:
+    label: player-facing name.
+    color / primary_color / secondary_color / accent_color: RGB drawing colors.
+    status: optional extra effect an enemy element can apply.
+    effect: item behavior name handled by `Character.apply_item_effect`.
+    amount: how strong an item or status effect is.
+    message: text shown after the effect happens.
+"""
+
+# Element profiles are used by enemies and elemental battle effects.
 ELEMENT_PROFILES = {
     "fiery": {
         "label": "Flame",
@@ -51,6 +65,7 @@ ELEMENT_PROFILES = {
     },
 }
 
+# Item profiles describe pickups and battle inventory items.
 ITEM_PROFILES = {
     "health": {
         "label": "Health",
@@ -88,6 +103,7 @@ ITEM_PROFILES = {
     },
 }
 
+# Repeated keys make an item more common when the game randomly chooses pickups.
 ITEM_SPAWN_TABLE = (
     "health",
     "health",
@@ -97,6 +113,7 @@ ITEM_SPAWN_TABLE = (
     "ward",
 )
 
+# Shared battle math knobs. Higher speed bonus values make speed more important.
 BATTLE_RULES = {
     "base_crit_chance": 0.05,
     "speed_crit_bonus": 0.015,
@@ -112,5 +129,8 @@ BATTLE_RULES = {
 }
 
 def get_element_profile(element_type):
-    """Return a visual/mechanical profile for an enemy element."""
+    """Return a visual/mechanical profile for an enemy element.
+
+    Unknown element names safely fall back to the neutral profile.
+    """
     return ELEMENT_PROFILES.get(element_type, ELEMENT_PROFILES["neutral"])
