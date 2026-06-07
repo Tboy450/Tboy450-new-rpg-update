@@ -39,5 +39,16 @@ fi
 echo "Building Android debug APK..."
 buildozer android debug
 
+ANDROID_APK="bin/dragons-lair-rpg-android-debug.apk"
+FOUND_APK="$(find bin -maxdepth 1 -type f -name '*debug*.apk' ! -name "$(basename "$ANDROID_APK")" | sort | tail -n 1)"
+
+if [[ -z "$FOUND_APK" ]]; then
+    echo "Build finished, but no debug APK was found in bin/."
+    exit 1
+fi
+
+cp "$FOUND_APK" "$ANDROID_APK"
+
 echo
-echo "Build complete. Look in the bin/ folder for a file ending in -debug.apk."
+echo "Build complete: $ANDROID_APK"
+echo "Upload that file to a GitHub Release with the same filename for the README direct download link."

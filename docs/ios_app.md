@@ -1,6 +1,15 @@
 # iPhone / iPad Install Status
 
-There is no public iPhone install link yet.
+There is no active public iPhone install link yet.
+
+Placeholder direct IPA URL:
+
+```text
+https://github.com/Tboy450/Tboy450-new-rpg-update/releases/latest/download/dragons-lair-rpg-ios.ipa
+```
+
+That link will only work after a signed IPA is built and uploaded to the latest
+GitHub Release with the exact filename `dragons-lair-rpg-ios.ipa`.
 
 ## Why
 
@@ -21,6 +30,9 @@ When an iPhone build exists, replace this placeholder in `README.md` with one of
 these:
 
 ```text
+Direct signed IPA:
+https://github.com/Tboy450/Tboy450-new-rpg-update/releases/latest/download/dragons-lair-rpg-ios.ipa
+
 TestFlight:
 https://testflight.apple.com/join/YOUR_INVITE_CODE
 

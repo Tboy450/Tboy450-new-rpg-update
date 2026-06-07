@@ -24,10 +24,9 @@
     "notes": "Loopable themes can replace the procedural music system later."
   },
   "ui": {
-    "status": "planned",
+    "status": "active",
     "source_dir": "assets/source/ui",
     "processed_dir": "assets/processed/ui",
-    "notes": "Panels, icons, potion graphics, and map markers belong here."
+    "notes": "Dragon app icon is active. Panels, icons, potion graphics, and map markers also belong here."
   }
 }
-

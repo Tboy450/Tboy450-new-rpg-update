@@ -16,7 +16,10 @@ package.domain = org.tboy450
 source.dir = .
 
 # File types to copy into the APK.
-source.include_exts = py,json,txt,md
+source.include_exts = py,json,txt,md,png
+
+# Launcher icon shown on Android home screens and app lists.
+icon.filename = assets/processed/ui/dragon_app_icon.png
 
 # Keep old experiments and local build/cache output out of the Android package.
 source.exclude_dirs = archive,.git,.github,.pytest_cache,__pycache__,.buildozer,bin

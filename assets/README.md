@@ -12,6 +12,10 @@ assets/
 
 The current placeholder folders are split into `characters`, `enemies`, `sounds`, `music`, and `ui`. Keep raw packs under `assets/source/<category>/`, then copy converted game-ready files to `assets/processed/<category>/`.
 
+Active UI asset:
+
+- `assets/processed/ui/dragon_app_icon.png`: Android launcher icon used by `buildozer.spec`.
+
 ## Character Animation Sources
 
 Prefer CC0 assets first so we do not have to manage attribution for every import.

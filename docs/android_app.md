@@ -8,6 +8,7 @@ python-for-android and SDL2.
 
 - `buildozer.spec`: Android app configuration.
 - `scripts/build_android.sh`: helper script that runs the APK build.
+- `assets/processed/ui/dragon_app_icon.png`: dragon launcher icon used by the Android app.
 
 ## What You Need
 
@@ -42,7 +43,7 @@ bin/
 The debug APK will have a name similar to:
 
 ```text
-dragonslairrpg-0.1.0-arm64-v8a-debug.apk
+dragons-lair-rpg-android-debug.apk
 ```
 
 ## Install On Android
@@ -50,7 +51,7 @@ dragonslairrpg-0.1.0-arm64-v8a-debug.apk
 Download link once an APK is uploaded to a release:
 
 ```text
-https://github.com/Tboy450/Tboy450-new-rpg-update/releases/latest
+https://github.com/Tboy450/Tboy450-new-rpg-update/releases/latest/download/dragons-lair-rpg-android-debug.apk
 ```
 
 Connect your phone with USB debugging enabled:
