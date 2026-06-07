@@ -23,7 +23,7 @@ Buildozer is not installed.
 On Ubuntu, Debian, or WSL2, install the system packages first:
 
   sudo apt update
-  sudo apt install -y git zip unzip openjdk-17-jdk python3-pip python3-venv autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+  sudo apt install -y git zip unzip openjdk-17-jdk python3-pip python3-venv autoconf automake libtool libltdl-dev pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
 
 Then install Buildozer:
 
