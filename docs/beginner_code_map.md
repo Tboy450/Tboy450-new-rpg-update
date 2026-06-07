@@ -10,6 +10,7 @@ responsible for. Read this before editing if you are new to Python or this repo.
 - `systems/`: active helper systems that can be reused by `main.py`.
 - `assets/`: planned home for imported art, animation, sounds, music, and UI files.
 - `scripts/`: install and launch helpers, mostly for Windows setup.
+- `buildozer.spec`: Android APK packaging settings.
 - `archive/`: old snapshots and experiments. Use it for reference only; do not add active gameplay there.
 
 ## How The Game Starts
@@ -108,3 +109,11 @@ responsible for. Read this before editing if you are new to Python or this repo.
 3. Record non-CC0 licenses in `assets/credits.md`.
 4. Update `assets/manifest.json` when a category changes from planned to active.
 5. Only wire files into `main.py` after the path and license are clear.
+
+## How To Build The Android App
+
+1. Read `docs/android_app.md`.
+2. Use Linux or WSL2, not a phone browser.
+3. Run `bash scripts/build_android.sh` from the repository root.
+4. Find the debug APK in `bin/`.
+5. Install it on Android with `adb install -r bin/*debug.apk` or by opening the APK on the phone.

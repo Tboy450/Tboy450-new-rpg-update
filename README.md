@@ -28,6 +28,19 @@ Requirements:
 - Git for Windows: https://git-scm.com/download/win
 - Python 3: https://www.python.org/downloads/
 
+## Android APK
+
+This repo includes a Buildozer setup for creating an Android test APK from the
+same Python/Pygame game. See `docs/android_app.md`.
+
+Quick build command on Linux or WSL2:
+
+```bash
+bash scripts/build_android.sh
+```
+
+The APK output goes in `bin/` when the build succeeds.
+
 Run the game with:
 
 ```bash
@@ -58,5 +71,6 @@ Repository layout:
 - `game_data/` holds active modular data. See `game_data/README.md` for where character, enemy, world, NPC, town interior, mechanic, and progression data belongs.
 - `systems/` holds active helper systems such as input mapping and JSON save/load. See `systems/README.md` before changing helper code.
 - `assets/` is the intake area for future art/audio ports. Keep raw downloads in `assets/source/`, game-ready files in `assets/processed/`, and non-CC0 attribution in `assets/credits.md`.
-- `scripts/` holds setup helpers.
+- `scripts/` holds setup helpers, including `scripts/build_android.sh`.
+- `buildozer.spec` is the Android APK packaging config.
 - `archive/` contains older snapshot files and experiments kept for reference only. It is not the active game source.
