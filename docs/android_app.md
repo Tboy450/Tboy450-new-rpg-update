@@ -9,6 +9,7 @@ python-for-android and SDL2.
 - `buildozer.spec`: Android app configuration.
 - `scripts/build_android.sh`: helper script that runs the APK build.
 - `assets/processed/ui/dragon_app_icon.png`: dragon launcher icon used by the Android app.
+- `.github/workflows/android-apk.yml`: GitHub Actions build that publishes the APK release asset.
 
 ## What You Need
 
@@ -51,8 +52,11 @@ dragons-lair-rpg-android-debug.apk
 Download link once an APK is uploaded to a release:
 
 ```text
-https://github.com/Tboy450/Tboy450-new-rpg-update/releases/latest/download/dragons-lair-rpg-android-debug.apk
+https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk
 ```
+
+This link is created by the `Build Android APK` GitHub Action. If it returns
+404, the release asset has not been built/uploaded yet or the workflow failed.
 
 Connect your phone with USB debugging enabled:
 

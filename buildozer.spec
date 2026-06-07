@@ -56,5 +56,5 @@ android.permissions =
 # Raise this when debugging build logs.
 log_level = 2
 
-# Reuse downloaded SDK/NDK/cache data between builds.
-warn_on_root = 1
+# Container/CI builds may run as root, so keep this non-interactive.
+warn_on_root = 0

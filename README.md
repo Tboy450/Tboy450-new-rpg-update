@@ -7,10 +7,10 @@ quests, items, saves, and future assets.
 
 ## Install Links
 
-- Android APK direct download: [dragons-lair-rpg-android-debug.apk](https://github.com/Tboy450/Tboy450-new-rpg-update/releases/latest/download/dragons-lair-rpg-android-debug.apk)
+- Android APK direct download: [dragons-lair-rpg-android-debug.apk](https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk)
 - iPhone/iPad direct download placeholder: [dragons-lair-rpg-ios.ipa](https://github.com/Tboy450/Tboy450-new-rpg-update/releases/latest/download/dragons-lair-rpg-ios.ipa)
 
-Android note: the direct link works after `dragons-lair-rpg-android-debug.apk` is uploaded to the latest GitHub Release.
+Android note: the direct link is created by the `Build Android APK` GitHub Action. If it 404s, the APK release has not finished building yet.
 iPhone note: the IPA link will not work until a signed iOS build exists. iPhone installs normally need TestFlight, App Store, or a signed IPA. See [docs/ios_app.md](docs/ios_app.md).
 
 ## Windows desktop icon
