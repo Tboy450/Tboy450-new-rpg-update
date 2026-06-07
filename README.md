@@ -5,6 +5,11 @@ If you are new to this codebase, start with
 module owns, and where to safely add characters, enemies, town buildings,
 quests, items, saves, and future assets.
 
+## Install Links
+
+- Android APK: [download the latest Android build from GitHub Releases](https://github.com/Tboy450/Tboy450-new-rpg-update/releases/latest). If no APK is attached there yet, follow the [Android build/install guide](docs/android_app.md).
+- iPhone/iPad: [iPhone install status and requirements](docs/ios_app.md). There is no public iPhone install link yet because iOS requires a signed App Store, TestFlight, or signed IPA build.
+
 ## Windows desktop icon
 
 The easiest Windows setup is the installer script. It creates a local game folder,

@@ -47,6 +47,12 @@ dragonslairrpg-0.1.0-arm64-v8a-debug.apk
 
 ## Install On Android
 
+Download link once an APK is uploaded to a release:
+
+```text
+https://github.com/Tboy450/Tboy450-new-rpg-update/releases/latest
+```
+
 Connect your phone with USB debugging enabled:
 
 ```bash

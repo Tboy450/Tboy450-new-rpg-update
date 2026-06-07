@@ -117,3 +117,8 @@ responsible for. Read this before editing if you are new to Python or this repo.
 3. Run `bash scripts/build_android.sh` from the repository root.
 4. Find the debug APK in `bin/`.
 5. Install it on Android with `adb install -r bin/*debug.apk` or by opening the APK on the phone.
+
+## iPhone / iPad Install Status
+
+Read `docs/ios_app.md`. iPhone support needs a signed TestFlight, App Store, or
+IPA build before there can be a real install link.
