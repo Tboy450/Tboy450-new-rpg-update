@@ -39,7 +39,8 @@ fullscreen = 1
 # Android build targets. Buildozer will download matching Android SDK/NDK tools
 # when the build machine is prepared.
 android.api = 35
-android.minapi = 23
+# numpy's python-for-android recipe requires API 24 or newer.
+android.minapi = 24
 android.ndk = 25b
 
 # SDL2 bootstrap is the standard route for Pygame on Android.

@@ -39,8 +39,11 @@ fi
 echo "Building Android debug APK..."
 if [[ "${ANDROID_ACCEPT_SDK_LICENSES:-0}" == "1" ]]; then
     # CI cannot answer Android SDK license prompts, so feed Buildozer a stream of
-    # "yes" responses while it installs Android build tools.
+    # "yes" responses while it installs Android build tools. Disable pipefail so
+    # a normal SIGPIPE from `yes` does not override Buildozer's exit code.
+    set +o pipefail
     yes | buildozer android debug
+    set -o pipefail
 else
     buildozer android debug
 fi
