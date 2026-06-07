@@ -49,14 +49,15 @@ dragons-lair-rpg-android-debug.apk
 
 ## Install On Android
 
-Download link once an APK is uploaded to a release:
+Target release URL once an APK is uploaded:
 
 ```text
 https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk
 ```
 
-This link is created by the `Build Android APK` GitHub Action. If it returns
-404, the release asset has not been built/uploaded yet or the workflow failed.
+This URL is expected to return 404 until the `Build Android APK` GitHub Action
+finishes successfully and uploads `dragons-lair-rpg-android-debug.apk` to the
+`android-latest` release.
 
 Connect your phone with USB debugging enabled:
 

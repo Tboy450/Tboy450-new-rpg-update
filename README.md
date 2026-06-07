@@ -5,13 +5,17 @@ If you are new to this codebase, start with
 module owns, and where to safely add characters, enemies, town buildings,
 quests, items, saves, and future assets.
 
-## Install Links
+## Mobile Builds
 
-- Android APK direct download: [dragons-lair-rpg-android-debug.apk](https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk)
-- iPhone/iPad direct download placeholder: [dragons-lair-rpg-ios.ipa](https://github.com/Tboy450/Tboy450-new-rpg-update/releases/latest/download/dragons-lair-rpg-ios.ipa)
+- Android APK status: pending. The APK release URL below will work only after
+  the `Build Android APK` GitHub Action finishes and uploads the release asset.
+- Android APK target URL: [dragons-lair-rpg-android-debug.apk](https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk)
+- iPhone/iPad status: no signed IPA exists yet. A real iPhone install needs a
+  signed build through TestFlight, the App Store, or Apple developer signing.
 
-Android note: the direct link is created by the `Build Android APK` GitHub Action. If it 404s, the APK release has not finished building yet.
-iPhone note: the IPA link will not work until a signed iOS build exists. iPhone installs normally need TestFlight, App Store, or a signed IPA. See [docs/ios_app.md](docs/ios_app.md).
+If the Android target URL returns 404, that means the release asset has not been
+created yet. See [docs/android_app.md](docs/android_app.md) and
+[docs/ios_app.md](docs/ios_app.md).
 
 ## Windows desktop icon
 
