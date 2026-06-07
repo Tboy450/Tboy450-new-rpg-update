@@ -37,7 +37,13 @@ EOF
 fi
 
 echo "Building Android debug APK..."
-buildozer android debug
+if [[ "${ANDROID_ACCEPT_SDK_LICENSES:-0}" == "1" ]]; then
+    # CI cannot answer Android SDK license prompts, so feed Buildozer a stream of
+    # "yes" responses while it installs Android build tools.
+    yes | buildozer android debug
+else
+    buildozer android debug
+fi
 
 ANDROID_APK="bin/dragons-lair-rpg-android-debug.apk"
 FOUND_APK="$(find bin -maxdepth 1 -type f -name '*debug*.apk' ! -name "$(basename "$ANDROID_APK")" | sort | tail -n 1)"
