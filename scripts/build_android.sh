@@ -11,12 +11,21 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_DIR"
 
+# User-level Python tools such as Cython are often installed here by pip.
+export PATH="$HOME/.local/bin:$PATH"
+
 if [[ ! -f "main.py" || ! -f "buildozer.spec" ]]; then
     echo "Run this script from the game repository root."
     exit 1
 fi
 
-if ! command -v buildozer >/dev/null 2>&1; then
+if command -v buildozer >/dev/null 2>&1; then
+    BUILDOZER_CMD=(buildozer)
+elif python3 -m buildozer --version >/dev/null 2>&1; then
+    BUILDOZER_CMD=(python3 -m buildozer)
+elif python -m buildozer --version >/dev/null 2>&1; then
+    BUILDOZER_CMD=(python -m buildozer)
+else
     cat <<'EOF'
 Buildozer is not installed.
 
@@ -42,10 +51,10 @@ if [[ "${ANDROID_ACCEPT_SDK_LICENSES:-0}" == "1" ]]; then
     # "yes" responses while it installs Android build tools. Disable pipefail so
     # a normal SIGPIPE from `yes` does not override Buildozer's exit code.
     set +o pipefail
-    yes | buildozer android debug
+    yes | "${BUILDOZER_CMD[@]}" android debug
     set -o pipefail
 else
-    buildozer android debug
+    "${BUILDOZER_CMD[@]}" android debug
 fi
 
 ANDROID_APK="bin/dragons-lair-rpg-android-debug.apk"
