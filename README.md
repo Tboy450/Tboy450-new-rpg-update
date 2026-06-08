@@ -8,8 +8,9 @@ quests, items, saves, and future assets.
 ## Python App Install
 
 This is the current working install path. It does not use an APK or GitHub
-Release file. It starts Python 3, downloads the latest game files, installs the
-needed packages, creates a launcher, and runs `main.py`.
+Release file. It starts Python 3, uses your local game files or downloads the
+latest copy, installs the needed packages, creates a launcher, and runs
+`main.py`.
 
 Windows PowerShell:
 
@@ -27,7 +28,16 @@ Android Python option:
 
 1. Install a Python 3 app that can run Pygame, such as Pydroid 3.
 2. Open its terminal or editor.
-3. Run this:
+3. If you already have this repo folder on your phone, open
+   `scripts/run_local_android.py` and run it.
+
+Terminal command from the local repo folder:
+
+```bash
+python scripts/run_local_android.py
+```
+
+If you do not already have the repo files locally, run this download installer:
 
 ```python
 import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/scripts/install_python_app.py').read().decode())

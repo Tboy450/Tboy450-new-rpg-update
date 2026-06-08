@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Install and run Dragon's Lair RPG with the Python already on this device.
 
-This is the no-APK path. It downloads the latest repo files from GitHub,
-installs the Python packages, writes a launcher, and starts `main.py`.
+This is the no-APK path. It can either use game files that are already on this
+device or download the latest repo files from GitHub. Then it installs the
+Python packages, writes a launcher, and starts `main.py`.
 """
 
 from __future__ import annotations
@@ -73,6 +74,38 @@ def remove_path(path: Path) -> None:
         path.unlink()
 
 
+def script_repo_root() -> Path:
+    """Return the repo root when this script is being run from inside the repo."""
+    try:
+        return Path(__file__).resolve().parent.parent
+    except NameError:
+        return Path.cwd().resolve()
+
+
+def copy_active_paths(source_dir: Path, install_dir: Path) -> None:
+    """Copy only active game paths from one local folder to another."""
+    source_dir = source_dir.resolve()
+    install_dir = install_dir.resolve()
+
+    if source_dir == install_dir:
+        if not (install_dir / "main.py").exists():
+            raise RuntimeError(f"Local game folder is missing main.py: {install_dir}")
+        return
+
+    install_dir.mkdir(parents=True, exist_ok=True)
+    for relative_name in ACTIVE_PATHS:
+        source = source_dir / relative_name
+        target = install_dir / relative_name
+        if not source.exists():
+            continue
+        remove_path(target)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if source.is_dir():
+            shutil.copytree(source, target)
+        else:
+            shutil.copy2(source, target)
+
+
 def download_repo(branch: str, install_dir: Path) -> None:
     url = REPO_ZIP_URL.format(branch=branch)
     install_dir.mkdir(parents=True, exist_ok=True)
@@ -91,17 +124,7 @@ def download_repo(branch: str, install_dir: Path) -> None:
             raise RuntimeError("Downloaded archive did not contain a repository folder.")
         repo_root = extracted_roots[0]
 
-        for relative_name in ACTIVE_PATHS:
-            source = repo_root / relative_name
-            target = install_dir / relative_name
-            if not source.exists():
-                continue
-            remove_path(target)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            if source.is_dir():
-                shutil.copytree(source, target)
-            else:
-                shutil.copy2(source, target)
+        copy_active_paths(repo_root, install_dir)
 
 
 def venv_python(install_dir: Path) -> Path:
@@ -163,6 +186,16 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Install and run Dragon's Lair RPG.")
     parser.add_argument("--branch", default=DEFAULT_BRANCH)
     parser.add_argument("--install-dir", default="")
+    parser.add_argument(
+        "--local",
+        action="store_true",
+        help="Use the local repo files already on this device instead of downloading GitHub.",
+    )
+    parser.add_argument(
+        "--source-dir",
+        default="",
+        help="Local source folder to copy from when --local is used.",
+    )
     parser.add_argument("--no-run", action="store_true")
     parser.add_argument("--skip-packages", action="store_true")
     return parser.parse_args()
@@ -170,14 +203,23 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    install_dir = Path(args.install_dir).expanduser() if args.install_dir else default_install_dir()
-    install_dir = install_dir.resolve()
+    source_dir = Path(args.source_dir).expanduser().resolve() if args.source_dir else script_repo_root()
+    if args.local and not args.install_dir:
+        install_dir = source_dir
+    else:
+        install_dir = Path(args.install_dir).expanduser() if args.install_dir else default_install_dir()
+        install_dir = install_dir.resolve()
 
     print(f"Installing Dragon's Lair RPG to {install_dir}")
     print(f"Using Python: {sys.executable}")
     print(f"Platform: {platform.platform()}")
 
-    download_repo(args.branch, install_dir)
+    if args.local:
+        print(f"Using local game files from {source_dir}")
+        copy_active_paths(source_dir, install_dir)
+    else:
+        download_repo(args.branch, install_dir)
+
     python_exe = ensure_python_environment(install_dir, args.skip_packages)
     launcher = write_launcher(install_dir, python_exe)
 
