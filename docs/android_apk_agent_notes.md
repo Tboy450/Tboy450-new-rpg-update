@@ -43,9 +43,36 @@ the same mistake:
 **Loop pattern to avoid:** tweak pygame version -> CI fails -> try another pygame
 version -> CI fails again -> repeat. Stop changing pygame versions randomly.
 
-## Working Configuration (Keep These)
+## Current Status (Read This Before Changing Anything)
 
-These files must stay aligned:
+As of run **#11**, the APK is **still not green**.
+
+| Run | Change | Failed at | Time | Meaning |
+|-----|--------|-----------|------|---------|
+| #1-#9 | pygame 2.1.0 / 2.6.1 recipe tweaks | Build APK | ~8-9 min | Native pygame compile still broken |
+| #10 | Added `libtinfo5` to apt | Install deps | ~20 sec | Bad CI package on `ubuntu-latest` |
+| #11 | pygame-ce 2.5.2 recipe | Build APK | ~8.7 min | **pygame-ce swap did not fix the core failure** |
+
+**Important:** swapping pygame -> pygame-ce with the same p4a recipe shape is not proven to
+work for this repo yet. Do not treat that change as "the fix" just because it sounds newer.
+
+## Stop The Debug Loop
+
+Do **not** keep doing this:
+
+1. Guess a new pygame/pygame-ce version
+2. Push
+3. Wait 9 minutes
+4. Fail
+5. Repeat
+
+That is exactly what Codex already did for 11 runs.
+
+Before the next packaging commit, someone with repo access must copy the **last 50-100
+lines** of the failed **Build Android debug APK** step from GitHub Actions. Without that
+exact error text, another recipe tweak is just guessing.
+
+## Working Configuration (Current Best Attempt, Not Proven Green)
 
 ### `buildozer.spec`
 
@@ -82,12 +109,29 @@ android.archs = arm64-v8a
 
 1. Open the latest failed run of `Build Android APK` on GitHub Actions.
 2. Read only the **Build Android debug APK** step log.
-3. If the error is SDK/NDK download or license related: retry the workflow; do
-   not rewrite the pygame recipe.
-4. If the error mentions Cython or pygame compile headers: verify the three
-   config blocks above were not reverted.
-5. If the error is unrelated to pygame (Java, gradle, disk space): fix that
-   specific error only. Do not change pygame packaging at the same time.
+3. Classify the failure from the **exact last error line**:
+   - `longintrepr.h` / Python header errors -> old pygame recipe problem
+   - `clang failed with exit code 1` during `pygame` / `pygame-ce` build -> recipe/version/NDK mismatch
+   - `aapt` / `icon` / `drawable` / gradle resource errors -> fix `assets/processed/ui/dragon_app_icon.png` (currently 1254x1254, ~2.6 MB)
+   - SDK/NDK/license errors -> retry workflow or fix apt/SDK config only
+4. Apply **one** targeted fix for that class of error. Do not also change pygame version in the same commit.
+
+## Evidence-Based Next Steps (In Order)
+
+Only do these after reading the log tail:
+
+1. **If compile fails in pygame-ce build:** try the known-working reference setup from
+   [Potato-Bird](https://github.com/cbdj/Potato-Bird):
+   - `pygame-ce` version **2.4.1**
+   - URL format `https://github.com/pygame-community/pygame-ce/archive/{version}.tar.gz`
+   - `p4a.branch = master` (not `develop`)
+   - Match their `p4a-recipes/pygame-ce/__init__.py` closely
+2. **If packaging fails after compile:** resize/compress `dragon_app_icon.png` to a normal
+   launcher size (for example 512x512, under ~500 KB) before touching pygame again.
+3. **If the project only needs playability today:** use Pydroid (`run_android.py` once,
+   then `play_android.py`). That path is already working on desktop with `pygame-ce`.
+4. **If repeated native compile failures continue:** consider Docker/WSL build using the
+   Emerson MX gist workflow instead of more GitHub recipe roulette.
 
 ## Safe Change Checklist
 
