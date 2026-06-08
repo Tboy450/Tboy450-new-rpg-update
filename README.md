@@ -24,26 +24,50 @@ Mac or Linux terminal:
 python3 -c "import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/scripts/install_python_app.py').read().decode())"
 ```
 
-## Android Install (APK)
+## How To Build The APK (For Editors)
 
-The primary Android install path is the GitHub-built debug APK.
+This project uses **Buildozer** through **GitHub Actions** to compile the
+Pygame RPG into an Android APK in the cloud. You do not need a local Linux
+setup to produce a test APK.
 
-1. Wait for the `Build Android APK` GitHub Action on `main` to finish.
-2. Download and install:
-   `https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk`
-3. Open the APK on your phone. Android may ask you to allow installs from
-   unknown sources.
+The workflow file already exists at `.github/workflows/android-apk.yml`. The
+workflow name in GitHub Actions is **Build Android APK** (not "Build APK").
 
-If that URL returns 404, the latest APK build has not finished yet. Check
-Actions on GitHub for the `Build Android APK` workflow.
+### Trigger an automatic build
 
-Build details and troubleshooting: [docs/android_app.md](docs/android_app.md).
-Agent/Codex packaging notes (read before changing Android build files):
-[docs/android_apk_agent_notes.md](docs/android_apk_agent_notes.md).
+1. Edit game code (`main.py`, `game_data/`, `assets/`, `systems/`, etc.).
+2. Do **not** change `buildozer.spec` to `requirements = python3,pygame`. The
+   working config is `requirements = python3,pygame-ce` with the local recipe in
+   `p4a-recipes/pygame-ce/`. See
+   [docs/android_apk_agent_notes.md](docs/android_apk_agent_notes.md) before
+   touching Android packaging.
+3. Commit and push to `main`.
+4. Open the repo **Actions** tab and watch **Build Android APK**.
+5. When the run succeeds, download the APK from the `android-latest` release:
 
-**Fallback only (Pydroid):** If you cannot install an APK, you can use Pydroid 3.
-Open `run_android.py` once to install packages, then `play_android.py` to play.
-Do not type `scripts/run_local_android.py` into the Python editor.
+```text
+https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk
+```
+
+You can also start a build manually: Actions -> **Build Android APK** ->
+**Run workflow**.
+
+Pushes only auto-trigger the workflow when Android-related paths change (for
+example `main.py`, `buildozer.spec`, `p4a-recipes/`, `assets/`, `game_data/`).
+
+### Install the APK on a phone
+
+1. Download `dragons-lair-rpg-android-debug.apk` from the release link above.
+2. Copy it to the phone and open it from the file manager.
+3. Allow installs from unknown sources if Android asks.
+
+If the release link returns 404, the latest build has not finished yet.
+
+**Fallback only (Pydroid):** If APK install is not possible, use Pydroid 3. Open
+`run_android.py` once to install packages, then `play_android.py` to play. Do
+not type `scripts/run_local_android.py` into the Python editor.
+
+More detail: [docs/android_app.md](docs/android_app.md).
 
 ## iPhone Status
 

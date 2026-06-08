@@ -21,6 +21,12 @@ https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-late
 Pydroid (`run_android.py` / `play_android.py`) is only a fallback note. Do not
 treat it as the main Android deliverable.
 
+Human editors should read the **How To Build The APK (For Editors)** section in
+`README.md`. Do not paste generic instructions that say
+`requirements = python3,pygame` or tell people to create a new
+`.github/workflows/build.yml` file. This repo already uses
+`.github/workflows/android-apk.yml` named **Build Android APK**.
+
 ## What Was Breaking CI (Do Not Reintroduce)
 
 The repo failed **9 consecutive** `Build Android APK` runs with variations of
