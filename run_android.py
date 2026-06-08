@@ -11,6 +11,12 @@ import sys
 from pathlib import Path
 
 
+KNOWN_ANDROID_FOLDERS = (
+    Path("/sdcard/Download/DragonLairRPG"),
+    Path("/storage/emulated/0/Download/DragonLairRPG"),
+)
+
+
 def find_repo_root() -> Path:
     """Find the local game folder that contains main.py and scripts/."""
     starts = []
@@ -19,8 +25,11 @@ def find_repo_root() -> Path:
     if sys.argv and sys.argv[0]:
         starts.append(Path(sys.argv[0]).resolve().parent)
     starts.append(Path.cwd().resolve())
+    starts.extend(KNOWN_ANDROID_FOLDERS)
 
     for start in starts:
+        if not start.exists():
+            continue
         for folder in (start, *start.parents):
             if (folder / "main.py").exists() and (folder / "scripts" / "install_python_app.py").exists():
                 return folder
