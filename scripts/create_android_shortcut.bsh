@@ -1,0 +1,43 @@
+import android.content.Intent;
+import android.content.pm.ShortcutInfo;
+import android.content.pm.ShortcutManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.Icon;
+import android.net.Uri;
+
+String shortcutId = "dragons_lair_rpg_pydroid";
+String title = "Dragon's Lair RPG";
+String iconPath = "/sdcard/Download/DragonLairRPG/assets/processed/ui/dragon_app_icon.png";
+String scriptUri = "content://com.android.externalstorage.documents/document/primary%3ADownload%2FDragonLairRPG%2Fplay_android.py";
+
+ShortcutManager manager = (ShortcutManager) context.getSystemService("shortcut");
+if (manager == null) {
+    print("ShortcutManager unavailable on this Android build.");
+    return;
+}
+if (!manager.isRequestPinShortcutSupported()) {
+    print("Pinned shortcuts are not supported by this launcher.");
+    return;
+}
+
+Intent launchIntent = new Intent(Intent.ACTION_VIEW);
+launchIntent.setDataAndType(Uri.parse(scriptUri), "text/x-python");
+launchIntent.setPackage("ru.iiec.pydroid3");
+launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+launchIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+Bitmap bitmap = BitmapFactory.decodeFile(iconPath);
+Icon icon = bitmap != null
+    ? Icon.createWithBitmap(bitmap)
+    : Icon.createWithResource(context, android.R.drawable.ic_dialog_info);
+
+ShortcutInfo shortcut = new ShortcutInfo.Builder(context, shortcutId)
+    .setShortLabel(title)
+    .setLongLabel(title)
+    .setIcon(icon)
+    .setIntent(launchIntent)
+    .build();
+
+boolean requested = manager.requestPinShortcut(shortcut, null);
+print(requested ? "Shortcut pin request sent." : "Shortcut pin request was rejected.");

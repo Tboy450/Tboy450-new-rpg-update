@@ -27,6 +27,7 @@ DEFAULT_FOLDER_NAME = "Tboy450-new-rpg-update-python"
 ACTIVE_PATHS = (
     "README.md",
     "run_android.py",
+    "play_android.py",
     "main.py",
     "requirements.txt",
     "game_data",

@@ -28,8 +28,10 @@ Android Python option:
 
 1. Install a Python 3 app that can run Pygame, such as Pydroid 3.
 2. If you already have this repo folder on your phone, open `run_android.py`
-   from that folder and press Run.
-3. Do not type `scripts/run_local_android.py` into the Python editor. That is a
+   from that folder and press Run once to install/update packages.
+3. For normal playing after setup, open `play_android.py` from that folder or
+   use the `Dragon's Lair RPG` home-screen shortcut.
+4. Do not type `scripts/run_local_android.py` into the Python editor. That is a
    terminal command, not Python code.
 
 Terminal command from the local repo folder:
