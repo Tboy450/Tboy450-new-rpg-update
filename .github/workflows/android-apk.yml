@@ -12,6 +12,7 @@ on:
       - "requirements.txt"
       - "assets/**"
       - "game_data/**"
+      - "p4a-recipes/**"
       - "systems/**"
       - "scripts/build_android.sh"
 
