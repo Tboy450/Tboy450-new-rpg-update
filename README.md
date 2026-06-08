@@ -27,14 +27,15 @@ python3 -c "import urllib.request; exec(urllib.request.urlopen('https://raw.gith
 Android Python option:
 
 1. Install a Python 3 app that can run Pygame, such as Pydroid 3.
-2. Open its terminal or editor.
-3. If you already have this repo folder on your phone, open
-   `scripts/run_local_android.py` and run it.
+2. If you already have this repo folder on your phone, open `run_android.py`
+   from that folder and press Run.
+3. Do not type `scripts/run_local_android.py` into the Python editor. That is a
+   terminal command, not Python code.
 
 Terminal command from the local repo folder:
 
 ```bash
-python scripts/run_local_android.py
+python run_android.py
 ```
 
 If you do not already have the repo files locally, run this download installer:
