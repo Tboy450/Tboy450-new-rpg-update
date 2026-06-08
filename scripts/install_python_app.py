@@ -9,6 +9,7 @@ Python packages, writes a launcher, and starts `main.py`.
 from __future__ import annotations
 
 import argparse
+import __main__
 import os
 import platform
 import shutil
@@ -187,10 +188,16 @@ def launch_game(install_dir: Path, python_exe: Path) -> None:
         # same process instead.
         game_file = install_dir / "main.py"
         os.chdir(install_dir)
-        sys.path.insert(0, str(install_dir))
+        repo_path = str(install_dir)
+        if repo_path not in sys.path:
+            sys.path.insert(0, repo_path)
         sys.argv = [str(game_file)]
         code = compile(game_file.read_text(encoding="utf-8"), str(game_file), "exec")
-        exec(code, {"__name__": "__main__", "__file__": str(game_file)})
+        main_globals = __main__.__dict__
+        main_globals["__file__"] = str(game_file)
+        main_globals["__package__"] = None
+        main_globals["__cached__"] = None
+        exec(code, main_globals)
         return
 
     run_checked([str(python_exe), "main.py"], cwd=install_dir)
