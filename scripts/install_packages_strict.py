@@ -7,7 +7,6 @@ from importlib import util
 GAME_DEV_PACKAGES = {
     # Core packages
     "pygame": "",
-    "numpy": "--only-binary :all:",
     "pymunk": "",
     "pyopengl": "--pre",  # Pre-release for Python 3.13 support
     "opensimplex": "",    # Alternative to noise

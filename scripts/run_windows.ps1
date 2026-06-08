@@ -104,7 +104,7 @@ function Get-GamePython {
 function Ensure-Requirements {
     param([string]$PythonExe)
 
-    & $PythonExe -c "import pygame, numpy" *> $null
+    & $PythonExe -c "import pygame" *> $null
     if ($LASTEXITCODE -eq 0) {
         return
     }

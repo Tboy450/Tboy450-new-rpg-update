@@ -6,7 +6,6 @@ from importlib import util
 # Core game development packages to install
 GAME_DEV_PACKAGES = [
     "pygame",          # Main game engine
-    "numpy",           # Fast math/arrays
     "pymunk",          # Physics engine
     "pyopengl",        # 3D graphics
     "pyaudio",         # Advanced audio
@@ -30,7 +29,6 @@ GAME_DEV_PACKAGES = [
 # Map pip package names to their import names for verification
 PACKAGE_IMPORT_NAMES = {
     "pygame": "pygame",
-    "numpy": "numpy",
     "pymunk": "pymunk",
     "pyopengl": "OpenGL",
     "pyaudio": "pyaudio",

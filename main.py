@@ -51,7 +51,6 @@ import sys
 import random
 import math
 from pygame import gfxdraw
-import numpy as np
 import tempfile
 import wave
 import io
@@ -145,6 +144,38 @@ def initialize_audio():
 AUDIO_AVAILABLE = initialize_audio()
 if not AUDIO_AVAILABLE:
     print("[WARN] Audio disabled: no working SDL audio driver found.")
+
+SAMPLE_RATE = 44100
+MAX_AUDIO_SAMPLE = 32767
+
+
+def clamp(value, minimum, maximum):
+    """Return value limited to the inclusive range minimum..maximum."""
+    return max(minimum, min(maximum, value))
+
+
+def append_stereo_sample(buffer, value):
+    """Append one signed 16-bit stereo sample to a PCM byte buffer."""
+    sample = int(clamp(value, -1.0, 1.0) * MAX_AUDIO_SAMPLE)
+    sample_bytes = sample.to_bytes(2, "little", signed=True)
+    buffer.extend(sample_bytes)
+    buffer.extend(sample_bytes)
+
+
+def pcm_to_wav_bytes(pcm_bytes, sample_rate=SAMPLE_RATE):
+    """Wrap raw stereo 16-bit PCM bytes in a WAV container for pygame.music."""
+    memfile = io.BytesIO()
+    with wave.open(memfile, "wb") as wf:
+        wf.setnchannels(2)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(pcm_bytes)
+    return memfile.getvalue()
+
+
+def sound_from_pcm(pcm_bytes):
+    """Build a pygame Sound directly from stereo 16-bit PCM bytes."""
+    return pygame.mixer.Sound(buffer=pcm_bytes)
 
 # ============================================================================
 # GAME CONSTANTS AND CONFIGURATION
@@ -4062,22 +4093,24 @@ class Game:
         # AUDIO SYSTEM - Procedurally Generated Sound Effects
         # ========================================
         # Generate retro-style sound effects using mathematical waveforms
-        def generate_tone(frequency=440, duration_ms=100, volume=0.5, sample_rate=44100, waveform='sine'):
-            t = np.linspace(0, duration_ms / 1000, int(sample_rate * duration_ms / 1000), False)
-            if waveform == 'sine':
-                wave = np.sin(frequency * 2 * np.pi * t)
-            elif waveform == 'square':
-                wave = np.sign(np.sin(frequency * 2 * np.pi * t))
-            elif waveform == 'sawtooth':
-                wave = 2 * (t * frequency - np.floor(t * frequency + 0.5))
-            elif waveform == 'noise':
-                wave = np.random.uniform(-1, 1, t.shape)
-            else:
-                wave = np.sin(frequency * 2 * np.pi * t)
-            audio = (wave * volume * 32767).astype(np.int16)
-            # Make it stereo by duplicating the mono channel
-            audio_stereo = np.column_stack((audio, audio))
-            return pygame.sndarray.make_sound(audio_stereo)
+        def generate_tone(frequency=440, duration_ms=100, volume=0.5, sample_rate=SAMPLE_RATE, waveform='sine'):
+            pcm = bytearray()
+            sample_count = int(sample_rate * duration_ms / 1000)
+            for sample_index in range(sample_count):
+                t = sample_index / sample_rate
+                phase = frequency * 2 * math.pi * t
+                if waveform == 'sine':
+                    wave_value = math.sin(phase)
+                elif waveform == 'square':
+                    wave_value = 1.0 if math.sin(phase) >= 0 else -1.0
+                elif waveform == 'sawtooth':
+                    wave_value = 2 * (t * frequency - math.floor(t * frequency + 0.5))
+                elif waveform == 'noise':
+                    wave_value = random.uniform(-1, 1)
+                else:
+                    wave_value = math.sin(phase)
+                append_stereo_sample(pcm, wave_value * volume)
+            return sound_from_pcm(bytes(pcm))
         if AUDIO_AVAILABLE and pygame.mixer.get_init():
             try:
                 self.SFX_CLICK = generate_tone(frequency=800, duration_ms=60, volume=0.5, waveform='square')
@@ -6133,14 +6166,13 @@ class MusicSystem:
             return
 
         try:
-            # Store raw bytes instead of BytesIO objects
-            self.start_menu_music_bytes = self.sound_to_wav_bytes(self.generate_start_menu_music())
-            self.overworld_music_bytes = self.sound_to_wav_bytes(self.generate_overworld_music())
-            self.town_music_bytes = self.sound_to_wav_bytes(self.generate_town_music())
-            self.battle_music_bytes = self.sound_to_wav_bytes(self.generate_battle_music())
-            self.boss_music_bytes = self.sound_to_wav_bytes(self.generate_boss_music())
-            self.victory_music_bytes = self.sound_to_wav_bytes(self.generate_victory_music())
-            self.game_over_music_bytes = self.sound_to_wav_bytes(self.generate_game_over_music())
+            self.start_menu_music_bytes = self.generate_start_menu_music()
+            self.overworld_music_bytes = self.generate_overworld_music()
+            self.town_music_bytes = self.generate_town_music()
+            self.battle_music_bytes = self.generate_battle_music()
+            self.boss_music_bytes = self.generate_boss_music()
+            self.victory_music_bytes = self.generate_victory_music()
+            self.game_over_music_bytes = self.generate_game_over_music()
             print('Music bytes created successfully')
         except Exception as e:
             print(f"Failed to create music bytes: {e}")
@@ -6168,20 +6200,6 @@ class MusicSystem:
         
         return self.generate_chiptune_song(melody, bass, percussion=percussion, bpm=80, volume=0.25)
     
-    def sound_to_wav_bytes(self, sound):
-        try:
-            arr = pygame.sndarray.array(sound)
-            memfile = io.BytesIO()
-            with wave.open(memfile, 'wb') as wf:
-                wf.setnchannels(2)
-                wf.setsampwidth(2)  # 16 bits
-                wf.setframerate(44100)
-                wf.writeframes(arr.astype(np.int16).tobytes())
-            return memfile.getvalue()  # Return the bytes content
-        except Exception as e:
-            print(f"Error converting sound to WAV: {e}")
-            return None
-
     def play_music_bytes(self, music_bytes, loops=-1):
         pygame.mixer.music.load(io.BytesIO(music_bytes), "wav")
         pygame.mixer.music.play(loops)
@@ -6372,7 +6390,7 @@ class MusicSystem:
             percussion = [list(note) for note in percussion]
         if lead is not None:
             lead = [list(note) for note in lead]
-        song = np.zeros((0, 2), dtype=np.int16)
+        pcm = bytearray()
         melody_idx = bass_idx = perc_idx = lead_idx = 0
         melody_len = len(melody)
         bass_len = len(bass)
@@ -6399,19 +6417,14 @@ class MusicSystem:
                 l_freq, l_beats = 0, 0.25
             step_beats = min(m_beats, b_beats, p_beats, l_beats)
             step_duration = 60 / bpm * step_beats
-            t = np.linspace(0, step_duration, int(44100 * step_duration), False)
-            # Generate waves
-            m_wave = np.sin(m_freq * 2 * np.pi * t) if m_freq > 0 else np.zeros_like(t)
-            b_wave = 0.25 * np.sign(np.sin(b_freq * 2 * np.pi * t)) if b_freq > 0 else np.zeros_like(t)
-            p_wave = 0.18 * np.sign(np.sin(p_freq * 2 * np.pi * t)) if percussion is not None and p_freq > 0 else np.zeros_like(t)
-            l_wave = 0.18 * np.sin(l_freq * 2 * np.pi * t) if lead is not None and l_freq > 0 else np.zeros_like(t)
-            # Combine waves
-            wave = m_wave + b_wave + p_wave + l_wave
-            wave = np.clip(wave, -1, 1)
-            # Convert to audio
-            audio = (wave * volume * 32767).astype(np.int16)
-            audio_stereo = np.column_stack((audio, audio))
-            song = np.concatenate((song, audio_stereo))
+            sample_count = int(SAMPLE_RATE * step_duration)
+            for sample_index in range(sample_count):
+                t = sample_index / SAMPLE_RATE
+                m_wave = math.sin(m_freq * 2 * math.pi * t) if m_freq > 0 else 0.0
+                b_wave = 0.25 * (1.0 if math.sin(b_freq * 2 * math.pi * t) >= 0 else -1.0) if b_freq > 0 else 0.0
+                p_wave = 0.18 * (1.0 if math.sin(p_freq * 2 * math.pi * t) >= 0 else -1.0) if percussion is not None and p_freq > 0 else 0.0
+                l_wave = 0.18 * math.sin(l_freq * 2 * math.pi * t) if lead is not None and l_freq > 0 else 0.0
+                append_stereo_sample(pcm, (m_wave + b_wave + p_wave + l_wave) * volume)
             # Update note durations
             if melody_idx < melody_len:
                 melody[melody_idx][1] -= step_beats
@@ -6429,7 +6442,7 @@ class MusicSystem:
                 lead[lead_idx][1] -= step_beats
                 if lead[lead_idx][1] <= 0:
                     lead_idx += 1
-        return pygame.sndarray.make_sound(song)
+        return pcm_to_wav_bytes(bytes(pcm))
 
 # --- DragonBoss: Progressive boss for each level ---
 # ============================================================================

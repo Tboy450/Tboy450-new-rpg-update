@@ -82,7 +82,7 @@ Common fixes:
 - Run the build on Linux or WSL2 instead of a phone browser.
 - Make sure Java 17 is installed.
 - Delete `.buildozer/` and retry if an SDK/NDK download was interrupted.
-- Keep `requirements = python3,pygame,numpy` in `buildozer.spec` unless you know
+- Keep `requirements = python3,pygame` in `buildozer.spec` unless you know
   the python-for-android recipe supports the package you are adding.
 
 ## Future Polish

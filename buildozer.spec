@@ -25,9 +25,8 @@ icon.filename = assets/processed/ui/dragon_app_icon.png
 source.exclude_dirs = archive,.git,.github,.pytest_cache,__pycache__,.buildozer,bin
 
 # Python dependencies for python-for-android.
-# `python3` is the interpreter, `pygame` runs the game, and `numpy` is used for
-# generated audio waveforms.
-requirements = python3,pygame,numpy
+# `python3` is the interpreter, and `pygame` runs the game.
+requirements = python3,pygame
 
 # App version fields.
 version = 0.1.0
@@ -39,7 +38,6 @@ fullscreen = 1
 # Android build targets. Buildozer will download matching Android SDK/NDK tools
 # when the build machine is prepared.
 android.api = 35
-# numpy's python-for-android recipe requires API 24 or newer.
 android.minapi = 24
 android.ndk = 25b
 
