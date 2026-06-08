@@ -31,7 +31,7 @@ the same mistake:
 | Use upstream p4a `pygame` recipe (pygame 2.1.0) | Breaks against modern Python headers in CI |
 | Local `p4a-recipes/pygame` with pygame **2.6.x** + `Cython>=3.2` | CI installs `Cython<0.30`; python-for-android is not Cython 3 ready |
 | Bump `android.api` to 35 without testing | Adds SDK friction; **34** is the current stable target |
-| Remove `libtinfo5` from CI apt packages | Common native build failure on Ubuntu runners |
+| Add `libtinfo5` to CI apt packages | Package is unavailable on current `ubuntu-latest`; apt step fails immediately |
 | Change `requirements` back to `python3,pygame` | Drops the working local recipe mapping |
 
 **Loop pattern to avoid:** tweak pygame version -> CI fails -> try another pygame
@@ -64,7 +64,7 @@ android.archs = arm64-v8a
 
 ### `.github/workflows/android-apk.yml`
 
-- apt: include `libtinfo5`
+- apt: do **not** add `libtinfo5` on `ubuntu-latest` (package removed); keep `libncurses5-dev` / `libncursesw5-dev`
 - pip: `"Cython>=0.29.36,<0.30"` (not `Cython==3.x`)
 - env: `ANDROID_ACCEPT_SDK_LICENSES=1`
 
