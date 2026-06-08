@@ -180,6 +180,18 @@ def write_launcher(install_dir: Path, python_exe: Path) -> Path:
 
 def launch_game(install_dir: Path, python_exe: Path) -> None:
     print("\nStarting Dragon's Lair RPG...")
+    if is_android_python():
+        # Pydroid initializes SDL/Pygame for the Python process it launches.
+        # Starting a child `python main.py` process loses that display context,
+        # causing pygame.display.set_mode() to fail. Execute main.py in this
+        # same process instead.
+        game_file = install_dir / "main.py"
+        os.chdir(install_dir)
+        sys.argv = [str(game_file)]
+        code = compile(game_file.read_text(encoding="utf-8"), str(game_file), "exec")
+        exec(code, {"__name__": "__main__", "__file__": str(game_file)})
+        return
+
     run_checked([str(python_exe), "main.py"], cwd=install_dir)
 
 
