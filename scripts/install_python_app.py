@@ -187,6 +187,7 @@ def launch_game(install_dir: Path, python_exe: Path) -> None:
         # same process instead.
         game_file = install_dir / "main.py"
         os.chdir(install_dir)
+        sys.path.insert(0, str(install_dir))
         sys.argv = [str(game_file)]
         code = compile(game_file.read_text(encoding="utf-8"), str(game_file), "exec")
         exec(code, {"__name__": "__main__", "__file__": str(game_file)})
