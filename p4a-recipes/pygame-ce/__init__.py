@@ -4,23 +4,29 @@ from pythonforandroid.recipe import CompiledComponentsPythonRecipe
 from pythonforandroid.toolchain import current_directory
 
 
-class Pygame2Recipe(CompiledComponentsPythonRecipe):
-    """Build modern pygame for the Android APK.
+class PygameCERecipe(CompiledComponentsPythonRecipe):
+    """Build pygame-ce for the Android APK.
 
-    The upstream python-for-android pygame recipe is still pinned to pygame
-    2.1.0, which fails against newer Python headers during GitHub Actions APK
-    builds. This local recipe keeps the same Android SDL2 setup but uses the
-    pygame version already used by the Python/Pydroid install path.
+    pygame-ce is a maintained fork that still builds with the Cython 0.29.x
+    toolchain python-for-android expects. The package installs as `pygame`, so
+    the existing game code does not need import changes.
     """
 
-    version = "2.6.1"
-    url = "https://github.com/pygame/pygame/archive/{version}.tar.gz"
+    version = "2.5.2"
+    url = "https://github.com/pygame-community/pygame-ce/archive/refs/tags/{version}.tar.gz"
 
     site_packages_name = "pygame"
-    name = "pygame"
+    name = "pygame-ce"
 
-    depends = ["sdl2", "sdl2_image", "sdl2_mixer", "sdl2_ttf", "setuptools", "jpeg", "png"]
-    hostpython_prerequisites = ["Cython>=3.2,<3.3"]
+    depends = [
+        "sdl2",
+        "sdl2_image",
+        "sdl2_mixer",
+        "sdl2_ttf",
+        "setuptools",
+        "jpeg",
+        "png",
+    ]
     call_hostpython_via_targetpython = False
     install_in_hostpython = False
 
@@ -28,6 +34,8 @@ class Pygame2Recipe(CompiledComponentsPythonRecipe):
         super().prebuild_arch(arch)
         with current_directory(self.get_build_dir(arch.arch)):
             setup_template = open(join("buildconfig", "Setup.Android.SDL2.in")).read()
+            env = self.get_recipe_env(arch)
+            env["ANDROID_ROOT"] = join(self.ctx.ndk.sysroot, "usr")
 
             png = self.get_recipe("png", self.ctx)
             png_lib_dir = join(png.get_build_dir(arch.arch), ".libs")
@@ -48,13 +56,19 @@ class Pygame2Recipe(CompiledComponentsPythonRecipe):
 
             setup_file = setup_template.format(
                 sdl_includes=(
-                    " -I" + join(self.ctx.bootstrap.build_dir, "jni", "SDL", "include")
-                    + " -L" + join(self.ctx.bootstrap.build_dir, "libs", str(arch))
-                    + " -L" + png_lib_dir
-                    + " -L" + jpeg_lib_dir
-                    + " -L" + arch.ndk_lib_dir_versioned
+                    " -I"
+                    + join(self.ctx.bootstrap.build_dir, "jni", "SDL", "include")
+                    + " -L"
+                    + join(self.ctx.bootstrap.build_dir, "libs", str(arch))
+                    + " -L"
+                    + png_lib_dir
+                    + " -L"
+                    + jpeg_lib_dir
+                    + " -L"
+                    + arch.ndk_lib_dir_versioned
                 ),
-                sdl_ttf_includes="-I" + join(self.ctx.bootstrap.build_dir, "jni", "SDL2_ttf"),
+                sdl_ttf_includes="-I"
+                + join(self.ctx.bootstrap.build_dir, "jni", "SDL2_ttf"),
                 sdl_image_includes=sdl2_image_includes,
                 sdl_mixer_includes=sdl_mixer_includes,
                 jpeg_includes="-I" + jpeg_inc_dir,
@@ -71,4 +85,4 @@ class Pygame2Recipe(CompiledComponentsPythonRecipe):
         return env
 
 
-recipe = Pygame2Recipe()
+recipe = PygameCERecipe()

@@ -25,8 +25,8 @@ icon.filename = assets/processed/ui/dragon_app_icon.png
 source.exclude_dirs = archive,.git,.github,.pytest_cache,__pycache__,.buildozer,bin
 
 # Python dependencies for python-for-android.
-# `python3` is the interpreter, and `pygame` runs the game.
-requirements = python3,pygame
+# `python3` is the interpreter. `pygame-ce` installs as `pygame` in the APK.
+requirements = python3,pygame-ce
 
 # App version fields.
 version = 0.1.0
@@ -37,16 +37,19 @@ fullscreen = 1
 
 # Android build targets. Buildozer will download matching Android SDK/NDK tools
 # when the build machine is prepared.
-android.api = 35
+android.api = 34
 android.minapi = 24
 android.ndk = 25b
+android.accept_sdk_license = True
 
 # SDL2 bootstrap is the standard route for Pygame on Android.
 p4a.bootstrap = sdl2
 
-# Use the repo-local pygame recipe. Upstream p4a is still pinned to pygame
-# 2.1.0, which fails against newer Python headers during CI builds.
+# Use the repo-local pygame-ce recipe. Upstream p4a still pins pygame 2.1.0,
+# which fails against modern Python headers during CI builds.
+# Agent note: read docs/android_apk_agent_notes.md before changing Android deps.
 p4a.local_recipes = ./p4a-recipes
+p4a.branch = develop
 
 # Target modern 64-bit Android phones first. The user's device is arm64, and a
 # single architecture keeps debug builds much faster while this project is early.

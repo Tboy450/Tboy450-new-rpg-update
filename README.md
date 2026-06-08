@@ -24,42 +24,33 @@ Mac or Linux terminal:
 python3 -c "import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/scripts/install_python_app.py').read().decode())"
 ```
 
-Android Python option:
+## Android Install (APK)
 
-1. Install a Python 3 app that can run Pygame, such as Pydroid 3.
-2. If you already have this repo folder on your phone, open `run_android.py`
-   from that folder and press Run once to install/update packages.
-3. For normal playing after setup, open `play_android.py` from that folder or
-   use the `Dragon's Lair RPG` home-screen shortcut.
-4. Do not type `scripts/run_local_android.py` into the Python editor. That is a
-   terminal command, not Python code.
+The primary Android install path is the GitHub-built debug APK.
 
-Terminal command from the local repo folder:
+1. Wait for the `Build Android APK` GitHub Action on `main` to finish.
+2. Download and install:
+   `https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk`
+3. Open the APK on your phone. Android may ask you to allow installs from
+   unknown sources.
 
-```bash
-python run_android.py
-```
+If that URL returns 404, the latest APK build has not finished yet. Check
+Actions on GitHub for the `Build Android APK` workflow.
 
-If you do not already have the repo files locally, run this download installer:
+Build details and troubleshooting: [docs/android_app.md](docs/android_app.md).
+Agent/Codex packaging notes (read before changing Android build files):
+[docs/android_apk_agent_notes.md](docs/android_apk_agent_notes.md).
 
-```python
-import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/scripts/install_python_app.py').read().decode())
-```
+**Fallback only (Pydroid):** If you cannot install an APK, you can use Pydroid 3.
+Open `run_android.py` once to install packages, then `play_android.py` to play.
+Do not type `scripts/run_local_android.py` into the Python editor.
 
-This is closer to the `zoom-loop` style because the README gives one direct
-launch path instead of pointing at a missing release download. Chrome/Safari
-home-screen install still needs a later browser/PWA port because this repo is a
-Python/Pygame game, not a web app yet.
+## iPhone Status
 
-## APK / iPhone Status
-
-- Android APK status: pending. The APK path only works after the `Build Android
-  APK` GitHub Action finishes and uploads a release asset.
 - iPhone/iPad status: no signed IPA exists yet. A real iPhone install needs a
   signed build through TestFlight, the App Store, or Apple developer signing.
 
-See [docs/android_app.md](docs/android_app.md) and
-[docs/ios_app.md](docs/ios_app.md) for packaging notes.
+See [docs/ios_app.md](docs/ios_app.md) for packaging notes.
 
 ## Windows desktop icon
 
@@ -84,18 +75,18 @@ Requirements:
 - Git for Windows: https://git-scm.com/download/win
 - Python 3: https://www.python.org/downloads/
 
-## Android APK
+## Build Android APK Locally
 
-This repo includes a Buildozer setup for creating an Android test APK from the
-same Python/Pygame game. See `docs/android_app.md`.
-
-Quick build command on Linux or WSL2:
+This repo packages the same Python/Pygame game into an Android APK with
+Buildozer. CI on GitHub is the normal build path; local builds need Linux or
+WSL2.
 
 ```bash
 bash scripts/build_android.sh
 ```
 
-The APK output goes in `bin/` when the build succeeds.
+The APK output goes in `bin/` when the build succeeds. See
+`docs/android_app.md` and `docs/android_apk_agent_notes.md`.
 
 Run the game with:
 
