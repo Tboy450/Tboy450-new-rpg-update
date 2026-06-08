@@ -6680,7 +6680,7 @@ class BossDragon(Enemy):
         pygame.draw.rect(surface, (120, 40, 20), (x + 120, y + 110, 18, 30), border_radius=8)
         pygame.draw.rect(surface, (120, 40, 20), (x + 40, y + 110, 18, 30), border_radius=8)
         # Claws
-        pygame.draw.polygon(surface, (255, 255, 255), [d
+        pygame.draw.polygon(surface, (255, 255, 255), [
             (x + 120, y + 140), (x + 118, y + 150), (x + 124, y + 150)
         ])
         pygame.draw.polygon(surface, (255, 255, 255), [

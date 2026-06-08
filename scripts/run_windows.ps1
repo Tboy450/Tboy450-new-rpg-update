@@ -7,6 +7,7 @@ $ActivePaths = @(
     "main.py",
     "requirements.txt",
     "game_data",
+    "systems",
     "assets",
     "scripts"
 )

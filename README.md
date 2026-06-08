@@ -5,21 +5,52 @@ If you are new to this codebase, start with
 module owns, and where to safely add characters, enemies, town buildings,
 quests, items, saves, and future assets.
 
-## Mobile Builds
+## Python App Install
 
-- Android APK status: pending. The APK release URL below will work only after
-  the `Build Android APK` GitHub Action finishes and uploads the release asset.
-- Android APK target URL: [dragons-lair-rpg-android-debug.apk](https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk)
+This is the current working install path. It does not use an APK or GitHub
+Release file. It starts Python 3, downloads the latest game files, installs the
+needed packages, creates a launcher, and runs `main.py`.
+
+Windows PowerShell:
+
+```powershell
+py -3 -c "import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/scripts/install_python_app.py').read().decode())"
+```
+
+Mac or Linux terminal:
+
+```bash
+python3 -c "import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/scripts/install_python_app.py').read().decode())"
+```
+
+Android Python option:
+
+1. Install a Python 3 app that can run Pygame, such as Pydroid 3.
+2. Open its terminal or editor.
+3. Run this:
+
+```python
+import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/scripts/install_python_app.py').read().decode())
+```
+
+This is closer to the `zoom-loop` style because the README gives one direct
+launch path instead of pointing at a missing release download. Chrome/Safari
+home-screen install still needs a later browser/PWA port because this repo is a
+Python/Pygame game, not a web app yet.
+
+## APK / iPhone Status
+
+- Android APK status: pending. The APK path only works after the `Build Android
+  APK` GitHub Action finishes and uploads a release asset.
 - iPhone/iPad status: no signed IPA exists yet. A real iPhone install needs a
   signed build through TestFlight, the App Store, or Apple developer signing.
 
-If the Android target URL returns 404, that means the release asset has not been
-created yet. See [docs/android_app.md](docs/android_app.md) and
-[docs/ios_app.md](docs/ios_app.md).
+See [docs/android_app.md](docs/android_app.md) and
+[docs/ios_app.md](docs/ios_app.md) for packaging notes.
 
 ## Windows desktop icon
 
-The easiest Windows setup is the installer script. It creates a local game folder,
+The Windows-specific installer still exists. It creates a local game folder,
 installs the needed Python packages, and adds a desktop shortcut named
 `Dragon's Lair RPG`.
 
