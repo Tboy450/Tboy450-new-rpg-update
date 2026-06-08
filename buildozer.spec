@@ -44,6 +44,14 @@ android.ndk = 25b
 # SDL2 bootstrap is the standard route for Pygame on Android.
 p4a.bootstrap = sdl2
 
+# Use the repo-local pygame recipe. Upstream p4a is still pinned to pygame
+# 2.1.0, which fails against newer Python headers during CI builds.
+p4a.local_recipes = ./p4a-recipes
+
+# Target modern 64-bit Android phones first. The user's device is arm64, and a
+# single architecture keeps debug builds much faster while this project is early.
+android.archs = arm64-v8a
+
 # No special permissions are needed for the current game. Saves use app/private
 # storage through Python's home path.
 android.permissions =
