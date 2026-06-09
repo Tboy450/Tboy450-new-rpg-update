@@ -5,8 +5,9 @@
 # The game still starts from `main.py`; this file only describes the Android app
 # package, included files, dependencies, screen settings, and build options.
 
-# App name shown on Android.
-title = Dragon's Lair RPG
+# App name shown on Android. Keep this ASCII without apostrophes; aapt treats
+# backslash escapes in app_name strictly and fails packaging otherwise.
+title = Dragons Lair RPG
 
 # Python package identifiers used by Android. Keep these lowercase.
 package.name = dragonslairrpg

@@ -72,6 +72,7 @@ As of run **#14**, the APK is **still not green**.
 | #12 | Installed hostpython Cython | Build APK | ~9.7 min | `pygame-ce` calls removed `distutils.ccompiler.spawn` |
 | #13 | Patched `distutils.ccompiler.spawn` | Build APK | ~8.3 min | Floating p4a `develop` used Python 3.14; pygame-ce generated C code is not Python 3.14 compatible |
 | #14 | Pinned p4a to `v2024.01.21` | Build APK | ~7.2 min | p4a used Python 3.11, but hostpython still lacked Cython during `pygame-ce` `setup.py build_ext` |
+| #15 | Added p4a `cython` recipe dependency | Build APK | ~11.3 min | Native compile passed; Android resource packaging failed because app label apostrophe produced an invalid `app_name` escape |
 
 **Important:** swapping pygame -> pygame-ce with the same p4a recipe shape is not enough by
 itself. The local recipe must install Cython into p4a's hostpython, pinned below 0.30, and
@@ -112,6 +113,10 @@ android.archs = arm64-v8a
 Do not float `p4a.branch` to `develop` unless the pygame-ce recipe is updated
 for Python 3.14. As of run #13, p4a `develop` used Python 3.14.2 and failed in
 pygame-ce C compilation at `_PyLong_AsByteArray`.
+
+Keep `title = Dragons Lair RPG` for the APK label. The human-facing README can
+say `Dragon's Lair RPG`, but Android resource packaging failed when the app
+label generated an escaped apostrophe in `strings.xml`.
 
 ### `p4a-recipes/pygame-ce/__init__.py`
 
