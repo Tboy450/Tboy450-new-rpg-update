@@ -27,6 +27,10 @@ class PygameCERecipe(CompiledComponentsPythonRecipe):
         "jpeg",
         "png",
     ]
+    hostpython_prerequisites = [
+        "setuptools",
+        "Cython>=0.29.36,<0.30",
+    ]
     call_hostpython_via_targetpython = False
     install_in_hostpython = False
 

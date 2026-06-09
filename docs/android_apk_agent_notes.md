@@ -51,10 +51,10 @@ As of run **#11**, the APK is **still not green**.
 |-----|--------|-----------|------|---------|
 | #1-#9 | pygame 2.1.0 / 2.6.1 recipe tweaks | Build APK | ~8-9 min | Native pygame compile still broken |
 | #10 | Added `libtinfo5` to apt | Install deps | ~20 sec | Bad CI package on `ubuntu-latest` |
-| #11 | pygame-ce 2.5.2 recipe | Build APK | ~8.7 min | **pygame-ce swap did not fix the core failure** |
+| #11 | pygame-ce 2.5.2 recipe | Build APK | ~8.7 min | hostpython lacked Cython during `pygame-ce` `setup.py build_ext` |
 
-**Important:** swapping pygame -> pygame-ce with the same p4a recipe shape is not proven to
-work for this repo yet. Do not treat that change as "the fix" just because it sounds newer.
+**Important:** swapping pygame -> pygame-ce with the same p4a recipe shape is not enough by
+itself. The local recipe must install Cython into p4a's hostpython, pinned below 0.30.
 
 ## Stop The Debug Loop
 
@@ -93,7 +93,7 @@ android.archs = arm64-v8a
 - Recipe name: `pygame-ce`
 - Source: pygame-community **2.5.2** tag
 - `site_packages_name = "pygame"` so `main.py` keeps `import pygame`
-- **No** `hostpython_prerequisites` forcing Cython 3.x
+- `hostpython_prerequisites = ["setuptools", "Cython>=0.29.36,<0.30"]`
 
 ### `.github/workflows/android-apk.yml`
 
@@ -120,7 +120,7 @@ android.archs = arm64-v8a
 
 Only do these after reading the log tail:
 
-1. **If compile fails in pygame-ce build:** try the known-working reference setup from
+1. **If compile still fails in pygame-ce build after hostpython Cython is installed:** try the known-working reference setup from
    [Potato-Bird](https://github.com/cbdj/Potato-Bird):
    - `pygame-ce` version **2.4.1**
    - URL format `https://github.com/pygame-community/pygame-ce/archive/{version}.tar.gz`
