@@ -3,9 +3,26 @@
 Read this before changing Android packaging. It documents the failure loop this
 repo was stuck in and the fix that actually works.
 
-## Primary Android Install Path (Option B)
+## Current Android Debugging Path
 
-The supported phone install path is the **GitHub-built APK**, not Pydroid.
+The target phone debugging path is the GitHub-built APK. Pydroid 3 is not a
+reliable runtime on the user's phone because `pygame` is not available in
+Pydroid's **Quick Install** list. The normal **Search libraries** result pulls
+PyPI source and fails with missing `sdl2-config`.
+
+Pydroid 3 can still update source files with:
+
+```python
+import urllib.request; exec(urllib.request.urlopen("https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/scripts/install_android_pydroid.py").read().decode())
+```
+
+That installs/updates the game at `/sdcard/Download/DragonLairRPG` when Pydroid
+has shared-storage access. Otherwise it falls back to Pydroid's private home
+folder and prints the path it used. The dragon icon is copied with the rest of
+`assets/processed/ui/`. It only runs the game if that Pydroid install has a
+working prebuilt pygame package.
+
+## Target APK Install Path
 
 1. Push changes to `main` that touch Android build files.
 2. Wait for the `Build Android APK` GitHub Action to finish.
@@ -18,8 +35,8 @@ Release URL:
 https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk
 ```
 
-Pydroid (`run_android.py` / `play_android.py`) is only a fallback note. Do not
-treat it as the main Android deliverable.
+If that URL returns 404, the APK workflow is not green yet. Do not tell users it
+is a working APK link until the release asset exists.
 
 Human editors should read the **How To Build The APK (For Editors)** section in
 `README.md`. Do not paste generic instructions that say
@@ -29,7 +46,7 @@ Human editors should read the **How To Build The APK (For Editors)** section in
 
 ## What Was Breaking CI (Do Not Reintroduce)
 
-The repo failed **9 consecutive** `Build Android APK` runs with variations of
+The repo failed **12 consecutive** `Build Android APK` runs with variations of
 the same mistake:
 
 | Bad change | Why it fails |
@@ -45,16 +62,18 @@ version -> CI fails again -> repeat. Stop changing pygame versions randomly.
 
 ## Current Status (Read This Before Changing Anything)
 
-As of run **#11**, the APK is **still not green**.
+As of run **#12**, the APK is **still not green**.
 
 | Run | Change | Failed at | Time | Meaning |
 |-----|--------|-----------|------|---------|
 | #1-#9 | pygame 2.1.0 / 2.6.1 recipe tweaks | Build APK | ~8-9 min | Native pygame compile still broken |
 | #10 | Added `libtinfo5` to apt | Install deps | ~20 sec | Bad CI package on `ubuntu-latest` |
 | #11 | pygame-ce 2.5.2 recipe | Build APK | ~8.7 min | hostpython lacked Cython during `pygame-ce` `setup.py build_ext` |
+| #12 | Installed hostpython Cython | Build APK | ~9.7 min | `pygame-ce` calls removed `distutils.ccompiler.spawn` |
 
 **Important:** swapping pygame -> pygame-ce with the same p4a recipe shape is not enough by
-itself. The local recipe must install Cython into p4a's hostpython, pinned below 0.30.
+itself. The local recipe must install Cython into p4a's hostpython, pinned below 0.30, and
+patch pygame-ce's old `distutils.ccompiler.spawn(...)` call for the current host Python.
 
 ## Stop The Debug Loop
 
@@ -94,6 +113,8 @@ android.archs = arm64-v8a
 - Source: pygame-community **2.5.2** tag
 - `site_packages_name = "pygame"` so `main.py` keeps `import pygame`
 - `hostpython_prerequisites = ["setuptools", "Cython>=0.29.36,<0.30"]`
+- Prebuild patch replaces `distutils.ccompiler.spawn(cmd, dry_run=self.dry_run, **kwargs)`
+  with `distutils.ccompiler.CCompiler.__spawn(self, cmd, **kwargs)`
 
 ### `.github/workflows/android-apk.yml`
 
@@ -128,8 +149,8 @@ Only do these after reading the log tail:
    - Match their `p4a-recipes/pygame-ce/__init__.py` closely
 2. **If packaging fails after compile:** resize/compress `dragon_app_icon.png` to a normal
    launcher size (for example 512x512, under ~500 KB) before touching pygame again.
-3. **If the project only needs playability today:** use Pydroid (`run_android.py` once,
-   then `play_android.py`). That path is already working on desktop with `pygame-ce`.
+3. **If the project only needs playability today:** build/install the APK. Do not rely on
+   Pydroid unless `pygame` is present in Pydroid **Quick Install**.
 4. **If repeated native compile failures continue:** consider Docker/WSL build using the
    Emerson MX gist workflow instead of more GitHub recipe roulette.
 
@@ -141,7 +162,7 @@ Before pushing another Android packaging commit, confirm:
 - [ ] `p4a-recipes/pygame-ce/` exists; `p4a-recipes/pygame/` does not
 - [ ] No `Cython>=3` pins were added anywhere
 - [ ] CI workflow still installs `Cython<0.30`
-- [ ] README still lists APK install as the primary Android path
+- [ ] README still lists APK as the target Android path and Pydroid only as a limited source updater
 
 ## Success Criteria
 

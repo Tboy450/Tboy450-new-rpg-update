@@ -8,14 +8,61 @@ python-for-android and SDL2.
 
 - `buildozer.spec`: Android app configuration.
 - `scripts/build_android.sh`: helper script that runs the APK build.
+- `scripts/install_android_pydroid.py`: Pydroid 3 installer/updater for phone debugging.
 - `assets/processed/ui/dragon_app_icon.png`: dragon launcher icon used by the Android app.
 - `.github/workflows/android-apk.yml`: GitHub Actions build that publishes the APK release asset.
+
+## Android Debugging Today
+
+The native APK is the target Android debugging path. The release asset is
+published by GitHub Actions when the **Build Android APK** workflow turns green:
+
+```text
+https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk
+```
+
+Pydroid 3 is only a source-file updater unless its **Quick Install** screen
+offers a prebuilt `pygame` package. The normal **Search libraries** result for
+`pygame` uses PyPI and tries to compile pygame from source, which fails on
+Android with missing SDL build tools.
+
+Pydroid source updater:
+
+```python
+import urllib.request; exec(urllib.request.urlopen("https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/scripts/install_android_pydroid.py").read().decode())
+```
+
+That downloads the latest GitHub `main` branch to:
+
+```text
+/sdcard/Download/DragonLairRPG
+```
+
+If Pydroid has not been granted shared-storage access, the installer falls back
+to Pydroid's private home folder and prints the exact path it used.
+
+If Pydroid has a working prebuilt pygame package, open:
+
+```text
+/sdcard/Download/DragonLairRPG/play_android.py
+```
+
+To update source files, run the one-line installer again. The icon file used by
+the APK is:
+
+```text
+/sdcard/Download/DragonLairRPG/assets/processed/ui/dragon_app_icon.png
+```
 
 ## What You Need
 
 Use a Linux PC or WSL2 on Windows. Building directly inside a normal Android
 phone browser is not realistic because Android APK packaging needs the Android
 SDK, Android NDK, Java, and native compilation tools.
+
+Do not try to use this phone's aarch64 proot shell as the primary APK builder.
+Google's Linux Android SDK/NDK host tools downloaded by Buildozer are x86_64
+binaries, so they do not execute normally in this environment.
 
 Required tools:
 
@@ -55,8 +102,9 @@ Download the latest CI-built APK:
 https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk
 ```
 
-If that URL returns 404, open GitHub Actions and wait for `Build Android APK` to
-finish on `main`.
+If that URL returns 404, no green APK has been published to the `android-latest`
+release yet. Keep debugging the APK workflow until `Build Android APK` is green
+on `main`.
 
 Install options:
 
@@ -64,10 +112,6 @@ Install options:
 - Or with USB debugging: `adb install -r bin/*debug.apk`
 
 Android may ask you to allow installs from unknown sources.
-
-**Fallback only (Pydroid):** If APK install is not possible, use Pydroid 3.
-Open `run_android.py` once to install `pygame-ce`, then `play_android.py` to
-play. Do not paste `scripts/run_local_android.py` into the Python editor.
 
 ## Important Notes
 
@@ -93,7 +137,7 @@ Common fixes:
 
 ## Future Polish
 
-- Add a proper Android app icon.
+- Resize/compress the Android app icon if APK packaging reports resource or size errors.
 - Add a release signing config for a shareable release APK.
 - Tune screen scaling for more phone aspect ratios.
 - Replace generated sounds/sprites with files from `assets/processed/`.

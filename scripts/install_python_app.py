@@ -24,6 +24,7 @@ from pathlib import Path
 REPO_ZIP_URL = "https://github.com/Tboy450/Tboy450-new-rpg-update/archive/refs/heads/{branch}.zip"
 DEFAULT_BRANCH = "main"
 DEFAULT_FOLDER_NAME = "Tboy450-new-rpg-update-python"
+ANDROID_FOLDER_NAME = "DragonLairRPG"
 ACTIVE_PATHS = (
     "README.md",
     "run_android.py",
@@ -60,8 +61,22 @@ def documents_dir() -> Path:
 
 def default_install_dir() -> Path:
     if is_android_python():
-        return Path.home() / DEFAULT_FOLDER_NAME
+        for parent in (Path("/sdcard/Download"), Path("/storage/emulated/0/Download")):
+            if is_writable_dir(parent):
+                return parent / ANDROID_FOLDER_NAME
+        return Path.home() / ANDROID_FOLDER_NAME
     return documents_dir() / DEFAULT_FOLDER_NAME
+
+
+def is_writable_dir(path: Path) -> bool:
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        probe = path / ".dragons_lair_write_test"
+        probe.write_text("ok", encoding="ascii")
+        probe.unlink()
+        return True
+    except OSError:
+        return False
 
 
 def run_checked(command: list[str], cwd: Path | None = None) -> None:
@@ -71,10 +86,13 @@ def run_checked(command: list[str], cwd: Path | None = None) -> None:
 
 
 def remove_path(path: Path) -> None:
-    if path.is_dir() and not path.is_symlink():
-        shutil.rmtree(path)
-    elif path.exists():
-        path.unlink()
+    try:
+        if path.is_dir() and not path.is_symlink():
+            shutil.rmtree(path)
+        elif path.exists() or path.is_symlink():
+            path.unlink()
+    except FileNotFoundError:
+        pass
 
 
 def script_repo_root() -> Path:
@@ -104,7 +122,11 @@ def copy_active_paths(source_dir: Path, install_dir: Path) -> None:
         remove_path(target)
         target.parent.mkdir(parents=True, exist_ok=True)
         if source.is_dir():
-            shutil.copytree(source, target)
+            shutil.copytree(
+                source,
+                target,
+                ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache"),
+            )
         else:
             shutil.copy2(source, target)
 

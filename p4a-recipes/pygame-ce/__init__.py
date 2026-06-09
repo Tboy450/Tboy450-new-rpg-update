@@ -37,6 +37,13 @@ class PygameCERecipe(CompiledComponentsPythonRecipe):
     def prebuild_arch(self, arch):
         super().prebuild_arch(arch)
         with current_directory(self.get_build_dir(arch.arch)):
+            setup_path = "setup.py"
+            setup_text = open(setup_path).read()
+            broken_spawn = "distutils.ccompiler.spawn(cmd, dry_run=self.dry_run, **kwargs)"
+            fixed_spawn = "distutils.ccompiler.CCompiler.__spawn(self, cmd, **kwargs)"
+            if broken_spawn in setup_text:
+                open(setup_path, "w").write(setup_text.replace(broken_spawn, fixed_spawn))
+
             setup_template = open(join("buildconfig", "Setup.Android.SDL2.in")).read()
             env = self.get_recipe_env(arch)
             env["ANDROID_ROOT"] = join(self.ctx.ndk.sysroot, "usr")
