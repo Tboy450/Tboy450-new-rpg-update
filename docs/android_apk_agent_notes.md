@@ -70,6 +70,7 @@ As of run **#12**, the APK is **still not green**.
 | #10 | Added `libtinfo5` to apt | Install deps | ~20 sec | Bad CI package on `ubuntu-latest` |
 | #11 | pygame-ce 2.5.2 recipe | Build APK | ~8.7 min | hostpython lacked Cython during `pygame-ce` `setup.py build_ext` |
 | #12 | Installed hostpython Cython | Build APK | ~9.7 min | `pygame-ce` calls removed `distutils.ccompiler.spawn` |
+| #13 | Patched `distutils.ccompiler.spawn` | Build APK | ~8.3 min | Floating p4a `develop` used Python 3.14; pygame-ce generated C code is not Python 3.14 compatible |
 
 **Important:** swapping pygame -> pygame-ce with the same p4a recipe shape is not enough by
 itself. The local recipe must install Cython into p4a's hostpython, pinned below 0.30, and
@@ -103,9 +104,13 @@ android.ndk = 25b
 android.accept_sdk_license = True
 p4a.bootstrap = sdl2
 p4a.local_recipes = ./p4a-recipes
-p4a.branch = develop
+p4a.branch = v2024.01.21
 android.archs = arm64-v8a
 ```
+
+Do not float `p4a.branch` to `develop` unless the pygame-ce recipe is updated
+for Python 3.14. As of run #13, p4a `develop` used Python 3.14.2 and failed in
+pygame-ce C compilation at `_PyLong_AsByteArray`.
 
 ### `p4a-recipes/pygame-ce/__init__.py`
 
@@ -141,7 +146,8 @@ android.archs = arm64-v8a
 
 Only do these after reading the log tail:
 
-1. **If compile still fails in pygame-ce build after hostpython Cython is installed:** try the known-working reference setup from
+1. **If compile still fails in pygame-ce build after hostpython Cython is installed:** keep p4a pinned to
+   `v2024.01.21` first. Only then try the known-working reference setup from
    [Potato-Bird](https://github.com/cbdj/Potato-Bird):
    - `pygame-ce` version **2.4.1**
    - URL format `https://github.com/pygame-community/pygame-ce/archive/{version}.tar.gz`

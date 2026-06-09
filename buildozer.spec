@@ -49,7 +49,9 @@ p4a.bootstrap = sdl2
 # which fails against modern Python headers during CI builds.
 # Agent note: read docs/android_apk_agent_notes.md before changing Android deps.
 p4a.local_recipes = ./p4a-recipes
-p4a.branch = develop
+# Pin p4a so the python3 recipe stays on Python 3.11. Floating `develop`
+# currently uses Python 3.14, which pygame-ce 2.5.2 cannot compile against.
+p4a.branch = v2024.01.21
 
 # Target modern 64-bit Android phones first. The user's device is arm64, and a
 # single architecture keeps debug builds much faster while this project is early.
