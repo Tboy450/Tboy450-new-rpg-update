@@ -62,7 +62,7 @@ version -> CI fails again -> repeat. Stop changing pygame versions randomly.
 
 ## Current Status (Read This Before Changing Anything)
 
-As of run **#12**, the APK is **still not green**.
+As of run **#14**, the APK is **still not green**.
 
 | Run | Change | Failed at | Time | Meaning |
 |-----|--------|-----------|------|---------|
@@ -71,6 +71,7 @@ As of run **#12**, the APK is **still not green**.
 | #11 | pygame-ce 2.5.2 recipe | Build APK | ~8.7 min | hostpython lacked Cython during `pygame-ce` `setup.py build_ext` |
 | #12 | Installed hostpython Cython | Build APK | ~9.7 min | `pygame-ce` calls removed `distutils.ccompiler.spawn` |
 | #13 | Patched `distutils.ccompiler.spawn` | Build APK | ~8.3 min | Floating p4a `develop` used Python 3.14; pygame-ce generated C code is not Python 3.14 compatible |
+| #14 | Pinned p4a to `v2024.01.21` | Build APK | ~7.2 min | p4a used Python 3.11, but hostpython still lacked Cython during `pygame-ce` `setup.py build_ext` |
 
 **Important:** swapping pygame -> pygame-ce with the same p4a recipe shape is not enough by
 itself. The local recipe must install Cython into p4a's hostpython, pinned below 0.30, and
@@ -117,6 +118,8 @@ pygame-ce C compilation at `_PyLong_AsByteArray`.
 - Recipe name: `pygame-ce`
 - Source: pygame-community **2.5.2** tag
 - `site_packages_name = "pygame"` so `main.py` keeps `import pygame`
+- `depends` includes p4a's `cython` recipe so Cython installs into hostpython before
+  `pygame-ce` runs `setup.py build_ext`
 - `hostpython_prerequisites = ["setuptools", "Cython>=0.29.36,<0.30"]`
 - Prebuild patch replaces `distutils.ccompiler.spawn(cmd, dry_run=self.dry_run, **kwargs)`
   with `distutils.ccompiler.CCompiler.__spawn(self, cmd, **kwargs)`
@@ -166,6 +169,7 @@ Before pushing another Android packaging commit, confirm:
 
 - [ ] `requirements` is still `python3,pygame-ce`
 - [ ] `p4a-recipes/pygame-ce/` exists; `p4a-recipes/pygame/` does not
+- [ ] `p4a-recipes/pygame-ce/__init__.py` still depends on p4a's `cython` recipe
 - [ ] No `Cython>=3` pins were added anywhere
 - [ ] CI workflow still installs `Cython<0.30`
 - [ ] README still lists APK as the target Android path and Pydroid only as a limited source updater

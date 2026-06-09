@@ -19,6 +19,7 @@ class PygameCERecipe(CompiledComponentsPythonRecipe):
     name = "pygame-ce"
 
     depends = [
+        "cython",
         "sdl2",
         "sdl2_image",
         "sdl2_mixer",
