@@ -31,6 +31,10 @@ Pydroid 3 can still copy/update the source files, but it only runs the game if
 Pydroid's **Quick Install** screen includes a prebuilt `pygame` package. Do not
 use Pydroid's normal **Search libraries** result for `pygame`; that path tries
 to compile pygame from source on Android and fails with missing SDL tools.
+If a Pydroid home-screen shortcut opens with an
+`ExternalStorageProvider` permission denial, delete that shortcut and install
+the APK above. That shortcut is Pydroid trying to open a source file through
+Android's document provider; it is not the installable game app.
 
 File updater:
 

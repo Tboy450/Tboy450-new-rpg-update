@@ -10,6 +10,12 @@ reliable runtime on the user's phone because `pygame` is not available in
 Pydroid's **Quick Install** list. The normal **Search libraries** result pulls
 PyPI source and fails with missing `sdl2-config`.
 
+If a Pydroid home-screen shortcut opens with `Permission Denial: opening
+provider com.android.externalstorage.ExternalStorageProvider ... requires that
+you obtain access using ACTION_OPEN_DOCUMENT`, it is the old Pydroid source
+shortcut, not the APK. Delete or ignore that shortcut and install the APK from
+the release URL instead.
+
 Pydroid 3 can still update source files with:
 
 ```python
@@ -62,10 +68,11 @@ version -> CI fails again -> repeat. Stop changing pygame versions randomly.
 
 ## Current Status (Read This Before Changing Anything)
 
-As of run **#14**, the APK is **still not green**.
+As of run **#16**, the APK build is green and the `android-latest` release has
+`dragons-lair-rpg-android-debug.apk`.
 
-| Run | Change | Failed at | Time | Meaning |
-|-----|--------|-----------|------|---------|
+| Run | Change | Result | Time | Meaning |
+|-----|--------|--------|------|---------|
 | #1-#9 | pygame 2.1.0 / 2.6.1 recipe tweaks | Build APK | ~8-9 min | Native pygame compile still broken |
 | #10 | Added `libtinfo5` to apt | Install deps | ~20 sec | Bad CI package on `ubuntu-latest` |
 | #11 | pygame-ce 2.5.2 recipe | Build APK | ~8.7 min | hostpython lacked Cython during `pygame-ce` `setup.py build_ext` |
@@ -73,6 +80,7 @@ As of run **#14**, the APK is **still not green**.
 | #13 | Patched `distutils.ccompiler.spawn` | Build APK | ~8.3 min | Floating p4a `develop` used Python 3.14; pygame-ce generated C code is not Python 3.14 compatible |
 | #14 | Pinned p4a to `v2024.01.21` | Build APK | ~7.2 min | p4a used Python 3.11, but hostpython still lacked Cython during `pygame-ce` `setup.py build_ext` |
 | #15 | Added p4a `cython` recipe dependency | Build APK | ~11.3 min | Native compile passed; Android resource packaging failed because app label apostrophe produced an invalid `app_name` escape |
+| #16 | Changed Android label to `Dragons Lair RPG` | Success | ~11.5 min | APK built and release asset was published |
 
 **Important:** swapping pygame -> pygame-ce with the same p4a recipe shape is not enough by
 itself. The local recipe must install Cython into p4a's hostpython, pinned below 0.30, and
@@ -94,7 +102,7 @@ Before the next packaging commit, someone with repo access must copy the **last 
 lines** of the failed **Build Android debug APK** step from GitHub Actions. Without that
 exact error text, another recipe tweak is just guessing.
 
-## Working Configuration (Current Best Attempt, Not Proven Green)
+## Working Configuration (Proven Green)
 
 ### `buildozer.spec`
 
