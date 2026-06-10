@@ -2939,6 +2939,7 @@ class BattleScreen:
         self.particle_system = ParticleSystem()
         self.screen_shake = 0
         self.attack_effect_timer = 0
+        self.enemy_attack_fx = []
         self.magic_effect = {
             'active': False,
             'x': 0, 'y': 0,
@@ -2966,6 +2967,84 @@ class BattleScreen:
     def add_screen_shake(self, intensity=5, duration=10):
         self.screen_shake = duration
         self.shake_intensity = intensity
+
+    def queue_enemy_attack_fx(self, kind, duration=36):
+        self.enemy_attack_fx.append({
+            "kind": kind,
+            "timer": 0,
+            "duration": duration,
+            "seed": random.randint(1, 999999),
+        })
+
+    def draw_enemy_attack_fx(self, surface):
+        for fx in self.enemy_attack_fx:
+            progress = fx["timer"] / max(1, fx["duration"])
+            if fx["kind"] == "ghostface_stab":
+                self.draw_ghostface_stab_fx(surface, progress, fx["seed"])
+
+    def draw_ghostface_stab_fx(self, surface, progress, seed):
+        rng = random.Random(seed + int(progress * 20))
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        start_x, start_y = 730, 280
+        target_x, target_y = 235, 365
+        p = min(1.0, progress * 1.45)
+        ease = 1 - (1 - p) * (1 - p)
+        tip_x = start_x + (target_x - start_x) * ease
+        tip_y = start_y + (target_y - start_y) * ease
+        angle = math.atan2(target_y - start_y, target_x - start_x)
+        forward = (math.cos(angle), math.sin(angle))
+        side = (-math.sin(angle), math.cos(angle))
+        blade_len = 145
+        blade_w = 24
+        base_x = tip_x - forward[0] * blade_len
+        base_y = tip_y - forward[1] * blade_len
+        blade = [
+            (tip_x, tip_y),
+            (base_x + side[0] * blade_w, base_y + side[1] * blade_w),
+            (base_x - side[0] * blade_w, base_y - side[1] * blade_w),
+        ]
+
+        for _ in range(10):
+            trail_p = rng.uniform(0.08, max(0.2, ease))
+            tx = start_x + (target_x - start_x) * trail_p
+            ty = start_y + (target_y - start_y) * trail_p
+            pygame.draw.line(
+                overlay, (255, 255, 255, 65),
+                (tx - side[0] * rng.randint(10, 30), ty - side[1] * rng.randint(10, 30)),
+                (tx + side[0] * rng.randint(10, 30), ty + side[1] * rng.randint(10, 30)),
+                rng.randint(2, 5),
+            )
+
+        pygame.draw.polygon(overlay, (230, 235, 255, 235), blade)
+        pygame.draw.polygon(overlay, (255, 255, 255, 255), blade, 3)
+        handle_center = (base_x - forward[0] * 30, base_y - forward[1] * 30)
+        pygame.draw.line(
+            overlay, (20, 15, 25, 250),
+            (handle_center[0] - side[0] * 30, handle_center[1] - side[1] * 30),
+            (handle_center[0] + side[0] * 30, handle_center[1] + side[1] * 30),
+            12,
+        )
+
+        if progress > 0.45:
+            impact = min(1.0, (progress - 0.45) / 0.55)
+            radius = int(22 + impact * 115)
+            for i in range(20):
+                angle_i = (math.pi * 2 * i / 20) - progress * 5
+                outer = radius + rng.randint(-10, 18)
+                color = rng.choice([(255, 30, 80, 215), (255, 255, 255, 230), (160, 70, 255, 190)])
+                pygame.draw.line(
+                    overlay, color,
+                    (target_x + math.cos(angle_i) * 16, target_y + math.sin(angle_i) * 16),
+                    (target_x + math.cos(angle_i) * outer, target_y + math.sin(angle_i) * outer),
+                    5,
+                )
+
+            text = font_large.render("STAB", True, (255, 255, 255))
+            shadow = font_large.render("STAB", True, (255, 30, 80))
+            overlay.blit(shadow, (target_x - 54 + rng.randint(-4, 4), target_y - 122 + rng.randint(-4, 4)))
+            overlay.blit(text, (target_x - 58, target_y - 126))
+
+        surface.blit(overlay, (0, 0))
 
     def draw_elemental_enemy(self, surface, enemy_x, enemy_y):
         profile = get_element_profile(self.enemy.enemy_type)
@@ -3173,6 +3252,8 @@ class BattleScreen:
             rotated_knife = pygame.transform.rotate(knife_surf, rotation)
             knife_rect = rotated_knife.get_rect(center=(x, y))
             temp_surface.blit(rotated_knife, knife_rect)
+
+        self.draw_enemy_attack_fx(temp_surface)
         
         # Draw health bars
         player_health_width = 150 * (self.player.health / max(1, self.player.max_health))
@@ -3305,6 +3386,9 @@ class BattleScreen:
         self.player.update_animation()
         self.enemy.update_animation()
         self.particle_system.update()
+        for fx in self.enemy_attack_fx:
+            fx["timer"] += 1
+        self.enemy_attack_fx = [fx for fx in self.enemy_attack_fx if fx["timer"] <= fx["duration"]]
         
         # Update magic effect
         if self.magic_effect['active']:
@@ -3454,13 +3538,18 @@ class BattleScreen:
                 damage += phase.get("strength_bonus", 0)
                 self.add_log(phase["attack_message"])
             self.player.health = max(0, self.player.health - damage)
-            self.add_log(f"{self.enemy.name} attacks for {damage} damage!")
+            if getattr(self.enemy, "enemy_type", None) == "ghost_face":
+                self.add_log(f"{self.enemy.name} stabs for {damage} damage!")
+                self.queue_enemy_attack_fx("ghostface_stab", 38)
+                self.add_screen_shake(7, 12)
+            else:
+                self.add_log(f"{self.enemy.name} attacks for {damage} damage!")
+                self.add_screen_shake(3, 5)
             self.damage_target = "player"
             self.damage_amount = damage
             self.damage_effect_timer = 20
             self.enemy.start_attack_animation()
             self.player.start_hit_animation()
-            self.add_screen_shake(3, 5)
             self.apply_enemy_elemental_effect()
             self.pending_elemental_effect = self.enemy.enemy_type
             self.elemental_effect_timer = 20
