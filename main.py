@@ -92,7 +92,11 @@ from systems.input_actions import (
     JOURNAL,
     LOAD,
     MAP,
+    MOVE_DOWN,
     MOVE_DELTAS,
+    MOVE_LEFT,
+    MOVE_RIGHT,
+    MOVE_UP,
     SAVE,
     action_for_key,
     key_for_android_button,
@@ -4136,6 +4140,9 @@ class Game:
         self.load_button = Button(SCREEN_WIDTH//2 - 120, 525, 240, 55, "LOAD SAVE", (110, 220, 255))
         self.quit_button = Button(SCREEN_WIDTH//2 - 120, 595, 240, 55, "QUIT", UI_BORDER)
         self.back_button = Button(20, 20, 100, 40, "BACK")
+        self.start_menu_index = 0
+        self.character_menu_index = 0
+        self.end_menu_index = 0
         
         # Character buttons
         self.warrior_button = Button(SCREEN_WIDTH//2 - 300, 300, 200, 150, "WARRIOR", (0, 255, 0))
@@ -4192,17 +4199,20 @@ class Game:
         # Virtual button setup for Android
         self.android_buttons = {}
         if is_android():
-            button_size = 80
-            button_margin = 20
+            button_size = 88
+            button_margin = 24
             screen_w, screen_h = SCREEN_WIDTH, SCREEN_HEIGHT
+            top_y = screen_h - button_margin - 3*button_size
+            mid_y = screen_h - button_margin - 2*button_size
+            bottom_y = screen_h - button_margin - button_size
             # D-pad
-            self.android_buttons['up'] = pygame.Rect(button_margin + button_size, screen_h - 3*button_size, button_size, button_size)
-            self.android_buttons['down'] = pygame.Rect(button_margin + button_size, screen_h - button_size, button_size, button_size)
-            self.android_buttons['left'] = pygame.Rect(button_margin, screen_h - 2*button_size, button_size, button_size)
-            self.android_buttons['right'] = pygame.Rect(button_margin + 2*button_size, screen_h - 2*button_size, button_size, button_size)
+            self.android_buttons['up'] = pygame.Rect(button_margin + button_size, top_y, button_size, button_size)
+            self.android_buttons['down'] = pygame.Rect(button_margin + button_size, bottom_y, button_size, button_size)
+            self.android_buttons['left'] = pygame.Rect(button_margin, mid_y, button_size, button_size)
+            self.android_buttons['right'] = pygame.Rect(button_margin + 2*button_size, mid_y, button_size, button_size)
             # Enter/Space
-            self.android_buttons['enter'] = pygame.Rect(screen_w - button_margin - button_size, screen_h - 2*button_size, button_size, button_size)
-            self.android_buttons['space'] = pygame.Rect(screen_w - button_margin - 2*button_size, screen_h - 2*button_size, button_size, button_size)
+            self.android_buttons['enter'] = pygame.Rect(screen_w - button_margin - button_size, mid_y, button_size, button_size)
+            self.android_buttons['space'] = pygame.Rect(screen_w - button_margin - 2*button_size, mid_y, button_size, button_size)
 
     def apply_world_item(self, item):
         profile = ITEM_PROFILES.get(item.type, ITEM_PROFILES["health"])
@@ -4263,6 +4273,58 @@ class Game:
         self.set_button(self.start_button, "START QUEST", pygame.Rect(SCREEN_WIDTH//2 - 120, 455, 240, 55))
         self.set_button(self.load_button, "LOAD SAVE", pygame.Rect(SCREEN_WIDTH//2 - 120, 525, 240, 55))
         self.set_button(self.quit_button, "QUIT", pygame.Rect(SCREEN_WIDTH//2 - 120, 595, 240, 55))
+
+    def set_selected_buttons(self, buttons, selected_index):
+        for index, button in enumerate(buttons):
+            button.selected = index == selected_index
+
+    def move_menu_selection(self, attr_name, count, direction):
+        setattr(self, attr_name, (getattr(self, attr_name) + direction) % count)
+        if self.SFX_ARROW:
+            self.SFX_ARROW.play()
+
+    def choose_hero(self, hero_type):
+        if self.SFX_CLICK:
+            self.SFX_CLICK.play()
+        self.player = Character(hero_type)
+        self.state = "overworld"
+        self.start_game()
+
+    def activate_start_menu_selection(self):
+        if self.SFX_CLICK:
+            self.SFX_CLICK.play()
+        if self.start_menu_index == 0:
+            self.state = "opening_cutscene"
+            self.opening_cutscene = OpeningCutscene()
+            return True
+        if self.start_menu_index == 1:
+            self.load_saved_game()
+            return True
+        return False
+
+    def activate_character_menu_selection(self):
+        if self.character_menu_index == 0:
+            self.choose_hero("Warrior")
+        elif self.character_menu_index == 1:
+            self.choose_hero("Mage")
+        elif self.character_menu_index == 2:
+            self.choose_hero("Rogue")
+        else:
+            if self.SFX_CLICK:
+                self.SFX_CLICK.play()
+            self.state = "start_menu"
+
+    def activate_end_menu_selection(self):
+        if self.SFX_CLICK:
+            self.SFX_CLICK.play()
+        if self.end_menu_index == 0:
+            self.state = "character_select"
+            self.character_menu_index = 0
+        else:
+            self.state = "start_menu"
+
+    def android_button_hit_rect(self, rect):
+        return rect.inflate(32, 32)
 
     def save_current_game(self):
         if not self.player:
@@ -5399,6 +5461,10 @@ class Game:
         
         if self.state == "start_menu":
             self.reset_menu_buttons()
+            self.set_selected_buttons(
+                [self.start_button, self.load_button, self.quit_button],
+                self.start_menu_index,
+            )
             
             title = font_large.render("DRAGON'S LAIR", True, (255, 50, 50))
             screen.blit(title, (SCREEN_WIDTH//2 - title.get_width()//2, 80))
@@ -5437,6 +5503,11 @@ class Game:
             self.opening_cutscene.draw(screen)
             
         elif self.state == "character_select":
+            self.set_button(self.back_button, "BACK", pygame.Rect(20, 20, 100, 40))
+            self.set_selected_buttons(
+                [self.warrior_button, self.mage_button, self.rogue_button, self.back_button],
+                self.character_menu_index,
+            )
             title = font_large.render("CHOOSE YOUR HERO", True, TEXT_COLOR)
             screen.blit(title, (SCREEN_WIDTH//2 - title.get_width()//2, 100))
             
@@ -5497,15 +5568,7 @@ class Game:
                     current_area.draw_town(screen)
             else:
                 screen.fill(BACKGROUND)
-            
-            # Draw grid for current area
-            for x in range(0, SCREEN_WIDTH, GRID_SIZE):
-                pygame.draw.line(screen, current_area.grid_color if current_area else GRID_COLOR, 
-                               (x, 0), (x, SCREEN_HEIGHT), 2)
-            for y in range(0, SCREEN_HEIGHT, GRID_SIZE):
-                pygame.draw.line(screen, current_area.grid_color if current_area else GRID_COLOR, 
-                               (0, y), (SCREEN_WIDTH, y), 2)
-            
+
             # Draw area boundaries more prominently
             pygame.draw.rect(screen, (255, 255, 255), (0, 0, SCREEN_WIDTH, SCREEN_HEIGHT), 3)
             
@@ -5535,12 +5598,7 @@ class Game:
             self.player.x, self.player.y = screen_x, screen_y
             self.player.draw(screen)
             self.player.x, self.player.y = original_x, original_y
-            
-            # Draw player position indicator
-            grid_x = (screen_x // GRID_SIZE) * GRID_SIZE
-            grid_y = (screen_y // GRID_SIZE) * GRID_SIZE
-            pygame.draw.rect(screen, (255, 255, 0), (grid_x, grid_y, GRID_SIZE, GRID_SIZE), 2)
-            
+
             # Draw particles
             self.particle_system.draw(screen, self.world_map)
             
@@ -5693,14 +5751,6 @@ class Game:
                                            (mini_map_x + x * cell_size, mini_map_y + y * cell_size, 
                                             cell_size, cell_size), 1)
             
-            # Draw position info
-            local_x = self.player.x % AREA_WIDTH
-            local_y = self.player.y % AREA_HEIGHT
-            grid_pos_x = local_x // GRID_SIZE
-            grid_pos_y = local_y // GRID_SIZE
-            pos_text = font_tiny.render(f"POS: ({grid_pos_x}, {grid_pos_y})", True, (255, 255, 0))
-            screen.blit(pos_text, (20, SCREEN_HEIGHT - 180))
-            
             # Draw town entrance cutscene if active
             current_area = self.world_map.get_current_area()
             if current_area and current_area.cutscene_active:
@@ -5754,6 +5804,7 @@ class Game:
             self.start_button.rect = pygame.Rect(SCREEN_WIDTH//2 - 120, y_pos + 20, 240, 60)
             self.start_button.text_surf = font_medium.render(self.start_button.text, True, TEXT_COLOR)
             self.start_button.text_rect = self.start_button.text_surf.get_rect(center=self.start_button.rect.center)
+            self.set_selected_buttons([self.start_button, self.back_button], self.end_menu_index)
             self.start_button.draw(screen)
             
             # Back to menu button
@@ -5761,14 +5812,12 @@ class Game:
             self.back_button.rect = pygame.Rect(SCREEN_WIDTH//2 - 120, y_pos + 100, 240, 60)
             self.back_button.text_surf = font_medium.render(self.back_button.text, True, TEXT_COLOR)
             self.back_button.text_rect = self.back_button.text_surf.get_rect(center=self.back_button.rect.center)
+            self.set_selected_buttons([self.start_button, self.back_button], self.end_menu_index)
             self.back_button.draw(screen)
             
         if self.show_journal and self.state in ["overworld", "interior"] and self.player:
             self.draw_journal(screen)
 
-        if self.state in ["character_select", "game_over"]:
-            self.back_button.draw(screen)
-            
         if self.transition_state != "none":
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, self.transition_alpha))
@@ -5837,6 +5886,7 @@ class Game:
             self.start_button.rect = pygame.Rect(SCREEN_WIDTH//2 - 120, y_pos + 80, 240, 60)
             self.start_button.text_surf = font_medium.render(self.start_button.text, True, TEXT_COLOR)
             self.start_button.text_rect = self.start_button.text_surf.get_rect(center=self.start_button.rect.center)
+            self.set_selected_buttons([self.start_button, self.back_button], self.end_menu_index)
             self.start_button.draw(screen)
             
             # Back to menu button
@@ -5844,6 +5894,7 @@ class Game:
             self.back_button.rect = pygame.Rect(SCREEN_WIDTH//2 - 120, y_pos + 160, 240, 60)
             self.back_button.text_surf = font_medium.render(self.back_button.text, True, TEXT_COLOR)
             self.back_button.text_rect = self.back_button.text_surf.get_rect(center=self.back_button.rect.center)
+            self.set_selected_buttons([self.start_button, self.back_button], self.end_menu_index)
             self.back_button.draw(screen)
         
         present_frame()
@@ -5865,7 +5916,7 @@ class Game:
                     if is_android() and self.android_buttons:
                         mx, my = display_to_game_pos(event.pos)
                         for name, rect in self.android_buttons.items():
-                            if rect.collidepoint(mx, my):
+                            if self.android_button_hit_rect(rect).collidepoint(mx, my):
                                 key = key_for_android_button(name)
                                 if key is not None:
                                     fake_event = pygame.event.Event(pygame.KEYDOWN, key=key)
@@ -5880,6 +5931,39 @@ class Game:
                     if action == SAVE and self.state in ["overworld", "interior"]:
                         self.save_current_game()
                         continue
+
+                    if self.state == "start_menu":
+                        if action in [MOVE_UP, MOVE_LEFT]:
+                            self.move_menu_selection("start_menu_index", 3, -1)
+                            continue
+                        if action in [MOVE_DOWN, MOVE_RIGHT]:
+                            self.move_menu_selection("start_menu_index", 3, 1)
+                            continue
+                        if action in [CONFIRM, INTERACT]:
+                            running = self.activate_start_menu_selection()
+                            continue
+                        if action == CANCEL:
+                            running = False
+                            continue
+
+                    if self.state == "character_select":
+                        if action in [MOVE_UP, MOVE_LEFT]:
+                            self.move_menu_selection("character_menu_index", 4, -1)
+                            continue
+                        if action in [MOVE_DOWN, MOVE_RIGHT]:
+                            self.move_menu_selection("character_menu_index", 4, 1)
+                            continue
+                        if action in [CONFIRM, INTERACT]:
+                            self.activate_character_menu_selection()
+                            continue
+
+                    if self.state in ["game_over", "victory"]:
+                        if action in [MOVE_UP, MOVE_LEFT, MOVE_DOWN, MOVE_RIGHT]:
+                            self.move_menu_selection("end_menu_index", 2, 1)
+                            continue
+                        if action in [CONFIRM, INTERACT]:
+                            self.activate_end_menu_selection()
+                            continue
 
                     if self.show_journal and self.state in ["overworld", "interior"]:
                         if action in [CANCEL, CONFIRM, INTERACT, JOURNAL, MAP]:
@@ -5989,16 +6073,19 @@ class Game:
             
             # Handle button clicks
             if self.state == "start_menu":
-                self.start_button.update(mouse_pos)
-                self.load_button.update(mouse_pos)
-                self.quit_button.update(mouse_pos)
+                if self.start_button.update(mouse_pos):
+                    self.start_menu_index = 0
+                if self.load_button.update(mouse_pos):
+                    self.start_menu_index = 1
+                if self.quit_button.update(mouse_pos):
+                    self.start_menu_index = 2
                 
                 if self.start_button.is_clicked(mouse_pos, mouse_click):
-                    if self.SFX_CLICK: self.SFX_CLICK.play()
-                    self.state = "opening_cutscene"
-                    self.opening_cutscene = OpeningCutscene()  # Reset cutscene
+                    self.start_menu_index = 0
+                    self.activate_start_menu_selection()
 
                 if self.load_button.is_clicked(mouse_pos, mouse_click):
+                    self.start_menu_index = 1
                     if self.SFX_CLICK: self.SFX_CLICK.play()
                     self.load_saved_game()
                     
@@ -6007,28 +6094,23 @@ class Game:
                     running = False
                     
             elif self.state == "character_select":
-                self.warrior_button.update(mouse_pos)
-                self.mage_button.update(mouse_pos)
-                self.rogue_button.update(mouse_pos)
-                self.back_button.update(mouse_pos)
+                if self.warrior_button.update(mouse_pos):
+                    self.character_menu_index = 0
+                if self.mage_button.update(mouse_pos):
+                    self.character_menu_index = 1
+                if self.rogue_button.update(mouse_pos):
+                    self.character_menu_index = 2
+                if self.back_button.update(mouse_pos):
+                    self.character_menu_index = 3
                 
                 if self.warrior_button.is_clicked(mouse_pos, mouse_click):
-                    if self.SFX_CLICK: self.SFX_CLICK.play()
-                    self.player = Character("Warrior")
-                    self.state = "overworld"
-                    self.start_game()
+                    self.choose_hero("Warrior")
                     
                 if self.mage_button.is_clicked(mouse_pos, mouse_click):
-                    if self.SFX_CLICK: self.SFX_CLICK.play()
-                    self.player = Character("Mage")
-                    self.state = "overworld"
-                    self.start_game()
+                    self.choose_hero("Mage")
                     
                 if self.rogue_button.is_clicked(mouse_pos, mouse_click):
-                    if self.SFX_CLICK: self.SFX_CLICK.play()
-                    self.player = Character("Rogue")
-                    self.state = "overworld"
-                    self.start_game()
+                    self.choose_hero("Rogue")
                     
                 if self.back_button.is_clicked(mouse_pos, mouse_click):
                     if self.SFX_CLICK: self.SFX_CLICK.play()
@@ -6103,28 +6185,32 @@ class Game:
                             continue
             
             elif self.state == "game_over":
-                self.start_button.update(mouse_pos)
-                self.back_button.update(mouse_pos)
+                if self.start_button.update(mouse_pos):
+                    self.end_menu_index = 0
+                if self.back_button.update(mouse_pos):
+                    self.end_menu_index = 1
                 
                 if self.start_button.is_clicked(mouse_pos, mouse_click):
-                    if self.SFX_CLICK: self.SFX_CLICK.play()
-                    self.state = "character_select"
+                    self.end_menu_index = 0
+                    self.activate_end_menu_selection()
                     
                 if self.back_button.is_clicked(mouse_pos, mouse_click):
-                    if self.SFX_CLICK: self.SFX_CLICK.play()
-                    self.state = "start_menu"
+                    self.end_menu_index = 1
+                    self.activate_end_menu_selection()
                     
             elif self.state == "victory":
-                self.start_button.update(mouse_pos)
-                self.back_button.update(mouse_pos)
+                if self.start_button.update(mouse_pos):
+                    self.end_menu_index = 0
+                if self.back_button.update(mouse_pos):
+                    self.end_menu_index = 1
                 
                 if self.start_button.is_clicked(mouse_pos, mouse_click):
-                    if self.SFX_CLICK: self.SFX_CLICK.play()
-                    self.state = "character_select"
+                    self.end_menu_index = 0
+                    self.activate_end_menu_selection()
                     
                 if self.back_button.is_clicked(mouse_pos, mouse_click):
-                    if self.SFX_CLICK: self.SFX_CLICK.play()
-                    self.state = "start_menu"
+                    self.end_menu_index = 1
+                    self.activate_end_menu_selection()
             
             self.update()
             self.draw(screen)
