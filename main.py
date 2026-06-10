@@ -2981,6 +2981,10 @@ class BattleScreen:
             progress = fx["timer"] / max(1, fx["duration"])
             if fx["kind"] == "ghostface_stab":
                 self.draw_ghostface_stab_fx(surface, progress, fx["seed"])
+            elif fx["kind"] == "ghostface_cross_stab":
+                self.draw_ghostface_cross_stab_fx(surface, progress, fx["seed"])
+            elif fx["kind"] == "ghostface_scream":
+                self.draw_ghostface_scream_fx(surface, progress, fx["seed"])
 
     def draw_ghostface_stab_fx(self, surface, progress, seed):
         rng = random.Random(seed + int(progress * 20))
@@ -3043,6 +3047,77 @@ class BattleScreen:
             shadow = font_large.render("STAB", True, (255, 30, 80))
             overlay.blit(shadow, (target_x - 54 + rng.randint(-4, 4), target_y - 122 + rng.randint(-4, 4)))
             overlay.blit(text, (target_x - 58, target_y - 126))
+
+        surface.blit(overlay, (0, 0))
+
+    def draw_ghostface_cross_stab_fx(self, surface, progress, seed):
+        rng = random.Random(seed + int(progress * 24))
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        target_x, target_y = 235, 365
+        flash = int(180 * max(0, 1 - progress))
+        if flash > 0:
+            overlay.fill((255, 255, 255, flash // 5))
+
+        slash_pairs = [
+            ((target_x - 130, target_y - 90), (target_x + 115, target_y + 85)),
+            ((target_x + 125, target_y - 100), (target_x - 120, target_y + 90)),
+            ((target_x - 80, target_y + 105), (target_x + 75, target_y - 120)),
+        ]
+        for index, (start, end) in enumerate(slash_pairs):
+            phase = min(1.0, max(0.0, progress * 1.8 - index * 0.18))
+            if phase <= 0:
+                continue
+            cut_x = start[0] + (end[0] - start[0]) * phase
+            cut_y = start[1] + (end[1] - start[1]) * phase
+            width = 18 - index * 4
+            pygame.draw.line(overlay, (255, 30, 80, 210), start, (cut_x, cut_y), width)
+            pygame.draw.line(overlay, (255, 255, 255, 235), start, (cut_x, cut_y), max(3, width // 3))
+
+        if progress > 0.35:
+            for _ in range(16):
+                angle = rng.uniform(0, math.pi * 2)
+                dist = rng.uniform(8, 95)
+                px = target_x + math.cos(angle) * dist
+                py = target_y + math.sin(angle) * dist
+                pygame.draw.circle(overlay, rng.choice([(255, 30, 80, 180), (255, 255, 255, 180)]), (int(px), int(py)), rng.randint(2, 5))
+            text = font_medium.render("CROSS STAB", True, (255, 255, 255))
+            shadow = font_medium.render("CROSS STAB", True, (255, 30, 80))
+            overlay.blit(shadow, (target_x - 100 + rng.randint(-3, 3), target_y - 130 + rng.randint(-3, 3)))
+            overlay.blit(text, (target_x - 104, target_y - 134))
+
+        surface.blit(overlay, (0, 0))
+
+    def draw_ghostface_scream_fx(self, surface, progress, seed):
+        rng = random.Random(seed + int(progress * 18))
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        mask = load_scaled_sprite(GHOST_FACE_SPRITE_PATH, 190)
+        if mask:
+            mask_copy = mask.copy()
+            mask_copy.set_alpha(int(70 + 90 * math.sin(min(1, progress) * math.pi)))
+            overlay.blit(mask_copy, (635 + rng.randint(-2, 2), 112 + rng.randint(-2, 2)))
+
+        origin = (725, 275)
+        target = (235, 365)
+        for ring in range(6):
+            ring_progress = (progress * 1.8 - ring * 0.12)
+            if ring_progress <= 0:
+                continue
+            radius = int(40 + ring_progress * 290)
+            alpha = max(0, 190 - int(ring_progress * 150))
+            pygame.draw.circle(overlay, (245, 245, 255, alpha), origin, radius, 4)
+            pygame.draw.circle(overlay, (255, 30, 160, max(0, alpha - 50)), origin, radius + 12, 2)
+
+        for i in range(14):
+            phase = min(1.0, max(0.0, progress * 1.4 - i * 0.025))
+            x = origin[0] + (target[0] - origin[0]) * phase + rng.randint(-8, 8)
+            y = origin[1] + (target[1] - origin[1]) * phase + rng.randint(-8, 8)
+            pygame.draw.line(overlay, (255, 255, 255, 95), origin, (x, y), 2)
+
+        if progress > 0.25:
+            text = font_large.render("SCREAM", True, (255, 255, 255))
+            shadow = font_large.render("SCREAM", True, (160, 70, 255))
+            overlay.blit(shadow, (430 + rng.randint(-4, 4), 155 + rng.randint(-4, 4)))
+            overlay.blit(text, (424, 150))
 
         surface.blit(overlay, (0, 0))
 
@@ -3537,11 +3612,19 @@ class BattleScreen:
             if phase:
                 damage += phase.get("strength_bonus", 0)
                 self.add_log(phase["attack_message"])
-            self.player.health = max(0, self.player.health - damage)
+            ghostface_attack = None
             if getattr(self.enemy, "enemy_type", None) == "ghost_face":
-                self.add_log(f"{self.enemy.name} stabs for {damage} damage!")
-                self.queue_enemy_attack_fx("ghostface_stab", 38)
-                self.add_screen_shake(7, 12)
+                ghostface_attack = self.choose_ghostface_attack()
+                damage += ghostface_attack["damage_bonus"]
+            self.player.health = max(0, self.player.health - damage)
+            if ghostface_attack:
+                self.add_log(ghostface_attack["message"].format(name=self.enemy.name, damage=damage))
+                self.queue_enemy_attack_fx(ghostface_attack["fx"], ghostface_attack["duration"])
+                self.add_screen_shake(*ghostface_attack["shake"])
+                mana_drain = min(self.player.mana, ghostface_attack.get("mana_drain", 0))
+                if mana_drain:
+                    self.player.mana -= mana_drain
+                    self.add_log(f"The scream drains {mana_drain} MP!")
             else:
                 self.add_log(f"{self.enemy.name} attacks for {damage} damage!")
                 self.add_screen_shake(3, 5)
@@ -3562,6 +3645,33 @@ class BattleScreen:
     def add_log(self, message):
         self.battle_log.append(message)
         self.waiting_for_continue = True
+
+    def choose_ghostface_attack(self):
+        attacks = [
+            {
+                "message": "{name} lunges in with a stab for {damage} damage!",
+                "fx": "ghostface_stab",
+                "duration": 38,
+                "damage_bonus": 4,
+                "shake": (7, 12),
+            },
+            {
+                "message": "{name} vanishes, then cross-stabs for {damage} damage!",
+                "fx": "ghostface_cross_stab",
+                "duration": 42,
+                "damage_bonus": 7,
+                "shake": (9, 14),
+            },
+            {
+                "message": "{name}'s mask scream hits for {damage} damage!",
+                "fx": "ghostface_scream",
+                "duration": 48,
+                "damage_bonus": 3,
+                "shake": (8, 16),
+                "mana_drain": 6,
+            },
+        ]
+        return random.choice(attacks)
 
     def set_player_condition(self, label, color, duration=90):
         self.player_condition = {"label": label, "color": color}
@@ -5416,6 +5526,11 @@ class Game:
 
         enemy = Enemy(self.player.level if self.player else 1)
         enemy.set_type("ghost_face")
+        level = self.player.level if self.player else 1
+        enemy.health = max(enemy.health, 85 + level * 12)
+        enemy.max_health = enemy.health
+        enemy.strength = max(enemy.strength + 8, 14 + level * 4)
+        enemy.speed = max(enemy.speed + 4, 9 + level)
         area_world_x, area_world_y = forest_area.get_world_position()
         enemy.x = area_world_x + (AREA_WIDTH // 2) - (enemy.size // 2)
         enemy.y = area_world_y + (AREA_HEIGHT // 2) - (enemy.size // 2)
