@@ -223,10 +223,66 @@ MAGIC_COLORS = [(150, 0, 255), (200, 50, 255), (255, 100, 255)]
 # PYGAME INITIALIZATION AND SETUP
 # ============================================================================
 
-# Create the main game window
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+def is_android_runtime():
+    """Detect Android before the main display is created."""
+    return (
+        sys.platform.startswith("android") or
+        "ANDROID_ARGUMENT" in os.environ
+    )
+
+
+def create_game_display():
+    """Create a virtual game surface and a real display surface.
+
+    Android devices often ignore the requested 1000x700 window size and show it
+    as a small corner surface. Rendering to a virtual surface and stretching it
+    to the real fullscreen display keeps the game usable on phones.
+    """
+    if is_android_runtime():
+        try:
+            real_display = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+            virtual_screen = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT)).convert()
+            return virtual_screen, real_display
+        except pygame.error as exc:
+            print(f"[WARN] Android fullscreen display setup failed: {exc}")
+
+    real_display = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    return real_display, real_display
+
+
+screen, display_surface = create_game_display()
 pygame.display.set_caption("Dragon's Lair RPG")
 clock = pygame.time.Clock()
+
+
+def display_to_game_pos(pos):
+    """Map real display coordinates back to the 1000x700 game layout."""
+    if display_surface is screen:
+        return pos
+    display_width, display_height = display_surface.get_size()
+    if display_width <= 0 or display_height <= 0:
+        return pos
+    return (
+        int(pos[0] * SCREEN_WIDTH / display_width),
+        int(pos[1] * SCREEN_HEIGHT / display_height),
+    )
+
+
+def get_game_mouse_pos():
+    return display_to_game_pos(pygame.mouse.get_pos())
+
+
+def present_frame():
+    """Present the virtual game screen on the real display."""
+    if display_surface is screen:
+        pygame.display.flip()
+        return
+    try:
+        pygame.transform.scale(screen, display_surface.get_size(), display_surface)
+    except TypeError:
+        scaled = pygame.transform.scale(screen, display_surface.get_size())
+        display_surface.blit(scaled, (0, 0))
+    pygame.display.flip()
 
 # Font System Setup
 # =================
@@ -3480,7 +3536,7 @@ class BattleScreen:
                     if game and hasattr(game, 'SFX_ENTER') and game.SFX_ENTER: game.SFX_ENTER.play()
                     self.handle_action(game)
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_pos = pygame.mouse.get_pos()
+                mouse_pos = get_game_mouse_pos()
                 for i, button in enumerate(self.buttons):
                     if button.rect.collidepoint(mouse_pos):
                         self.selected_option = i
@@ -3977,10 +4033,7 @@ def is_android():
     Detects if the game is running on Android platform.
     Used for enabling touch controls and platform-specific features.
     """
-    return (
-        sys.platform.startswith("android") or
-        "ANDROID_ARGUMENT" in os.environ
-    )
+    return is_android_runtime()
 
 # ============================================================================
 # MAIN GAME CLASS - Central game controller and state manager
@@ -5793,13 +5846,13 @@ class Game:
             self.back_button.text_rect = self.back_button.text_surf.get_rect(center=self.back_button.rect.center)
             self.back_button.draw(screen)
         
-        pygame.display.flip()
+        present_frame()
     
     def run(self):
         running = True
         
         while running:
-            mouse_pos = pygame.mouse.get_pos()
+            mouse_pos = get_game_mouse_pos()
             mouse_click = False
             
             for event in pygame.event.get():
@@ -5810,7 +5863,7 @@ class Game:
                     mouse_click = True
                     # Android virtual controls
                     if is_android() and self.android_buttons:
-                        mx, my = event.pos
+                        mx, my = display_to_game_pos(event.pos)
                         for name, rect in self.android_buttons.items():
                             if rect.collidepoint(mx, my):
                                 key = key_for_android_button(name)

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build the Android debug APK for Dragon's Lair RPG.
+# Build the Android APK for Dragon's Lair RPG.
 #
 # Beginner note:
 # - Run this from the repository root with: bash scripts/build_android.sh
@@ -45,28 +45,54 @@ EOF
     exit 1
 fi
 
-echo "Building Android debug APK..."
+BUILD_MODE="${ANDROID_BUILD_MODE:-release}"
+if [[ "$BUILD_MODE" == "release" ]]; then
+    export P4A_RELEASE_KEYSTORE="${P4A_RELEASE_KEYSTORE:-$REPO_DIR/android-signing/dragons-lair-rpg-dev.keystore}"
+    export P4A_RELEASE_KEYSTORE_PASSWD="${P4A_RELEASE_KEYSTORE_PASSWD:-dragonslair}"
+    export P4A_RELEASE_KEYALIAS="${P4A_RELEASE_KEYALIAS:-dragonslairrpg}"
+    export P4A_RELEASE_KEYALIAS_PASSWD="${P4A_RELEASE_KEYALIAS_PASSWD:-dragonslair}"
+    if [[ ! -f "$P4A_RELEASE_KEYSTORE" ]]; then
+        echo "Release keystore was not found: $P4A_RELEASE_KEYSTORE"
+        exit 1
+    fi
+    BUILDOZER_ARGS=(android release)
+else
+    BUILDOZER_ARGS=(android debug)
+fi
+
+echo "Building Android $BUILD_MODE APK..."
 if [[ "${ANDROID_ACCEPT_SDK_LICENSES:-0}" == "1" ]]; then
     # CI cannot answer Android SDK license prompts, so feed Buildozer a stream of
     # "yes" responses while it installs Android build tools. Disable pipefail so
     # a normal SIGPIPE from `yes` does not override Buildozer's exit code.
     set +o pipefail
-    yes | "${BUILDOZER_CMD[@]}" android debug
+    yes | "${BUILDOZER_CMD[@]}" "${BUILDOZER_ARGS[@]}"
     set -o pipefail
 else
-    "${BUILDOZER_CMD[@]}" android debug
+    "${BUILDOZER_CMD[@]}" "${BUILDOZER_ARGS[@]}"
 fi
 
-ANDROID_APK="bin/dragons-lair-rpg-android-debug.apk"
-FOUND_APK="$(find bin -maxdepth 1 -type f -name '*debug*.apk' ! -name "$(basename "$ANDROID_APK")" | sort | tail -n 1)"
+ANDROID_APK="bin/dragons-lair-rpg-android.apk"
+ANDROID_COMPAT_APK="bin/dragons-lair-rpg-android-debug.apk"
+if [[ "$BUILD_MODE" == "release" ]]; then
+    FOUND_APK="$(find bin -maxdepth 1 -type f -name '*release*.apk' ! -name "$(basename "$ANDROID_APK")" | sort | tail -n 1)"
+    if [[ "$FOUND_APK" == *"unsigned"* ]]; then
+        echo "Build produced an unsigned release APK. Check release signing env vars."
+        exit 1
+    fi
+else
+    FOUND_APK="$(find bin -maxdepth 1 -type f -name '*debug*.apk' ! -name "$(basename "$ANDROID_COMPAT_APK")" | sort | tail -n 1)"
+fi
 
 if [[ -z "$FOUND_APK" ]]; then
-    echo "Build finished, but no debug APK was found in bin/."
+    echo "Build finished, but no $BUILD_MODE APK was found in bin/."
     exit 1
 fi
 
 cp "$FOUND_APK" "$ANDROID_APK"
+cp "$FOUND_APK" "$ANDROID_COMPAT_APK"
 
 echo
 echo "Build complete: $ANDROID_APK"
-echo "Upload that file to a GitHub Release with the same filename for the README direct download link."
+echo "Compatibility copy: $ANDROID_COMPAT_APK"
+echo "Upload those files to a GitHub Release for the README direct download link."

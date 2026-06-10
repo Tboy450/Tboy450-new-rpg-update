@@ -13,11 +13,17 @@ The installable Android app is published here after the **Build Android APK**
 workflow finishes successfully:
 
 ```text
-https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk
+https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android.apk
 ```
 
 If that link returns 404, the APK workflow has not published a green build yet.
 Use the badge above to open the build status.
+
+Older links still work through this compatibility filename:
+
+```text
+https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk
+```
 
 The APK uses the dragon launcher icon from:
 

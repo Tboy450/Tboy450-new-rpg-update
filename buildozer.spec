@@ -30,7 +30,8 @@ source.exclude_dirs = archive,.git,.github,.pytest_cache,__pycache__,.buildozer,
 requirements = python3,pygame-ce
 
 # App version fields.
-version = 0.1.0
+version = 0.1.1
+android.numeric_version = 2
 
 # The game is designed for a 1000x700 landscape screen.
 orientation = landscape
@@ -42,6 +43,7 @@ android.api = 34
 android.minapi = 24
 android.ndk = 25b
 android.accept_sdk_license = True
+android.release_artifact = apk
 
 # SDL2 bootstrap is the standard route for Pygame on Android.
 p4a.bootstrap = sdl2

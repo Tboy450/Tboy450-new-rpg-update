@@ -38,6 +38,12 @@ working prebuilt pygame package.
 Release URL:
 
 ```text
+https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android.apk
+```
+
+Compatibility URL kept for older README/app links:
+
+```text
 https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk
 ```
 
@@ -125,6 +131,11 @@ pygame-ce C compilation at `_PyLong_AsByteArray`.
 Keep `title = Dragons Lair RPG` for the APK label. The human-facing README can
 say `Dragon's Lair RPG`, but Android resource packaging failed when the app
 label generated an escaped apostrophe in `strings.xml`.
+
+Release APKs are signed with the committed development key at
+`android-signing/dragons-lair-rpg-dev.keystore`. This is intentionally public
+for sideload testing so APK updates keep the same signature. Do not use that key
+for Play Store distribution.
 
 ### `p4a-recipes/pygame-ce/__init__.py`
 

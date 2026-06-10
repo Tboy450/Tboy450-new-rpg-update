@@ -11,6 +11,7 @@ on:
       - "main.py"
       - "requirements.txt"
       - "assets/**"
+      - "android-signing/**"
       - "game_data/**"
       - "p4a-recipes/**"
       - "systems/**"
@@ -47,25 +48,27 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install "buildozer" "Cython>=0.29.36,<0.30"
 
-      - name: Build Android debug APK
+      - name: Build Android APK
         env:
           ANDROID_ACCEPT_SDK_LICENSES: "1"
           PIP_BREAK_SYSTEM_PACKAGES: "1"
         run: |
           bash scripts/build_android.sh
-          ls -lh bin/dragons-lair-rpg-android-debug.apk
+          ls -lh bin/dragons-lair-rpg-android.apk bin/dragons-lair-rpg-android-debug.apk
 
       - name: Publish Android APK release asset
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-latest
-          name: Latest Android Debug APK
+          name: Latest Android APK
           body: |
-            Latest automatically built Android debug APK for Dragon's Lair RPG.
+            Latest automatically built Android APK for Dragon's Lair RPG.
 
             Install link:
-            https://github.com/${{ github.repository }}/releases/download/android-latest/dragons-lair-rpg-android-debug.apk
+            https://github.com/${{ github.repository }}/releases/download/android-latest/dragons-lair-rpg-android.apk
           prerelease: true
           make_latest: true
-          files: bin/dragons-lair-rpg-android-debug.apk
+          files: |
+            bin/dragons-lair-rpg-android.apk
+            bin/dragons-lair-rpg-android-debug.apk
           overwrite_files: true
