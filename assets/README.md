@@ -16,6 +16,10 @@ Active UI asset:
 
 - `assets/processed/ui/dragon_app_icon.png`: Android launcher icon used by `buildozer.spec`.
 
+Active enemy asset:
+
+- `assets/processed/enemies/ghost_face.png`: Ghost Face enemy sprite used in the top-center forest area.
+
 ## Character Animation Sources
 
 Prefer CC0 assets first so we do not have to manage attribution for every import.

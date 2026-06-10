@@ -6,10 +6,10 @@
     "notes": "Drop raw hero/NPC animation packs here before converting them to game-ready sprites."
   },
   "enemies": {
-    "status": "planned",
+    "status": "active",
     "source_dir": "assets/source/enemies",
     "processed_dir": "assets/processed/enemies",
-    "notes": "Enemy and boss sprites should be grouped by element or boss name."
+    "notes": "Ghost Face is the first active enemy sprite. Enemy and boss sprites should be grouped by element or boss name."
   },
   "sounds": {
     "status": "planned",

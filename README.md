@@ -19,6 +19,9 @@ https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-late
 If that link returns 404, the APK workflow has not published a green build yet.
 Use the badge above to open the build status.
 
+The app also checks this GitHub build version from the beginning menu and can
+open the same APK update link from inside the game.
+
 Older links still work through this compatibility filename:
 
 ```text

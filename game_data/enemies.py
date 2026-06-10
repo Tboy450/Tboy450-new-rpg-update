@@ -25,6 +25,9 @@ ENEMY_NAME_POOLS = {
         "Gloom Stalker",
         "Shadow Fiend",
     ],
+    "ghost_face": [
+        "Ghost Face",
+    ],
     "ice": [
         "Frost Sprite",
         "Ice Golem",

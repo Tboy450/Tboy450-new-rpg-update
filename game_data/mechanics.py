@@ -41,6 +41,19 @@ ELEMENT_PROFILES = {
             "message": "Shadow energy drains {amount} MP!",
         },
     },
+    "ghost_face": {
+        "label": "Ghost Face",
+        "primary_color": (245, 245, 255),
+        "secondary_color": (40, 35, 70),
+        "accent_color": (255, 105, 180),
+        "particle_colors": [(245, 245, 255), (120, 80, 180), (255, 105, 180)],
+        "status": {
+            "kind": "drain",
+            "chance": 0.35,
+            "amount": 8,
+            "message": "Ghost Face rattles your focus and drains {amount} MP!",
+        },
+    },
     "ice": {
         "label": "Frost",
         "primary_color": (150, 220, 255),

@@ -30,8 +30,8 @@ source.exclude_dirs = archive,.git,.github,.pytest_cache,__pycache__,.buildozer,
 requirements = python3,pygame-ce
 
 # App version fields.
-version = 0.1.2
-android.numeric_version = 3
+version = 0.1.3
+android.numeric_version = 4
 
 # The game is designed for a 1000x700 landscape screen.
 orientation = landscape
@@ -60,9 +60,9 @@ p4a.branch = v2024.01.21
 # single architecture keeps debug builds much faster while this project is early.
 android.archs = arm64-v8a
 
-# No special permissions are needed for the current game. Saves use app/private
-# storage through Python's home path.
-android.permissions =
+# Internet is used only for the beginning-menu update check. Saves use
+# app/private storage through Python's home path.
+android.permissions = INTERNET
 
 # Build output goes into `bin/`.
 

@@ -50,6 +50,9 @@ import pygame
 import sys
 import random
 import math
+import threading
+import urllib.request
+import webbrowser
 from pygame import gfxdraw
 import tempfile
 import wave
@@ -192,6 +195,15 @@ ENEMY_SIZE = 40
 ITEM_SIZE = 30
 FPS = 60
 
+APP_VERSION = "0.1.3"
+APP_NUMERIC_VERSION = 4
+APP_UPDATE_APK_URL = "https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android.apk"
+APP_VERSION_SPEC_URL = "https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/buildozer.spec"
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+GHOST_FACE_SPRITE_PATH = os.path.join(BASE_DIR, "assets", "processed", "enemies", "ghost_face.png")
+SPRITE_CACHE = {}
+
 # Visual Design - Retro 80s Color Palette
 # =======================================
 # Core UI Colors
@@ -287,6 +299,60 @@ def present_frame():
         scaled = pygame.transform.scale(screen, display_surface.get_size())
         display_surface.blit(scaled, (0, 0))
     pygame.display.flip()
+
+
+def load_scaled_sprite(path, size):
+    cache_key = (path, size)
+    if cache_key in SPRITE_CACHE:
+        return SPRITE_CACHE[cache_key]
+
+    try:
+        sprite = pygame.image.load(path).convert_alpha()
+        sprite = pygame.transform.smoothscale(sprite, (size, size))
+    except Exception as exc:
+        print(f"[WARN] Could not load sprite {path}: {exc}")
+        sprite = None
+
+    SPRITE_CACHE[cache_key] = sprite
+    return sprite
+
+
+def draw_enemy_sprite(surface, enemy, x, y, size):
+    sprite_path = getattr(enemy, "sprite_path", None)
+    if not sprite_path:
+        return False
+    sprite = load_scaled_sprite(sprite_path, int(size))
+    if not sprite:
+        return False
+    surface.blit(sprite, (int(x), int(y)))
+    return True
+
+
+def fetch_latest_android_numeric_version(timeout=4):
+    request = urllib.request.Request(
+        APP_VERSION_SPEC_URL,
+        headers={"User-Agent": "DragonsLairRPGUpdateCheck"},
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        spec_text = response.read(20000).decode("utf-8", errors="replace")
+
+    for line in spec_text.splitlines():
+        if line.strip().startswith("android.numeric_version"):
+            _, value = line.split("=", 1)
+            return int(value.strip())
+    raise ValueError("android.numeric_version not found")
+
+
+def open_external_url(url):
+    if is_android_runtime():
+        safe_url = url.replace('"', "%22")
+        if os.system(f'am start -a android.intent.action.VIEW -d "{safe_url}" >/dev/null 2>&1') == 0:
+            return True
+
+    try:
+        return bool(webbrowser.open(url))
+    except Exception:
+        return False
 
 # Font System Setup
 # =================
@@ -2563,6 +2629,8 @@ class Enemy:
         self.enemy_type = enemy_type
         self.profile = get_element_profile(enemy_type)
         self.color = self.profile["primary_color"]
+        self.sprite_path = GHOST_FACE_SPRITE_PATH if enemy_type == "ghost_face" else None
+        self.size = 78 if self.sprite_path else ENEMY_SIZE
         names = ENEMY_NAME_POOLS.get(enemy_type, ["Wandering Foe"])
         self.name = random.choice(names)
         
@@ -2594,6 +2662,18 @@ class Enemy:
         
         x = self.x + offset_x
         y = self.y + offset_y
+
+        if draw_enemy_sprite(surface, self, x, y, self.size):
+            bar_width = max(40, self.size)
+            pygame.draw.rect(surface, (20, 20, 30), (x - 5, y - 15, bar_width, 8), border_radius=2)
+            health_width = (bar_width - 2) * (self.health / self.max_health)
+            pygame.draw.rect(surface, HEALTH_COLOR, (x - 4, y - 14, health_width, 6), border_radius=2)
+
+            name_text = font_tiny.render(self.name, True, TEXT_COLOR)
+            name_rect = name_text.get_rect(midtop=(x + self.size//2, y - 30))
+            surface.blit(name_text, name_rect)
+            return
+
         profile = get_element_profile(self.enemy_type)
         
         if self.enemy_type == "fiery":
@@ -2962,6 +3042,8 @@ class BattleScreen:
             self.enemy.y = enemy_y
             self.enemy.draw(boss_surf)
             temp_surface.blit(boss_surf, (0, 0))
+        elif getattr(self.enemy, "sprite_path", None):
+            draw_enemy_sprite(temp_surface, self.enemy, enemy_x - 24, enemy_y - 38, 118)
         else:
             self.draw_elemental_enemy(temp_surface, enemy_x, enemy_y)
         
@@ -4138,11 +4220,17 @@ class Game:
         # UI Elements
         self.start_button = Button(SCREEN_WIDTH//2 - 120, 455, 240, 55, "START QUEST", UI_BORDER)
         self.load_button = Button(SCREEN_WIDTH//2 - 120, 525, 240, 55, "LOAD SAVE", (110, 220, 255))
+        self.update_button = Button(SCREEN_WIDTH//2 - 120, 555, 240, 55, "UPDATE APP", (255, 190, 80))
         self.quit_button = Button(SCREEN_WIDTH//2 - 120, 595, 240, 55, "QUIT", UI_BORDER)
         self.back_button = Button(20, 20, 100, 40, "BACK")
         self.start_menu_index = 0
         self.character_menu_index = 0
         self.end_menu_index = 0
+        self.update_available = False
+        self.update_check_done = False
+        self.update_status = "Checking for app updates..."
+        self.update_thread = threading.Thread(target=self.check_for_updates, daemon=True)
+        self.update_thread.start()
         
         # Character buttons
         self.warrior_button = Button(SCREEN_WIDTH//2 - 300, 300, 200, 150, "WARRIOR", (0, 255, 0))
@@ -4270,9 +4358,13 @@ class Game:
         button.text_rect = button.text_surf.get_rect(center=button.rect.center)
 
     def reset_menu_buttons(self):
-        self.set_button(self.start_button, "START QUEST", pygame.Rect(SCREEN_WIDTH//2 - 120, 455, 240, 55))
-        self.set_button(self.load_button, "LOAD SAVE", pygame.Rect(SCREEN_WIDTH//2 - 120, 525, 240, 55))
-        self.set_button(self.quit_button, "QUIT", pygame.Rect(SCREEN_WIDTH//2 - 120, 595, 240, 55))
+        self.set_button(self.start_button, "START QUEST", pygame.Rect(SCREEN_WIDTH//2 - 120, 395, 240, 50))
+        self.set_button(self.load_button, "LOAD SAVE", pygame.Rect(SCREEN_WIDTH//2 - 120, 455, 240, 50))
+        self.set_button(self.update_button, "UPDATE APP", pygame.Rect(SCREEN_WIDTH//2 - 120, 515, 240, 50))
+        self.set_button(self.quit_button, "QUIT", pygame.Rect(SCREEN_WIDTH//2 - 120, 575, 240, 50))
+
+    def start_menu_buttons(self):
+        return [self.start_button, self.load_button, self.update_button, self.quit_button]
 
     def set_selected_buttons(self, buttons, selected_index):
         for index, button in enumerate(buttons):
@@ -4300,7 +4392,33 @@ class Game:
         if self.start_menu_index == 1:
             self.load_saved_game()
             return True
+        if self.start_menu_index == 2:
+            self.open_update_link()
+            return True
         return False
+
+    def check_for_updates(self):
+        try:
+            latest_version = fetch_latest_android_numeric_version()
+        except Exception as exc:
+            self.update_status = "Update check unavailable. APK link still works."
+            self.update_available = False
+            self.update_check_done = True
+            print(f"[WARN] Update check failed: {exc}")
+            return
+
+        self.update_available = latest_version > APP_NUMERIC_VERSION
+        if self.update_available:
+            self.update_status = "New Android APK available."
+        else:
+            self.update_status = f"Android app is current: v{APP_VERSION}."
+        self.update_check_done = True
+
+    def open_update_link(self):
+        if open_external_url(APP_UPDATE_APK_URL):
+            self.update_status = "Opened APK update link."
+        else:
+            self.update_status = "Could not open APK link. Use the README link."
 
     def activate_character_menu_selection(self):
         if self.character_menu_index == 0:
@@ -4399,6 +4517,7 @@ class Game:
         area_x, area_y = data.get("world", {}).get("current_area", [1, 1])
         self.world_map.current_area_x = max(0, min(WORLD_SIZE - 1, int(area_x)))
         self.world_map.current_area_y = max(0, min(WORLD_SIZE - 1, int(area_y)))
+        self.spawn_story_enemies()
         current_area = self.world_map.get_current_area()
         if current_area:
             current_area.visited = True
@@ -5198,6 +5317,23 @@ class Game:
             enemy.y = area_world_y + random.randint(100, AREA_HEIGHT - 100)
             current_area.enemies.append(enemy)
             self.enemies.append(enemy)
+
+    def spawn_story_enemies(self):
+        forest_area = self.world_map.areas.get((1, 0))
+        if not forest_area:
+            return
+        if any(getattr(enemy, "enemy_type", None) == "ghost_face" for enemy in forest_area.enemies):
+            return
+
+        enemy = Enemy(self.player.level if self.player else 1)
+        enemy.set_type("ghost_face")
+        area_world_x, area_world_y = forest_area.get_world_position()
+        enemy.x = area_world_x + (AREA_WIDTH // 2) - (enemy.size // 2)
+        enemy.y = area_world_y + (AREA_HEIGHT // 2) - (enemy.size // 2)
+        forest_area.enemies.append(enemy)
+
+        if forest_area == self.world_map.get_current_area():
+            self.enemies.append(enemy)
     
     def spawn_item(self):
         current_area = self.world_map.get_current_area()
@@ -5386,7 +5522,7 @@ class Game:
             for enemy in self.enemies[:]:
                 if self.player:  # Ensure player exists
                     player_rect = pygame.Rect(self.player.x, self.player.y, PLAYER_SIZE, PLAYER_SIZE)
-                    enemy_rect = pygame.Rect(enemy.x, enemy.y, ENEMY_SIZE, ENEMY_SIZE)
+                    enemy_rect = pygame.Rect(enemy.x, enemy.y, enemy.size, enemy.size)
                     if player_rect.colliderect(enemy_rect):
                         self.battle_screen = BattleScreen(self.player, enemy)
                         self.battle_screen.start_transition()
@@ -5462,7 +5598,7 @@ class Game:
         if self.state == "start_menu":
             self.reset_menu_buttons()
             self.set_selected_buttons(
-                [self.start_button, self.load_button, self.quit_button],
+                self.start_menu_buttons(),
                 self.start_menu_index,
             )
             
@@ -5476,24 +5612,26 @@ class Game:
             
             self.start_button.draw(screen)
             self.load_button.draw(screen)
+            self.update_button.draw(screen)
             self.quit_button.draw(screen)
             
             instructions = [
                 "SELECT YOUR HERO AND EMBARK ON A QUEST",
                 "DEFEAT THE DRAGON'S MINIONS AND SURVIVE!",
-                "",
-                "ARROWS/WASD: MOVE    ENTER/SPACE: SELECT",
-                "J: JOURNAL    M: MAP    F5/F9: SAVE/LOAD",
-                "ESC: QUIT OR BACK"
+                "ARROWS/WASD OR TOUCH: MOVE    ENTER/SPACE: SELECT",
             ]
             
             for i, line in enumerate(instructions):
                 text = font_tiny.render(line, True, TEXT_COLOR)
-                screen.blit(text, (SCREEN_WIDTH//2 - text.get_width()//2, 350 + i*25))
+                screen.blit(text, (SCREEN_WIDTH//2 - text.get_width()//2, 320 + i*24))
+
+            update_color = (255, 215, 0) if self.update_available else (180, 180, 200)
+            update_text = font_tiny.render(self.update_status, True, update_color)
+            screen.blit(update_text, (SCREEN_WIDTH//2 - update_text.get_width()//2, 640))
 
             if self.town_service_message and self.town_service_message_timer > 0:
                 message_text = font_tiny.render(self.town_service_message, True, (255, 235, 160))
-                msg_rect = pygame.Rect(SCREEN_WIDTH//2 - 260, 650, 520, 30)
+                msg_rect = pygame.Rect(SCREEN_WIDTH//2 - 260, 660, 520, 30)
                 pygame.draw.rect(screen, UI_BG, msg_rect, border_radius=6)
                 pygame.draw.rect(screen, (255, 215, 0), msg_rect, 2, border_radius=6)
                 screen.blit(message_text, (msg_rect.centerx - message_text.get_width() // 2, msg_rect.y + 6))
@@ -5934,10 +6072,10 @@ class Game:
 
                     if self.state == "start_menu":
                         if action in [MOVE_UP, MOVE_LEFT]:
-                            self.move_menu_selection("start_menu_index", 3, -1)
+                            self.move_menu_selection("start_menu_index", len(self.start_menu_buttons()), -1)
                             continue
                         if action in [MOVE_DOWN, MOVE_RIGHT]:
-                            self.move_menu_selection("start_menu_index", 3, 1)
+                            self.move_menu_selection("start_menu_index", len(self.start_menu_buttons()), 1)
                             continue
                         if action in [CONFIRM, INTERACT]:
                             running = self.activate_start_menu_selection()
@@ -6077,8 +6215,10 @@ class Game:
                     self.start_menu_index = 0
                 if self.load_button.update(mouse_pos):
                     self.start_menu_index = 1
-                if self.quit_button.update(mouse_pos):
+                if self.update_button.update(mouse_pos):
                     self.start_menu_index = 2
+                if self.quit_button.update(mouse_pos):
+                    self.start_menu_index = 3
                 
                 if self.start_button.is_clicked(mouse_pos, mouse_click):
                     self.start_menu_index = 0
@@ -6088,6 +6228,10 @@ class Game:
                     self.start_menu_index = 1
                     if self.SFX_CLICK: self.SFX_CLICK.play()
                     self.load_saved_game()
+
+                if self.update_button.is_clicked(mouse_pos, mouse_click):
+                    self.start_menu_index = 2
+                    self.activate_start_menu_selection()
                     
                 if self.quit_button.is_clicked(mouse_pos, mouse_click):
                     if self.SFX_CLICK: self.SFX_CLICK.play()
@@ -6259,6 +6403,7 @@ class Game:
         
         # Reset world map
         self.world_map = WorldMap()
+        self.spawn_story_enemies()
         
         # Position player in center area (1,1) at center position
         if self.player:
