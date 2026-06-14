@@ -195,8 +195,8 @@ ENEMY_SIZE = 40
 ITEM_SIZE = 30
 FPS = 60
 
-APP_VERSION = "0.1.3"
-APP_NUMERIC_VERSION = 4
+APP_VERSION = "0.1.4"
+APP_NUMERIC_VERSION = 5
 APP_UPDATE_APK_URL = "https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android.apk"
 APP_VERSION_SPEC_URL = "https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/buildozer.spec"
 
@@ -6667,26 +6667,52 @@ class MusicSystem:
             self.start_menu_music_bytes = self.overworld_music_bytes = self.battle_music_bytes = None
             self.boss_music_bytes = self.victory_music_bytes = self.game_over_music_bytes = None
     
+    def note_freq(self, note_name):
+        if note_name in (None, "R", "REST", 0):
+            return 0
+
+        note_name = str(note_name).strip().upper()
+        pitch = note_name[:-1]
+        octave = int(note_name[-1])
+        semitone = {
+            "C": -9, "C#": -8, "DB": -8, "D": -7, "D#": -6, "EB": -6,
+            "E": -5, "F": -4, "F#": -3, "GB": -3, "G": -2, "G#": -1,
+            "AB": -1, "A": 0, "A#": 1, "BB": 1, "B": 2,
+        }[pitch] + (octave - 4) * 12
+        return 440.0 * (2 ** (semitone / 12))
+
+    def notes(self, pattern):
+        return [(self.note_freq(note), beats) for note, beats in pattern]
+
+    def drum_loop(self, bars=4, busy=False):
+        pattern = []
+        base = [(220, 0.25), (0, 0.25), (520, 0.25), (0, 0.25)]
+        fill = [(220, 0.25), (760, 0.125), (520, 0.125), (760, 0.25), (220, 0.25)]
+        for bar in range(bars):
+            pattern.extend(fill if busy and bar % 4 == 3 else base)
+        return pattern
+
     def generate_start_menu_music(self):
-        # Epic title screen theme
-        melody = [
-            (523.25, 0.5), (659.25, 0.5), (783.99, 0.5), (987.77, 0.5),  # C5, E5, G5, B5
-            (880.00, 0.5), (783.99, 0.5), (659.25, 0.5), (523.25, 0.5),  # A5, G5, E5, C5
-            (440.00, 0.5), (523.25, 0.5), (659.25, 0.5), (783.99, 0.5),  # A4, C5, E5, G5
-            (659.25, 0.5), (523.25, 0.5), (440.00, 0.5), (392.00, 0.5)   # E5, C5, A4, G4
-        ] * 2
-        
-        bass = [
-            (130.81, 1), (146.83, 1), (164.81, 1), (174.61, 1),  # C3, D3, E3, F3
-            (196.00, 1), (220.00, 1), (246.94, 1), (261.63, 1)   # G3, A3, B3, C4
-        ] * 2
-        
-        percussion = [
-            (200, 0.5), (0, 0.5), (150, 0.5), (0, 0.5),  # Slow dramatic drums
-            (200, 0.5), (0, 0.5), (150, 0.5), (0, 0.5)
-        ] * 4
-        
-        return self.generate_chiptune_song(melody, bass, percussion=percussion, bpm=80, volume=0.25)
+        # Original title theme: heroic minor-key hook with an answer phrase.
+        melody = self.notes([
+            ("E4", .5), ("G4", .5), ("A4", .5), ("C5", .5), ("B4", .5), ("A4", .25), ("G4", .25), ("E4", 1),
+            ("D4", .5), ("E4", .5), ("G4", .5), ("B4", .5), ("A4", .5), ("G4", .25), ("E4", .25), ("D4", 1),
+            ("E4", .5), ("G4", .5), ("A4", .5), ("C5", .5), ("D5", .5), ("C5", .25), ("B4", .25), ("A4", 1),
+            ("G4", .5), ("A4", .5), ("C5", .5), ("E5", .5), ("D5", .5), ("B4", .25), ("A4", .25), ("E4", 1),
+        ])
+        bass = self.notes([
+            ("E2", .5), ("E3", .5), ("E2", .5), ("B2", .5),
+            ("C3", .5), ("C4", .5), ("C3", .5), ("G2", .5),
+            ("D3", .5), ("D4", .5), ("D3", .5), ("A2", .5),
+            ("E2", .5), ("E3", .5), ("B2", .5), ("E3", .5),
+        ] * 2)
+        lead = self.notes([
+            ("E5", .25), ("B4", .25), ("G4", .25), ("B4", .25),
+            ("C5", .25), ("G4", .25), ("E4", .25), ("G4", .25),
+            ("D5", .25), ("A4", .25), ("F#4", .25), ("A4", .25),
+            ("E5", .25), ("B4", .25), ("G4", .25), ("B4", .25),
+        ] * 2)
+        return self.generate_chiptune_song(melody, bass, self.drum_loop(8), lead, bpm=126, volume=0.18)
     
     def play_music_bytes(self, music_bytes, loops=-1):
         pygame.mixer.music.load(io.BytesIO(music_bytes), "wav")
@@ -6754,112 +6780,102 @@ class MusicSystem:
         except Exception as e:
             print(f"Music playback error: {e}")
     def generate_overworld_music(self):
-        # Calm adventure theme
-        melody = [
-            (440, 0.5), (523.25, 0.5), (659.25, 0.5), (783.99, 0.5),  # A4, C5, E5, G5
-            (659.25, 0.5), (523.25, 0.5), (440, 1),                   # E5, C5, A4
-            (392, 0.5), (493.88, 0.5), (587.33, 0.5), (698.46, 0.5),  # G4, B4, D5, F5
-            (659.25, 0.5), (587.33, 0.5), (523.25, 1)                 # E5, D5, C5
-        ]
-        bass = [
-            (130.81, 1), (146.83, 1), (164.81, 1), (174.61, 1),  # C3, D3, E3, F3
-            (196.00, 1), (220.00, 1), (246.94, 1), (261.63, 1)   # G3, A3, B3, C4
-        ]
-        return self.generate_chiptune_song(melody, bass, bpm=90, volume=0.2)
+        # Driving adventure loop with an actual 8-bar phrase.
+        melody = self.notes([
+            ("A4", .5), ("C5", .25), ("D5", .25), ("E5", .5), ("D5", .25), ("C5", .25), ("A4", .5), ("G4", .5),
+            ("A4", .5), ("C5", .25), ("D5", .25), ("E5", .5), ("G5", .5), ("E5", .5), ("D5", .5),
+            ("F4", .5), ("A4", .25), ("C5", .25), ("D5", .5), ("C5", .25), ("A4", .25), ("G4", .5), ("E4", .5),
+            ("G4", .5), ("A4", .25), ("C5", .25), ("D5", .5), ("E5", .5), ("C5", .5), ("A4", .5),
+        ])
+        bass = self.notes([
+            ("A2", .5), ("A3", .5), ("E3", .5), ("A3", .5),
+            ("F2", .5), ("F3", .5), ("C3", .5), ("F3", .5),
+            ("G2", .5), ("G3", .5), ("D3", .5), ("G3", .5),
+            ("E2", .5), ("E3", .5), ("B2", .5), ("E3", .5),
+        ] * 2)
+        lead = self.notes([
+            ("A5", .125), ("E5", .125), ("C5", .125), ("E5", .125),
+            ("G5", .125), ("D5", .125), ("B4", .125), ("D5", .125),
+        ] * 8)
+        return self.generate_chiptune_song(melody, bass, self.drum_loop(8), lead, bpm=132, volume=0.16)
     
     def generate_town_music(self):
-        # Peaceful town theme with bells and gentle melody
-        melody = [
-            (523.25, 0.5), (587.33, 0.5), (659.25, 0.5), (698.46, 0.5),  # C5, D5, E5, F5
-            (783.99, 0.5), (698.46, 0.5), (659.25, 0.5), (587.33, 0.5),  # G5, F5, E5, D5
-            (523.25, 0.5), (493.88, 0.5), (440.00, 0.5), (392.00, 0.5),  # C5, B4, A4, G4
-            (440.00, 0.5), (493.88, 0.5), (523.25, 1.0)                  # A4, B4, C5
-        ]
-        bass = [
-            (261.63, 1.0), (293.66, 1.0), (329.63, 1.0), (349.23, 1.0),  # C4, D4, E4, F4
-            (392.00, 1.0), (440.00, 1.0), (493.88, 1.0), (523.25, 1.0)   # G4, A4, B4, C5
-        ]
-        percussion = [
-            (50, 0.5), (0, 0.5), (30, 0.5), (0, 0.5),  # Gentle bell-like rhythm
-            (50, 0.5), (0, 0.5), (30, 0.5), (0, 0.5)
-        ]
-        lead = [
-            (784.00, 0.25), (0, 0.25), (880.00, 0.25), (0, 0.25),  # G5, rest, A5, rest
-            (987.77, 0.25), (0, 0.25), (1046.50, 0.25), (0, 0.25),  # B5, rest, C6, rest
-            (880.00, 0.25), (0, 0.25), (784.00, 0.25), (0, 0.25),  # A5, rest, G5, rest
-            (659.25, 0.25), (0, 0.25), (587.33, 0.25), (0, 0.25)   # E5, rest, D5, rest
-        ]
-        return self.generate_chiptune_song(melody, bass, percussion, lead, bpm=120, volume=0.15)
+        # Softer town melody with call-and-response bells.
+        melody = self.notes([
+            ("C5", .5), ("E5", .5), ("G5", .5), ("E5", .5), ("D5", .5), ("C5", .5), ("A4", 1),
+            ("B4", .5), ("D5", .5), ("F5", .5), ("D5", .5), ("C5", .5), ("B4", .5), ("G4", 1),
+            ("A4", .5), ("C5", .5), ("E5", .5), ("G5", .5), ("A5", .5), ("G5", .5), ("E5", 1),
+            ("D5", .5), ("E5", .5), ("G5", .5), ("E5", .5), ("C5", .5), ("D5", .5), ("C5", 1),
+        ])
+        bass = self.notes([
+            ("C3", 1), ("G2", 1), ("A2", 1), ("E2", 1),
+            ("F2", 1), ("C3", 1), ("G2", 1), ("C3", 1),
+        ] * 2)
+        percussion = [(90, .5), (0, .5), (130, .5), (0, .5)] * 8
+        lead = self.notes([
+            ("G5", .25), ("R", .25), ("E5", .25), ("R", .25),
+            ("A5", .25), ("R", .25), ("G5", .25), ("R", .25),
+            ("E5", .25), ("R", .25), ("D5", .25), ("R", .25),
+            ("C5", .25), ("R", .25), ("E5", .25), ("R", .25),
+        ] * 2)
+        return self.generate_chiptune_song(melody, bass, percussion, lead, bpm=104, volume=0.13)
     def generate_battle_music(self):
-        # Intense battle theme
-        melody = [
-            (587.33, 0.25), (659.25, 0.25), (783.99, 0.25), (659.25, 0.25),  # D5, E5, G5, E5
-            (587.33, 0.25), (523.25, 0.25), (493.88, 0.25), (440, 0.25),     # D5, C5, B4, A4
-            (392, 0.25), (440, 0.25), (493.88, 0.25), (587.33, 0.25),        # G4, A4, B4, D5
-            (659.25, 0.25), (587.33, 0.25), (523.25, 0.25), (493.88, 0.25)   # E5, D5, C5, B4
-        ] * 2
-        bass = [
-            (98.00, 0.5), (110.00, 0.5), (123.47, 0.5), (130.81, 0.5),  # G2, A2, B2, C3
-            (146.83, 0.5), (164.81, 0.5), (185.00, 0.5), (196.00, 0.5)   # D3, E3, F#3, G3
-        ] * 2
-        percussion = [
-            (150, 0.25), (0, 0.25), (100, 0.25), (0, 0.25),  # Kick, rest, snare, rest
-            (150, 0.25), (0, 0.25), (100, 0.25), (0, 0.25)
-        ] * 4
-        return self.generate_chiptune_song(melody, bass, percussion=percussion, bpm=140, volume=0.25)
+        # Fast combat theme with a hook and a second phrase instead of one run.
+        melody = self.notes([
+            ("D5", .25), ("F5", .25), ("G5", .25), ("A5", .25), ("G5", .25), ("F5", .25), ("D5", .25), ("C5", .25),
+            ("D5", .25), ("F5", .25), ("A5", .25), ("C6", .25), ("A5", .25), ("G5", .25), ("F5", .25), ("D5", .25),
+            ("E5", .25), ("G5", .25), ("A#5", .25), ("D6", .25), ("C6", .25), ("A#5", .25), ("G5", .25), ("E5", .25),
+            ("F5", .25), ("G5", .25), ("A5", .25), ("C6", .25), ("D6", .5), ("C6", .25), ("A5", .25),
+        ] * 2)
+        bass = self.notes([
+            ("D2", .25), ("D3", .25), ("A2", .25), ("D3", .25),
+            ("C2", .25), ("C3", .25), ("G2", .25), ("C3", .25),
+            ("A#1", .25), ("A#2", .25), ("F2", .25), ("A#2", .25),
+            ("A1", .25), ("A2", .25), ("E2", .25), ("A2", .25),
+        ] * 4)
+        lead = self.notes([
+            ("D6", .125), ("A5", .125), ("F5", .125), ("A5", .125),
+            ("C6", .125), ("G5", .125), ("E5", .125), ("G5", .125),
+        ] * 8)
+        percussion = self.drum_loop(16, busy=True)
+        return self.generate_chiptune_song(melody, bass, percussion=percussion, lead=lead, bpm=158, volume=0.19)
     def generate_boss_music(self):
-        # Epic boss battle theme
-        melody = [
-            (220, 0.25), (261.63, 0.25), (329.63, 0.25), (392.00, 0.25),  # A3, C4, E4, G4
-            (493.88, 0.25), (392.00, 0.25), (329.63, 0.25), (261.63, 0.25),  # B4, G4, E4, C4
-            (293.66, 0.25), (349.23, 0.25), (440.00, 0.25), (523.25, 0.25),  # D4, F4, A4, C5
-            (659.25, 0.25), (523.25, 0.25), (440.00, 0.25), (349.23, 0.25)   # E5, C5, A4, F4
-        ] * 2
-        bass = [
-            (82.41, 0.5), (87.31, 0.5), (92.50, 0.5), (98.00, 0.5),  # E2, F2, F#2, G2
-            (110.00, 0.5), (123.47, 0.5), (138.59, 0.5), (146.83, 0.5)  # A2, B2, C#3, D3
-        ] * 2
-        percussion = [
-            (200, 0.125), (0, 0.125), (150, 0.125), (0, 0.125),  # Fast drums
-            (100, 0.125), (0, 0.125), (150, 0.125), (0, 0.125),
-            (200, 0.125), (0, 0.125), (150, 0.125), (0, 0.125),
-            (100, 0.125), (0, 0.125), (150, 0.125), (200, 0.125)
-        ] * 2
-        lead = [
-            (523.25, 0.25), (0, 0.25), (659.25, 0.25), (0, 0.25),  # C5, rest, E5, rest
-            (783.99, 0.25), (0, 0.25), (987.77, 0.25), (0, 0.25),  # G5, rest, B5, rest
-            (880.00, 0.25), (0, 0.25), (698.46, 0.25), (0, 0.25),  # A5, rest, F5, rest
-            (587.33, 0.25), (0, 0.25), (493.88, 0.25), (0, 0.25)   # D5, rest, B4, rest
-        ]
-        return self.generate_chiptune_song(melody, bass, percussion, lead, bpm=160, volume=0.3)
+        # Boss theme: darker, heavier, and more aggressive.
+        melody = self.notes([
+            ("E4", .25), ("G4", .25), ("A#4", .25), ("B4", .25), ("E5", .5), ("D5", .25), ("B4", .25),
+            ("E4", .25), ("G4", .25), ("A#4", .25), ("B4", .25), ("F5", .5), ("E5", .25), ("D5", .25),
+            ("C5", .25), ("B4", .25), ("A#4", .25), ("G4", .25), ("A#4", .5), ("C5", .5),
+            ("B4", .25), ("A#4", .25), ("G4", .25), ("E4", .25), ("F#4", .5), ("B4", .5),
+        ] * 2)
+        bass = self.notes([
+            ("E1", .25), ("E2", .25), ("E1", .25), ("B1", .25),
+            ("G1", .25), ("G2", .25), ("G1", .25), ("D2", .25),
+            ("C2", .25), ("C3", .25), ("C2", .25), ("G1", .25),
+            ("B1", .25), ("B2", .25), ("F#2", .25), ("B2", .25),
+        ] * 4)
+        lead = self.notes([
+            ("E5", .125), ("B4", .125), ("G4", .125), ("B4", .125),
+            ("F5", .125), ("C5", .125), ("A#4", .125), ("C5", .125),
+            ("G5", .125), ("D5", .125), ("B4", .125), ("D5", .125),
+            ("B5", .125), ("F#5", .125), ("D5", .125), ("F#5", .125),
+        ] * 4)
+        percussion = [(260, .125), (760, .125), (0, .125), (520, .125), (260, .125), (0, .125), (760, .125), (520, .125)] * 8
+        return self.generate_chiptune_song(melody, bass, percussion, lead, bpm=168, volume=0.21)
     def generate_victory_music(self):
-        # Triumphant victory theme
-        melody = [
-            (659.25, 0.3), (783.99, 0.3), (987.77, 0.3), (880.00, 0.5),  # E5, G5, B5, A5
-            (0, 0.2), (783.99, 0.3), (880.00, 0.3), (1046.50, 0.5),      # rest, G5, A5, C6
-            (0, 0.2), (987.77, 0.3), (1174.66, 0.3), (1318.51, 1.0)      # rest, B5, D6, E6
-        ]
-        bass = [
-            (261.63, 0.5), (329.63, 0.5), (392.00, 0.5), (523.25, 0.5),  # C4, E4, G4, C5
-            (392.00, 0.5), (523.25, 0.5), (659.25, 0.5), (783.99, 1.0)   # G4, C5, E5, G5
-        ]
-        percussion = [
-            (300, 0.1), (0, 0.1), (400, 0.1), (0, 0.1),  # Fast drum roll
-            (500, 0.1), (0, 0.1), (600, 0.1), (0, 0.1),
-            (700, 0.5)  # Cymbal crash
-        ]
-        return self.generate_chiptune_song(melody, bass, percussion, bpm=120, volume=0.3)
+        melody = self.notes([
+            ("C5", .25), ("E5", .25), ("G5", .25), ("C6", .5), ("B5", .25), ("A5", .5),
+            ("G5", .25), ("A5", .25), ("C6", .25), ("E6", .75), ("D6", .25), ("C6", 1),
+        ])
+        bass = self.notes([("C3", .5), ("G3", .5), ("A3", .5), ("E3", .5), ("F3", .5), ("G3", .5), ("C4", 1)])
+        percussion = [(300, .1), (0, .1), (460, .1), (0, .1), (620, .1), (0, .1), (760, .6)]
+        return self.generate_chiptune_song(melody, bass, percussion, bpm=128, volume=0.24)
     def generate_game_over_music(self):
-        # Somber game over theme
-        melody = [
-            (261.63, 1.0), (246.94, 1.0), (220.00, 1.0), (196.00, 2.0),  # C4, B3, A3, G3
-            (174.61, 1.0), (164.81, 1.0), (146.83, 1.0), (130.81, 2.0)   # F3, E3, D3, C3
-        ]
-        bass = [
-            (65.41, 2.0), (61.74, 2.0), (55.00, 2.0), (49.00, 4.0),  # C2, B1, A1, G1
-            (43.65, 2.0), (41.20, 2.0), (36.71, 2.0), (32.70, 4.0)   # F1, E1, D1, C1
-        ]
-        return self.generate_chiptune_song(melody, bass, bpm=60, volume=0.25)
+        melody = self.notes([
+            ("C4", 1), ("B3", 1), ("A3", 1), ("E3", 1.5), ("R", .5),
+            ("F3", 1), ("E3", 1), ("D3", 1), ("C3", 2),
+        ])
+        bass = self.notes([("C2", 2), ("A1", 2), ("F1", 2), ("G1", 2), ("C1", 2)])
+        return self.generate_chiptune_song(melody, bass, bpm=66, volume=0.2)
     def generate_chiptune_song(self, melody, bass, percussion=None, lead=None, bpm=220, volume=0.16):
         """
         Core chiptune generation algorithm that combines multiple musical tracks.
@@ -6908,11 +6924,45 @@ class MusicSystem:
             sample_count = int(SAMPLE_RATE * step_duration)
             for sample_index in range(sample_count):
                 t = sample_index / SAMPLE_RATE
-                m_wave = math.sin(m_freq * 2 * math.pi * t) if m_freq > 0 else 0.0
-                b_wave = 0.25 * (1.0 if math.sin(b_freq * 2 * math.pi * t) >= 0 else -1.0) if b_freq > 0 else 0.0
-                p_wave = 0.18 * (1.0 if math.sin(p_freq * 2 * math.pi * t) >= 0 else -1.0) if percussion is not None and p_freq > 0 else 0.0
-                l_wave = 0.18 * math.sin(l_freq * 2 * math.pi * t) if lead is not None and l_freq > 0 else 0.0
-                append_stereo_sample(pcm, (m_wave + b_wave + p_wave + l_wave) * volume)
+                note_pos = sample_index / max(1, sample_count)
+                attack = min(1.0, note_pos / 0.04)
+                release = min(1.0, (1.0 - note_pos) / 0.10)
+                envelope = max(0.0, min(attack, release))
+
+                if m_freq > 0:
+                    phase = m_freq * 2 * math.pi * t
+                    square = 1.0 if math.sin(phase) >= 0 else -1.0
+                    triangle = (2 / math.pi) * math.asin(math.sin(phase))
+                    m_wave = 0.42 * (0.72 * square + 0.28 * triangle) * envelope
+                else:
+                    m_wave = 0.0
+
+                if b_freq > 0:
+                    phase = b_freq * 2 * math.pi * t
+                    square = 1.0 if math.sin(phase) >= 0 else -1.0
+                    sub = 1.0 if math.sin((b_freq / 2) * 2 * math.pi * t) >= 0 else -1.0
+                    b_wave = 0.24 * (0.75 * square + 0.25 * sub) * envelope
+                else:
+                    b_wave = 0.0
+
+                if percussion is not None and p_freq > 0:
+                    decay = max(0.0, 1.0 - note_pos) ** 3
+                    noise = math.sin((p_freq + (sample_index % 23) * 31) * 2 * math.pi * t)
+                    click = 1.0 if math.sin(p_freq * 2 * math.pi * t) >= 0 else -1.0
+                    p_wave = 0.22 * (0.65 * noise + 0.35 * click) * decay
+                else:
+                    p_wave = 0.0
+
+                if lead is not None and l_freq > 0:
+                    phase = l_freq * 2 * math.pi * t
+                    pulse = 1.0 if math.sin(phase) > 0.45 else -1.0
+                    shimmer = math.sin(l_freq * 4 * math.pi * t) * 0.25
+                    l_wave = 0.18 * (pulse + shimmer) * envelope
+                else:
+                    l_wave = 0.0
+
+                mixed = (m_wave + b_wave + p_wave + l_wave) * volume
+                append_stereo_sample(pcm, math.tanh(mixed * 1.8))
             # Update note durations
             if melody_idx < melody_len:
                 melody[melody_idx][1] -= step_beats
