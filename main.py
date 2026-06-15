@@ -13,7 +13,7 @@ This is a complete RPG game built with Pygame featuring:
 GAME STRUCTURE:
 - Game States: start_menu → opening_cutscene → character_select → overworld → interior → battle → game_over
 - World System: 3x3 grid of areas, each with unique visuals and enemies
-- Combat System: Turn-based with attack, magic, item, and run options
+- Combat System: Turn-based with attack, magic, special, item, and run options
 - Audio System: Procedurally generated music that changes based on game state
 
 MAIN CLASSES:
@@ -196,14 +196,20 @@ ENEMY_SIZE = 40
 ITEM_SIZE = 30
 FPS = 60
 
-APP_VERSION = "0.1.5"
-APP_NUMERIC_VERSION = 6
+APP_VERSION = "0.1.6"
+APP_NUMERIC_VERSION = 7
 APP_UPDATE_APK_URL = "https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android.apk"
 APP_VERSION_SPEC_URL = "https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/buildozer.spec"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GHOST_FACE_SPRITE_PATH = os.path.join(BASE_DIR, "assets", "processed", "enemies", "ghost_face.png")
+FLAME_TORNADO_FRAME_DIR = os.path.join(BASE_DIR, "assets", "processed", "effects", "flame_tornado")
 SPRITE_CACHE = {}
+ANIMATION_FRAME_CACHE = {}
+
+SPECIAL_ATTACK_NAME = "Fire Tornado"
+SPECIAL_ATTACK_MANA_COST = 35
+SPECIAL_ATTACK_DURATION = 58
 
 # Visual Design - Retro 80s Color Palette
 # =======================================
@@ -327,6 +333,33 @@ def draw_enemy_sprite(surface, enemy, x, y, size):
         return False
     surface.blit(sprite, (int(x), int(y)))
     return True
+
+
+def load_animation_frames(directory, target_height=None):
+    cache_key = (directory, target_height)
+    if cache_key in ANIMATION_FRAME_CACHE:
+        return ANIMATION_FRAME_CACHE[cache_key]
+
+    frames = []
+    try:
+        frame_paths = [
+            os.path.join(directory, name)
+            for name in sorted(os.listdir(directory))
+            if name.lower().endswith(".png")
+        ]
+        for path in frame_paths:
+            frame = pygame.image.load(path).convert_alpha()
+            if target_height:
+                scale = target_height / max(1, frame.get_height())
+                width = max(1, int(frame.get_width() * scale))
+                frame = pygame.transform.smoothscale(frame, (width, target_height))
+            frames.append(frame)
+    except Exception as exc:
+        print(f"[WARN] Could not load animation frames from {directory}: {exc}")
+        frames = []
+
+    ANIMATION_FRAME_CACHE[cache_key] = frames
+    return frames
 
 
 def fetch_latest_android_numeric_version(timeout=4):
@@ -2922,7 +2955,7 @@ class Dragon:
 # ============================================================================
 class BattleScreen:
     """
-    Turn-based combat system with attack, magic, item, and run options.
+    Turn-based combat system with attack, magic, special, item, and run options.
     Handles battle animations, damage calculations, and victory/defeat conditions.
     """
     def __init__(self, player, enemy):
@@ -2931,10 +2964,11 @@ class BattleScreen:
         self.state = "player_turn"
         self.battle_log = ["Battle started!", "It's your turn!"]
         self.buttons = [
-            Button(50, 525, 180, 50, "ATTACK"),
-            Button(250, 525, 180, 50, "MAGIC"),
-            Button(450, 525, 180, 50, "ITEM"),
-            Button(650, 525, 180, 50, "RUN")
+            Button(30, 525, 170, 50, "ATTACK"),
+            Button(220, 525, 170, 50, "MAGIC"),
+            Button(410, 525, 170, 50, "ITEM"),
+            Button(600, 525, 170, 50, "SPECIAL"),
+            Button(790, 525, 170, 50, "RUN")
         ]
         self.selected_option = 0
         self.battle_ended = False
@@ -2956,6 +2990,7 @@ class BattleScreen:
         self.screen_shake = 0
         self.attack_effect_timer = 0
         self.enemy_attack_fx = []
+        self.player_special_fx = None
         self.magic_effect = {
             'active': False,
             'x': 0, 'y': 0,
@@ -3001,6 +3036,95 @@ class BattleScreen:
                 self.draw_ghostface_cross_stab_fx(surface, progress, fx["seed"])
             elif fx["kind"] == "ghostface_scream":
                 self.draw_ghostface_scream_fx(surface, progress, fx["seed"])
+
+    def draw_player_special_fx(self, surface):
+        fx = self.player_special_fx
+        if not fx:
+            return
+
+        frames = fx.get("frames", [])
+        timer = fx["timer"]
+        duration = max(1, fx["duration"])
+        progress = min(1.0, timer / duration)
+        travel = min(1.0, progress * 1.18)
+        ease = 1 - (1 - travel) * (1 - travel) * (1 - travel)
+        center_x = 165 + (705 - 165) * ease
+        center_y = 352 - 38 * math.sin(progress * math.pi) + 12 * math.sin(progress * math.pi * 7)
+        surge = math.sin(min(1.0, progress * 1.2) * math.pi)
+
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        rng = random.Random(fx["seed"] + timer)
+
+        if progress < 0.22:
+            charge_alpha = int(140 * (1 - progress / 0.22))
+            pygame.draw.circle(overlay, (255, 120, 25, charge_alpha), (225, 365), int(30 + progress * 190), 5)
+            pygame.draw.circle(overlay, (255, 245, 190, charge_alpha), (225, 365), int(16 + progress * 95), 2)
+
+        for i in range(7):
+            trail_progress = max(0.0, min(1.0, travel - i * 0.052))
+            if trail_progress <= 0:
+                continue
+            trail_ease = 1 - (1 - trail_progress) * (1 - trail_progress) * (1 - trail_progress)
+            tx = 165 + (705 - 165) * trail_ease
+            ty = 352 - 38 * math.sin(trail_progress * math.pi) + 12 * math.sin(trail_progress * math.pi * 7)
+            alpha = max(0, 118 - i * 17)
+            radius = int(30 + surge * 28 + i * 5)
+            pygame.draw.circle(overlay, (255, 90, 20, alpha), (int(tx), int(ty)), radius, 3)
+            pygame.draw.circle(overlay, (255, 220, 130, max(0, alpha - 28)), (int(tx), int(ty)), max(8, radius // 2), 2)
+
+        if frames:
+            frame = frames[(timer // 2) % len(frames)]
+            frame_scale = 0.92 + surge * 0.45
+            width = max(1, int(frame.get_width() * frame_scale))
+            height = max(1, int(frame.get_height() * frame_scale))
+            frame = pygame.transform.smoothscale(frame, (width, height))
+            alpha = 255
+            if progress < 0.08:
+                alpha = int(255 * progress / 0.08)
+            elif progress > 0.92:
+                alpha = int(255 * (1 - progress) / 0.08)
+            frame.set_alpha(max(0, min(255, alpha)))
+
+            for ghost in range(3, 0, -1):
+                ghost_frame = frame.copy()
+                ghost_frame.set_alpha(max(0, int(42 - ghost * 8)))
+                ghost_x = center_x - ghost * 42
+                ghost_y = center_y + rng.randint(-8, 8)
+                ghost_rect = ghost_frame.get_rect(center=(int(ghost_x), int(ghost_y)))
+                overlay.blit(ghost_frame, ghost_rect)
+
+            rect = frame.get_rect(center=(int(center_x), int(center_y)))
+            overlay.blit(frame, rect)
+        else:
+            for ring in range(12):
+                angle = progress * math.tau * 5 + ring * math.tau / 12
+                radius = 22 + ring * 7
+                x = center_x + math.cos(angle) * radius * 0.45
+                y = center_y + math.sin(angle) * radius
+                pygame.draw.circle(overlay, (255, 120, 25, 210), (int(x), int(y)), 12)
+
+        if progress > 0.58:
+            impact = min(1.0, (progress - 0.58) / 0.22)
+            impact_alpha = max(0, int(220 * (1 - impact)))
+            for i in range(16):
+                angle = i * math.tau / 16 + progress * 9
+                inner = 28 + impact * 22
+                outer = 78 + impact * 175 + rng.randint(-10, 18)
+                start = (int(730 + math.cos(angle) * inner), int(280 + math.sin(angle) * inner))
+                end = (int(730 + math.cos(angle) * outer), int(280 + math.sin(angle) * outer))
+                color = rng.choice([(255, 95, 20, impact_alpha), (255, 220, 120, impact_alpha), (255, 255, 245, impact_alpha)])
+                pygame.draw.line(overlay, color, start, end, rng.randint(3, 8))
+
+        if 0.18 < progress < 0.78:
+            text_alpha = int(220 * math.sin((progress - 0.18) / 0.60 * math.pi))
+            title = font_medium.render(SPECIAL_ATTACK_NAME.upper(), True, (255, 250, 210))
+            shadow = font_medium.render(SPECIAL_ATTACK_NAME.upper(), True, (255, 80, 20))
+            title.set_alpha(text_alpha)
+            shadow.set_alpha(text_alpha)
+            overlay.blit(shadow, (382 + rng.randint(-2, 2), 158 + rng.randint(-2, 2)))
+            overlay.blit(title, (378, 154))
+
+        surface.blit(overlay, (0, 0))
 
     def draw_ghostface_stab_fx(self, surface, progress, seed):
         rng = random.Random(seed + int(progress * 20))
@@ -3344,6 +3468,7 @@ class BattleScreen:
             knife_rect = rotated_knife.get_rect(center=(x, y))
             temp_surface.blit(rotated_knife, knife_rect)
 
+        self.draw_player_special_fx(temp_surface)
         self.draw_enemy_attack_fx(temp_surface)
         
         # Draw health bars
@@ -3353,11 +3478,17 @@ class BattleScreen:
         player_text = font_small.render(f"{self.player.health}/{self.player.max_health}", True, TEXT_COLOR)
         text_rect = player_text.get_rect(center=(180 + 80, 410 + 10))
         temp_surface.blit(player_text, text_rect)
+        player_mana_width = 150 * (self.player.mana / max(1, self.player.max_mana))
+        pygame.draw.rect(temp_surface, (30, 30, 50), (180, 435, 160, 16))
+        pygame.draw.rect(temp_surface, MANA_COLOR, (182, 437, player_mana_width, 12))
+        mana_text = font_tiny.render(f"MP {self.player.mana}/{self.player.max_mana}", True, TEXT_COLOR)
+        mana_rect = mana_text.get_rect(center=(180 + 80, 435 + 8))
+        temp_surface.blit(mana_text, mana_rect)
         if self.player_condition and self.player_condition_timer > 0:
             condition_text = font_tiny.render(self.player_condition["label"], True, self.player_condition["color"])
-            pygame.draw.rect(temp_surface, UI_BG, (180, 435, max(90, condition_text.get_width() + 16), 24), border_radius=4)
-            pygame.draw.rect(temp_surface, self.player_condition["color"], (180, 435, max(90, condition_text.get_width() + 16), 24), 2, border_radius=4)
-            temp_surface.blit(condition_text, (188, 439))
+            pygame.draw.rect(temp_surface, UI_BG, (180, 458, max(90, condition_text.get_width() + 16), 24), border_radius=4)
+            pygame.draw.rect(temp_surface, self.player_condition["color"], (180, 458, max(90, condition_text.get_width() + 16), 24), 2, border_radius=4)
+            temp_surface.blit(condition_text, (188, 462))
             self.player_condition_timer -= 1
         # Only draw enemy health bar and name if not a boss dragon
         if not (hasattr(self.enemy, 'enemy_type') and "boss_dragon" in self.enemy.enemy_type):
@@ -3411,8 +3542,12 @@ class BattleScreen:
             bag_rect = bag_text.get_rect(center=(self.buttons[2].rect.centerx, self.buttons[2].rect.bottom + 14))
             temp_surface.blit(bag_text, bag_rect)
 
+            special_text = font_tiny.render(f"MP {SPECIAL_ATTACK_MANA_COST}", True, (255, 190, 90))
+            special_rect = special_text.get_rect(center=(self.buttons[3].rect.centerx, self.buttons[3].rect.bottom + 14))
+            temp_surface.blit(special_text, special_rect)
+
             escape_text = font_tiny.render(f"ESC {int(self.get_escape_chance() * 100)}%", True, (220, 220, 180))
-            escape_rect = escape_text.get_rect(center=(self.buttons[3].rect.centerx, self.buttons[3].rect.bottom + 14))
+            escape_rect = escape_text.get_rect(center=(self.buttons[4].rect.centerx, self.buttons[4].rect.bottom + 14))
             temp_surface.blit(escape_text, escape_rect)
         
         # Draw damage effect
@@ -3480,6 +3615,29 @@ class BattleScreen:
         for fx in self.enemy_attack_fx:
             fx["timer"] += 1
         self.enemy_attack_fx = [fx for fx in self.enemy_attack_fx if fx["timer"] <= fx["duration"]]
+
+        if self.player_special_fx:
+            self.player_special_fx["timer"] += 1
+            timer = self.player_special_fx["timer"]
+            duration = max(1, self.player_special_fx["duration"])
+            progress = min(1.0, timer / duration)
+            travel = min(1.0, progress * 1.18)
+            ease = 1 - (1 - travel) * (1 - travel) * (1 - travel)
+            center_x = 165 + (705 - 165) * ease
+            center_y = 352 - 38 * math.sin(progress * math.pi) + 12 * math.sin(progress * math.pi * 7)
+            for _ in range(3):
+                angle = random.uniform(0, math.tau)
+                dist = random.uniform(10, 58)
+                self.particle_system.add_particle(
+                    center_x + math.cos(angle) * dist,
+                    center_y + math.sin(angle) * dist,
+                    random.choice(FIRE_COLORS),
+                    (random.uniform(-1.4, 1.4), random.uniform(-1.1, 0.8)),
+                    random.randint(3, 7),
+                    random.randint(14, 28),
+                )
+            if timer > duration:
+                self.player_special_fx = None
         
         # Update magic effect
         if self.magic_effect['active']:
@@ -3821,17 +3979,18 @@ class BattleScreen:
                     self.show_summary = False
         elif self.state == "player_turn" and not self.battle_ended and self.action_cooldown == 0:
             if event.type == pygame.KEYDOWN:
+                option_count = len(self.buttons)
                 if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
-                    self.selected_option = (self.selected_option + 1) % 4
+                    self.selected_option = (self.selected_option + 1) % option_count
                     if game and hasattr(game, 'SFX_ARROW') and game.SFX_ARROW: game.SFX_ARROW.play()
                 elif event.key == pygame.K_LEFT or event.key == pygame.K_a:
-                    self.selected_option = (self.selected_option - 1) % 4
+                    self.selected_option = (self.selected_option - 1) % option_count
                     if game and hasattr(game, 'SFX_ARROW') and game.SFX_ARROW: game.SFX_ARROW.play()
                 elif event.key == pygame.K_UP or event.key == pygame.K_w:
-                    self.selected_option = (self.selected_option - 2) % 4
+                    self.selected_option = (self.selected_option - 1) % option_count
                     if game and hasattr(game, 'SFX_ARROW') and game.SFX_ARROW: game.SFX_ARROW.play()
                 elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
-                    self.selected_option = (self.selected_option + 2) % 4
+                    self.selected_option = (self.selected_option + 1) % option_count
                     if game and hasattr(game, 'SFX_ARROW') and game.SFX_ARROW: game.SFX_ARROW.play()
                 elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
                     if game and hasattr(game, 'SFX_ENTER') and game.SFX_ENTER: game.SFX_ENTER.play()
@@ -3878,7 +4037,18 @@ class BattleScreen:
                 lambda item_label=item_label: self.add_log(f"You used a {item_label} potion!"),
                 lambda item_type=item_type: self.execute_item(item_type)
             ]
-        elif self.selected_option == 3:  # Run
+        elif self.selected_option == 3:  # Special
+            if self.player.mana >= SPECIAL_ATTACK_MANA_COST:
+                if game and hasattr(game, 'SFX_MAGIC') and game.SFX_MAGIC: game.SFX_MAGIC.play()
+                self.action_steps = [
+                    lambda: self.add_log(f"You summon {SPECIAL_ATTACK_NAME}!"),
+                    lambda: self.start_special_animation(),
+                    lambda: self.execute_special_attack()
+                ]
+            else:
+                if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
+                self.add_log(f"Need {SPECIAL_ATTACK_MANA_COST} MP for {SPECIAL_ATTACK_NAME}!")
+        elif self.selected_option == 4:  # Run
             if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
             self.action_steps = [
                 lambda: self.add_log("You attempt to escape..."),
@@ -3994,6 +4164,37 @@ class BattleScreen:
                 (math.cos(angle) * 0.5, math.sin(angle) * 0.5),
                 3, 30
             )
+
+    def start_special_animation(self):
+        self.player.start_attack_animation()
+        self.attack_effect_timer = 0
+        self.magic_effect["active"] = False
+
+        if hasattr(self, 'fireball_projectile'):
+            delattr(self, 'fireball_projectile')
+        if hasattr(self, 'knife_projectile'):
+            delattr(self, 'knife_projectile')
+
+        frames = load_animation_frames(FLAME_TORNADO_FRAME_DIR, target_height=220)
+        self.player_special_fx = {
+            "timer": 0,
+            "duration": SPECIAL_ATTACK_DURATION,
+            "frames": frames,
+            "seed": random.randint(1, 999999),
+        }
+
+        for _ in range(32):
+            angle = random.uniform(0, math.tau)
+            dist = random.uniform(8, 45)
+            self.particle_system.add_particle(
+                225 + math.cos(angle) * dist,
+                365 + math.sin(angle) * dist,
+                random.choice(FIRE_COLORS),
+                (math.cos(angle) * random.uniform(0.5, 1.4), math.sin(angle) * random.uniform(0.4, 1.2)),
+                random.randint(3, 7),
+                random.randint(18, 34),
+            )
+        self.add_screen_shake(4, 18)
     
     def execute_attack(self):
         damage = self.roll_player_damage(self.player.strength)
@@ -4050,6 +4251,35 @@ class BattleScreen:
         
         self.state = "enemy_turn"
         self.action_cooldown = self.action_delay
+
+    def execute_special_attack(self):
+        self.player.mana = max(0, self.player.mana - SPECIAL_ATTACK_MANA_COST)
+        base_damage = int(self.player.strength * 2.4 + self.player.speed * 0.8 + self.player.level * 3)
+        damage = self.roll_player_damage(base_damage)
+        self.enemy.health = max(0, self.enemy.health - damage)
+        self.add_log(f"{SPECIAL_ATTACK_NAME} tore across {self.enemy.name} for {damage} damage!")
+        self.damage_target = "enemy"
+        self.damage_amount = damage
+        self.damage_effect_timer = 34
+        self.enemy.start_hit_animation()
+        self.add_screen_shake(10, 20)
+        self.check_boss_phase_transition()
+
+        self.particle_system.add_beam(
+            225, 365,
+            730, 280,
+            random.choice(FIRE_COLORS),
+            width=5,
+            particle_count=18,
+            speed=4,
+        )
+        self.particle_system.add_explosion(
+            730, 280, random.choice(FIRE_COLORS),
+            count=56, size_range=(4, 10), speed_range=(2, 7), lifetime_range=(18, 42)
+        )
+
+        self.state = "enemy_turn"
+        self.action_cooldown = SPECIAL_ATTACK_DURATION
     
     def execute_item(self, item_type):
         profile = ITEM_PROFILES[item_type]
