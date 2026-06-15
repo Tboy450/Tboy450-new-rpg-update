@@ -25,6 +25,10 @@ ENEMY_NAME_POOLS = {
         "Gloom Stalker",
         "Shadow Fiend",
     ],
+
+    # BEGINNER NOTE: Ghost Face is intentionally kept out of AREA_ENEMY_TYPES
+    # below, so it does not appear as a random forest/cave enemy. It is placed
+    # as a special map enemy by spawn_story_enemies() in main.py.
     "ghost_face": [
         "Ghost Face",
     ],

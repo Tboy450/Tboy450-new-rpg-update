@@ -196,17 +196,41 @@ ENEMY_SIZE = 40
 ITEM_SIZE = 30
 FPS = 60
 
-APP_VERSION = "0.1.6"
-APP_NUMERIC_VERSION = 7
+# BEGINNER NOTE: Android updates need two version values.
+# - APP_VERSION is the friendly text shown in the game.
+# - APP_NUMERIC_VERSION must go UP every time we publish an APK. Android uses
+#   this number to decide whether a downloaded APK is allowed to update the app.
+#   If Android says "App not installed" after an update, check that this number
+#   and `android.numeric_version` in buildozer.spec were both increased.
+APP_VERSION = "0.1.7"
+APP_NUMERIC_VERSION = 8
+
+# BEGINNER NOTE: The UPDATE APP button opens this stable GitHub Release asset.
+# The filename stays the same, but GitHub Actions replaces the file whenever a
+# new APK build succeeds. That keeps the README and in-game button from 404ing.
 APP_UPDATE_APK_URL = "https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android.apk"
+
+# BEGINNER NOTE: The game reads buildozer.spec from GitHub to learn the newest
+# Android version number. It compares that file's android.numeric_version with
+# APP_NUMERIC_VERSION above.
 APP_VERSION_SPEC_URL = "https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/buildozer.spec"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# BEGINNER NOTE: Imported art should use absolute paths based on BASE_DIR.
+# That makes the same file paths work on Windows, GitHub Actions, and Android.
 GHOST_FACE_SPRITE_PATH = os.path.join(BASE_DIR, "assets", "processed", "enemies", "ghost_face.png")
 FLAME_TORNADO_FRAME_DIR = os.path.join(BASE_DIR, "assets", "processed", "effects", "flame_tornado")
+
+# BEGINNER NOTE: These caches keep Pygame from reloading and resizing PNG files
+# every frame. Loading images is slow; drawing already-loaded surfaces is fast.
 SPRITE_CACHE = {}
 ANIMATION_FRAME_CACHE = {}
 
+# BEGINNER NOTE: Fire Tornado tuning lives here first.
+# To rename the attack, change SPECIAL_ATTACK_NAME.
+# To make it cheaper or more expensive, change SPECIAL_ATTACK_MANA_COST.
+# To make the animation wait longer before the enemy acts, change duration.
 SPECIAL_ATTACK_NAME = "Fire Tornado"
 SPECIAL_ATTACK_MANA_COST = 35
 SPECIAL_ATTACK_DURATION = 58
@@ -336,6 +360,19 @@ def draw_enemy_sprite(surface, enemy, x, y, size):
 
 
 def load_animation_frames(directory, target_height=None):
+    """Load a folder of numbered PNG frames for an animation.
+
+    Beginner note:
+        Fire Tornado was cut from a GIF into:
+        assets/processed/effects/flame_tornado/frame_00.png, frame_01.png, ...
+
+        This function loads every PNG in that folder, sorts them by filename,
+        optionally resizes each frame to a shared height, and stores the result
+        in ANIMATION_FRAME_CACHE. Future calls reuse the cached frames.
+
+        To add another imported animation later, create a new processed folder
+        with numbered PNG frames and call this helper with that folder path.
+    """
     cache_key = (directory, target_height)
     if cache_key in ANIMATION_FRAME_CACHE:
         return ANIMATION_FRAME_CACHE[cache_key]
@@ -363,6 +400,13 @@ def load_animation_frames(directory, target_height=None):
 
 
 def fetch_latest_android_numeric_version(timeout=4):
+    """Read the newest Android version code from GitHub.
+
+    Beginner note:
+        This does not download the APK. It only opens the text version of
+        buildozer.spec on GitHub and finds the `android.numeric_version` line.
+        The start menu uses this to decide whether to say the app is current.
+    """
     request = urllib.request.Request(
         APP_VERSION_SPEC_URL,
         headers={"User-Agent": "DragonsLairRPGUpdateCheck"},
@@ -378,6 +422,14 @@ def fetch_latest_android_numeric_version(timeout=4):
 
 
 def open_external_url(url):
+    """Open a URL from desktop Python or from the Android APK.
+
+    Beginner note:
+        On desktop, Python's `webbrowser.open` is enough.
+        Inside the Android APK, `webbrowser.open` is unreliable, so we first
+        ask Android's Activity Manager (`am start`) to open the URL. That is the
+        path that makes the in-game UPDATE APP button launch the APK download.
+    """
     if is_android_runtime():
         intent_command = [
             "start",
@@ -2963,6 +3015,12 @@ class BattleScreen:
         self.enemy = enemy
         self.state = "player_turn"
         self.battle_log = ["Battle started!", "It's your turn!"]
+
+        # BEGINNER NOTE: Battle menu button order matters.
+        # `self.selected_option` stores the index of the chosen button:
+        #   0 ATTACK, 1 MAGIC, 2 ITEM, 3 SPECIAL, 4 RUN
+        # If you add another button, update `handle_action` below so the new
+        # index actually does something when the player presses Enter/taps it.
         self.buttons = [
             Button(30, 525, 170, 50, "ATTACK"),
             Button(220, 525, 170, 50, "MAGIC"),
@@ -2990,6 +3048,12 @@ class BattleScreen:
         self.screen_shake = 0
         self.attack_effect_timer = 0
         self.enemy_attack_fx = []
+
+        # BEGINNER NOTE: Fire Tornado uses this dictionary while it is active.
+        # When it is None, no player special effect is being drawn.
+        # start_special_animation() creates the dictionary.
+        # update() increments its timer.
+        # draw_player_special_fx() uses it to draw the moving tornado.
         self.player_special_fx = None
         self.magic_effect = {
             'active': False,
@@ -3020,6 +3084,13 @@ class BattleScreen:
         self.shake_intensity = intensity
 
     def queue_enemy_attack_fx(self, kind, duration=36):
+        """Queue a named enemy attack effect for drawing over multiple frames.
+
+        Beginner note:
+            Ghost Face attacks are not one-frame drawings. They need to stay on
+            screen for several frames, so we store their type, timer, duration,
+            and a random seed here. `update()` advances the timer later.
+        """
         self.enemy_attack_fx.append({
             "kind": kind,
             "timer": 0,
@@ -3028,6 +3099,15 @@ class BattleScreen:
         })
 
     def draw_enemy_attack_fx(self, surface):
+        """Draw every active enemy attack effect.
+
+        Beginner note:
+            `kind` is the string that chooses which drawing function runs.
+            To add a new Ghost Face attack later:
+            1. Add a new dictionary in choose_ghostface_attack().
+            2. Add a matching `elif fx["kind"] == "...":` case here.
+            3. Write a draw function that accepts surface/progress/seed.
+        """
         for fx in self.enemy_attack_fx:
             progress = fx["timer"] / max(1, fx["duration"])
             if fx["kind"] == "ghostface_stab":
@@ -3038,28 +3118,58 @@ class BattleScreen:
                 self.draw_ghostface_scream_fx(surface, progress, fx["seed"])
 
     def draw_player_special_fx(self, surface):
+        """Draw the player's active SPECIAL attack, currently Fire Tornado.
+
+        Beginner note:
+            This is visual-only. Damage and MP cost are handled by
+            execute_special_attack(). This method answers: "What should the
+            player see while the special attack is happening?"
+
+            The animation has five visual layers:
+            1. A charge ring near the player at the beginning.
+            2. Glowing trail rings that mark the path across the screen.
+            3. The imported PNG tornado frame from assets/processed/effects.
+            4. Extra impact lines when the tornado reaches the enemy.
+            5. The "FIRE TORNADO" label that fades in and out.
+        """
         fx = self.player_special_fx
         if not fx:
             return
 
+        # progress always stays between 0.0 and 1.0.
+        # 0.0 means the animation just started; 1.0 means it is finished.
         frames = fx.get("frames", [])
         timer = fx["timer"]
         duration = max(1, fx["duration"])
         progress = min(1.0, timer / duration)
+
+        # travel moves a little faster than progress so the tornado reaches the
+        # enemy before the last few frames, leaving time for the impact burst.
         travel = min(1.0, progress * 1.18)
+
+        # ease makes the tornado accelerate smoothly instead of sliding at one
+        # flat speed. It starts slower and gets faster near the enemy.
         ease = 1 - (1 - travel) * (1 - travel) * (1 - travel)
         center_x = 165 + (705 - 165) * ease
         center_y = 352 - 38 * math.sin(progress * math.pi) + 12 * math.sin(progress * math.pi * 7)
+
+        # surge grows/shrinks the sprite so the tornado feels alive.
         surge = math.sin(min(1.0, progress * 1.2) * math.pi)
 
+        # Draw everything to a transparent overlay first, then blit it once.
+        # This keeps the special effect separate from the battle background.
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         rng = random.Random(fx["seed"] + timer)
 
+        # Startup charge ring. This is only visible during the first 22% of the
+        # animation and tells the player the special attack is powering up.
         if progress < 0.22:
             charge_alpha = int(140 * (1 - progress / 0.22))
             pygame.draw.circle(overlay, (255, 120, 25, charge_alpha), (225, 365), int(30 + progress * 190), 5)
             pygame.draw.circle(overlay, (255, 245, 190, charge_alpha), (225, 365), int(16 + progress * 95), 2)
 
+        # Motion trail. Each ring is a slightly older tornado position, so the
+        # player can read the attack moving across the screen.
         for i in range(7):
             trail_progress = max(0.0, min(1.0, travel - i * 0.052))
             if trail_progress <= 0:
@@ -3073,11 +3183,15 @@ class BattleScreen:
             pygame.draw.circle(overlay, (255, 220, 130, max(0, alpha - 28)), (int(tx), int(ty)), max(8, radius // 2), 2)
 
         if frames:
+            # Pick a source PNG frame. `timer // 2` means each imported frame is
+            # shown for two game frames, which slows the GIF down slightly.
             frame = frames[(timer // 2) % len(frames)]
             frame_scale = 0.92 + surge * 0.45
             width = max(1, int(frame.get_width() * frame_scale))
             height = max(1, int(frame.get_height() * frame_scale))
             frame = pygame.transform.smoothscale(frame, (width, height))
+
+            # Fade in/out so the tornado does not pop on/off harshly.
             alpha = 255
             if progress < 0.08:
                 alpha = int(255 * progress / 0.08)
@@ -3085,6 +3199,7 @@ class BattleScreen:
                 alpha = int(255 * (1 - progress) / 0.08)
             frame.set_alpha(max(0, min(255, alpha)))
 
+            # Ghost copies behind the main sprite create a fast afterimage.
             for ghost in range(3, 0, -1):
                 ghost_frame = frame.copy()
                 ghost_frame.set_alpha(max(0, int(42 - ghost * 8)))
@@ -3096,6 +3211,8 @@ class BattleScreen:
             rect = frame.get_rect(center=(int(center_x), int(center_y)))
             overlay.blit(frame, rect)
         else:
+            # Fallback if the PNG frames are missing. This keeps battle playable
+            # even if the asset folder is accidentally deleted.
             for ring in range(12):
                 angle = progress * math.tau * 5 + ring * math.tau / 12
                 radius = 22 + ring * 7
@@ -3103,6 +3220,8 @@ class BattleScreen:
                 y = center_y + math.sin(angle) * radius
                 pygame.draw.circle(overlay, (255, 120, 25, 210), (int(x), int(y)), 12)
 
+        # Impact burst. It starts after 58% progress, when the moving tornado is
+        # near the enemy side. These lines sell the hit even before damage text.
         if progress > 0.58:
             impact = min(1.0, (progress - 0.58) / 0.22)
             impact_alpha = max(0, int(220 * (1 - impact)))
@@ -3115,6 +3234,8 @@ class BattleScreen:
                 color = rng.choice([(255, 95, 20, impact_alpha), (255, 220, 120, impact_alpha), (255, 255, 245, impact_alpha)])
                 pygame.draw.line(overlay, color, start, end, rng.randint(3, 8))
 
+        # Attack title. It is drawn during the middle of the animation so it
+        # does not cover the battle menu or result text for too long.
         if 0.18 < progress < 0.78:
             text_alpha = int(220 * math.sin((progress - 0.18) / 0.60 * math.pi))
             title = font_medium.render(SPECIAL_ATTACK_NAME.upper(), True, (255, 250, 210))
@@ -3617,10 +3738,18 @@ class BattleScreen:
         self.enemy_attack_fx = [fx for fx in self.enemy_attack_fx if fx["timer"] <= fx["duration"]]
 
         if self.player_special_fx:
+            # BEGINNER NOTE: This is the Fire Tornado animation clock.
+            # The dictionary is created in start_special_animation().
+            # Each call to update() is one game frame, so timer += 1 advances
+            # the tornado one frame. When timer passes duration, the effect ends.
             self.player_special_fx["timer"] += 1
             timer = self.player_special_fx["timer"]
             duration = max(1, self.player_special_fx["duration"])
             progress = min(1.0, timer / duration)
+
+            # These lines repeat the same movement math used by
+            # draw_player_special_fx(), but here we use the position to spawn
+            # extra fire particles along the tornado's path.
             travel = min(1.0, progress * 1.18)
             ease = 1 - (1 - travel) * (1 - travel) * (1 - travel)
             center_x = 165 + (705 - 165) * ease
@@ -3786,6 +3915,14 @@ class BattleScreen:
             if phase:
                 damage += phase.get("strength_bonus", 0)
                 self.add_log(phase["attack_message"])
+
+            # BEGINNER NOTE: Ghost Face has custom attacks.
+            # Regular enemies use the generic line below:
+            #     "{enemy} attacks for X damage"
+            # Ghost Face instead picks one attack data dictionary from
+            # choose_ghostface_attack(), then uses that dictionary to adjust
+            # damage, choose a visual FX name, shake the screen, and optionally
+            # drain player MP.
             ghostface_attack = None
             if getattr(self.enemy, "enemy_type", None) == "ghost_face":
                 ghostface_attack = self.choose_ghostface_attack()
@@ -3821,6 +3958,25 @@ class BattleScreen:
         self.waiting_for_continue = True
 
     def choose_ghostface_attack(self):
+        """Return one random Ghost Face attack data record.
+
+        Beginner note:
+            Each dictionary below describes one possible Ghost Face move.
+
+            message:
+                Battle log text. `{name}` and `{damage}` get filled in later.
+            fx:
+                Which visual effect to draw. This string must match a case in
+                draw_enemy_attack_fx().
+            duration:
+                How many frames the visual effect stays on screen.
+            damage_bonus:
+                Extra damage added to Ghost Face's normal enemy damage.
+            shake:
+                Two numbers passed to add_screen_shake(intensity, duration).
+            mana_drain:
+                Optional extra MP loss. Only the scream attack uses it now.
+        """
         attacks = [
             {
                 "message": "{name} lunges in with a stab for {damage} damage!",
@@ -3979,6 +4135,9 @@ class BattleScreen:
                     self.show_summary = False
         elif self.state == "player_turn" and not self.battle_ended and self.action_cooldown == 0:
             if event.type == pygame.KEYDOWN:
+                # BEGINNER NOTE: Use len(self.buttons) instead of hardcoding 5.
+                # That way the left/right selection still works if another
+                # battle button is added later.
                 option_count = len(self.buttons)
                 if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                     self.selected_option = (self.selected_option + 1) % option_count
@@ -4006,6 +4165,10 @@ class BattleScreen:
     def handle_action(self, game=None):
         if self.state != "player_turn" or self.battle_ended or self.action_cooldown > 0:
             return
+        # BEGINNER NOTE: This method turns the selected battle menu index into
+        # an action. Keep this order matched with the `self.buttons` list in
+        # BattleScreen.__init__:
+        #   0 ATTACK, 1 MAGIC, 2 ITEM, 3 SPECIAL, 4 RUN
         if self.selected_option == 0:  # Attack
             if game and hasattr(game, 'SFX_ATTACK') and game.SFX_ATTACK: game.SFX_ATTACK.play()
             self.action_steps = [
@@ -4038,8 +4201,15 @@ class BattleScreen:
                 lambda item_type=item_type: self.execute_item(item_type)
             ]
         elif self.selected_option == 3:  # Special
+            # Fire Tornado is a stronger player move, so it costs MP.
+            # The constant at the top of the file is the only number to change
+            # if the special should be easier or harder to use.
             if self.player.mana >= SPECIAL_ATTACK_MANA_COST:
                 if game and hasattr(game, 'SFX_MAGIC') and game.SFX_MAGIC: game.SFX_MAGIC.play()
+
+                # BEGINNER NOTE: action_steps is a tiny queue.
+                # update() pops and runs one lambda per frame/cycle. That lets
+                # the battle log, animation start, and damage happen in order.
                 self.action_steps = [
                     lambda: self.add_log(f"You summon {SPECIAL_ATTACK_NAME}!"),
                     lambda: self.start_special_animation(),
@@ -4166,15 +4336,29 @@ class BattleScreen:
             )
 
     def start_special_animation(self):
+        """Start Fire Tornado's visual effect.
+
+        Beginner note:
+            This does NOT apply damage. It only prepares the animation and
+            opening particles. The actual hit is handled in
+            execute_special_attack() so visuals and battle math stay separate.
+        """
         self.player.start_attack_animation()
+
+        # Fire Tornado has its own imported animation, so turn off the normal
+        # slash/magic visuals before starting it.
         self.attack_effect_timer = 0
         self.magic_effect["active"] = False
 
+        # Remove old projectiles so a previous fireball/knife cannot overlap
+        # the new special if actions happen quickly.
         if hasattr(self, 'fireball_projectile'):
             delattr(self, 'fireball_projectile')
         if hasattr(self, 'knife_projectile'):
             delattr(self, 'knife_projectile')
 
+        # Load the transparent PNG frames that were cut out from the uploaded
+        # Fire Tornado GIF. `target_height=220` controls the base on-screen size.
         frames = load_animation_frames(FLAME_TORNADO_FRAME_DIR, target_height=220)
         self.player_special_fx = {
             "timer": 0,
@@ -4183,6 +4367,8 @@ class BattleScreen:
             "seed": random.randint(1, 999999),
         }
 
+        # Opening spark burst around the player. This is separate from the
+        # imported tornado frames and makes the move feel like it is being cast.
         for _ in range(32):
             angle = random.uniform(0, math.tau)
             dist = random.uniform(8, 45)
@@ -4253,7 +4439,22 @@ class BattleScreen:
         self.action_cooldown = self.action_delay
 
     def execute_special_attack(self):
+        """Apply Fire Tornado's MP cost, damage, and hit feedback.
+
+        Beginner note:
+            This is the battle-math half of the special attack.
+            To tune Fire Tornado's strength, edit the base_damage line below.
+            To tune the animation, edit draw_player_special_fx() and the
+            SPECIAL_ATTACK_DURATION constant instead.
+        """
         self.player.mana = max(0, self.player.mana - SPECIAL_ATTACK_MANA_COST)
+
+        # Damage formula:
+        # - strength is the main stat
+        # - speed gives a smaller bonus because the tornado crosses the screen
+        # - level keeps the special useful as the player grows
+        # roll_player_damage() is still used so critical hits and chill effects
+        # work the same way they do for regular attacks.
         base_damage = int(self.player.strength * 2.4 + self.player.speed * 0.8 + self.player.level * 3)
         damage = self.roll_player_damage(base_damage)
         self.enemy.health = max(0, self.enemy.health - damage)
@@ -4278,6 +4479,8 @@ class BattleScreen:
             count=56, size_range=(4, 10), speed_range=(2, 7), lifetime_range=(18, 42)
         )
 
+        # Keep the enemy from immediately taking a turn while Fire Tornado is
+        # still crossing the screen. This makes the visual and turn flow line up.
         self.state = "enemy_turn"
         self.action_cooldown = SPECIAL_ATTACK_DURATION
     
@@ -4665,15 +4868,29 @@ class Game:
         # UI Elements
         self.start_button = Button(SCREEN_WIDTH//2 - 120, 455, 240, 55, "START QUEST", UI_BORDER)
         self.load_button = Button(SCREEN_WIDTH//2 - 120, 525, 240, 55, "LOAD SAVE", (110, 220, 255))
+
+        # BEGINNER NOTE: The start menu UPDATE APP button.
+        # It does not install silently. Android requires the player to approve
+        # APK updates. Pressing this button only opens the stable GitHub APK
+        # download URL so Android can show its normal installer prompt.
         self.update_button = Button(SCREEN_WIDTH//2 - 120, 555, 240, 55, "UPDATE APP", (255, 190, 80))
         self.quit_button = Button(SCREEN_WIDTH//2 - 120, 595, 240, 55, "QUIT", UI_BORDER)
         self.back_button = Button(20, 20, 100, 40, "BACK")
         self.start_menu_index = 0
         self.character_menu_index = 0
         self.end_menu_index = 0
+
+        # BEGINNER NOTE: These fields control the one-line update message on
+        # the title screen. The background thread below fills them in after it
+        # checks GitHub. They are intentionally simple booleans/strings so the
+        # draw code can read them without doing internet work every frame.
         self.update_available = False
         self.update_check_done = False
         self.update_status = "Checking for app updates..."
+
+        # BEGINNER NOTE: Network checks can freeze the game if they run on the
+        # main loop. This thread lets the title screen keep animating while the
+        # game asks GitHub whether a newer APK version exists.
         self.update_thread = threading.Thread(target=self.check_for_updates, daemon=True)
         self.update_thread.start()
         
@@ -4828,6 +5045,12 @@ class Game:
         self.start_game()
 
     def activate_start_menu_selection(self):
+        """Run whichever title-screen option is selected.
+
+        Beginner note:
+            `start_menu_index` matches the list returned by start_menu_buttons():
+            0 START QUEST, 1 LOAD SAVE, 2 UPDATE APP, 3 QUIT.
+        """
         if self.SFX_CLICK:
             self.SFX_CLICK.play()
         if self.start_menu_index == 0:
@@ -4843,6 +5066,14 @@ class Game:
         return False
 
     def check_for_updates(self):
+        """Check GitHub for a newer Android APK version.
+
+        Beginner note:
+            The latest number comes from buildozer.spec on the main branch.
+            If latest_version is bigger than APP_NUMERIC_VERSION, the title
+            screen says a new APK is available. The player still has to press
+            UPDATE APP to open the download.
+        """
         try:
             latest_version = fetch_latest_android_numeric_version()
         except Exception as exc:
@@ -4860,6 +5091,7 @@ class Game:
         self.update_check_done = True
 
     def open_update_link(self):
+        """Open the APK download link from the title screen."""
         if open_external_url(APP_UPDATE_APK_URL):
             self.update_status = "Opened APK update link."
         else:
@@ -6077,6 +6309,9 @@ class Game:
 
             update_color = (255, 215, 0) if self.update_available else (180, 180, 200)
             update_text = font_tiny.render(self.update_status, True, update_color)
+
+            # BEGINNER NOTE: This is only status text. The button click itself
+            # is handled in activate_start_menu_selection() -> open_update_link().
             screen.blit(update_text, (SCREEN_WIDTH//2 - update_text.get_width()//2, 640))
 
             if self.town_service_message and self.town_service_message_timer > 0:

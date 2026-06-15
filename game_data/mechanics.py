@@ -42,6 +42,9 @@ ELEMENT_PROFILES = {
         },
     },
     "ghost_face": {
+        # BEGINNER NOTE: This profile controls Ghost Face's shared visual colors
+        # and passive status effect. Its special moves (stab/cross-stab/scream)
+        # are configured in BattleScreen.choose_ghostface_attack() in main.py.
         "label": "Ghost Face",
         "primary_color": (245, 245, 255),
         "secondary_color": (40, 35, 70),

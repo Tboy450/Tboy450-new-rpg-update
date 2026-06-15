@@ -102,6 +102,34 @@ responsible for. Read this before editing if you are new to Python or this repo.
 2. Add the item key to `ITEM_SPAWN_TABLE` if it should appear in the world.
 3. Make sure `Character.apply_item_effect` in `main.py` knows how to handle the item `effect`.
 
+## How To Tune Fire Tornado
+
+Fire Tornado is the player's `SPECIAL` battle action.
+
+1. Change the displayed attack name in `SPECIAL_ATTACK_NAME` near the top of `main.py`.
+2. Change MP cost in `SPECIAL_ATTACK_MANA_COST`.
+3. Change animation wait time in `SPECIAL_ATTACK_DURATION`.
+4. Change visual motion, glow, title text, and impact lines in `BattleScreen.draw_player_special_fx`.
+5. Change startup particles in `BattleScreen.start_special_animation`.
+6. Change damage in `BattleScreen.execute_special_attack`.
+7. Replace the imported frames in `assets/processed/effects/flame_tornado/` if you want a different animation.
+
+## How To Tune Ghost Face
+
+1. Change Ghost Face's shared colors/status in `game_data/mechanics.py`, under `ELEMENT_PROFILES["ghost_face"]`.
+2. Change its battle move list in `BattleScreen.choose_ghostface_attack` in `main.py`.
+3. Add a new attack effect by adding a new `fx` name in `choose_ghostface_attack`, a matching case in `draw_enemy_attack_fx`, and a drawing method.
+4. Keep `ghost_face` out of `AREA_ENEMY_TYPES` unless you want it to spawn randomly like a normal enemy.
+
+## How The Android Update Button Works
+
+1. `APP_NUMERIC_VERSION` in `main.py` is the installed app's current version code.
+2. `android.numeric_version` in `buildozer.spec` is the version code Android uses when installing the APK.
+3. Both numbers must increase before publishing a new APK.
+4. `fetch_latest_android_numeric_version` reads `buildozer.spec` from GitHub.
+5. `check_for_updates` compares the GitHub version code with the installed version code.
+6. `open_update_link` opens the stable GitHub APK URL. Android still requires the player to approve the install/update prompt.
+
 ## How To Add Imported Art Or Sound Later
 
 1. Put raw downloads in `assets/source/<category>/`.
