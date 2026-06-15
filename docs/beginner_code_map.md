@@ -57,6 +57,7 @@ responsible for. Read this before editing if you are new to Python or this repo.
 
 ## `systems/` Modules
 
+- `assets.py`: imported-art paths, sprite caches, animation frame loading, and reusable sprite drawing.
 - `input_actions.py`: translates keyboard or virtual Android button input into action names like `move_up`.
 - `save_load.py`: converts the current `Game` object into JSON and loads saved JSON back later.
 
@@ -105,14 +106,46 @@ responsible for. Read this before editing if you are new to Python or this repo.
 ## How To Tune Fire Tornado
 
 Fire Tornado is the player's `SPECIAL` battle action.
+Mage uses the same SPECIAL button, but its displayed name is `Fire Blast` and
+it adds a second imported impact animation when the tornado reaches the enemy.
 
 1. Change the displayed attack name in `SPECIAL_ATTACK_NAME` near the top of `main.py`.
-2. Change MP cost in `SPECIAL_ATTACK_MANA_COST`.
-3. Change animation wait time in `SPECIAL_ATTACK_DURATION`.
-4. Change visual motion, glow, title text, and impact lines in `BattleScreen.draw_player_special_fx`.
-5. Change startup particles in `BattleScreen.start_special_animation`.
-6. Change damage in `BattleScreen.execute_special_attack`.
-7. Replace the imported frames in `assets/processed/effects/flame_tornado/` if you want a different animation.
+2. Change the Mage-only displayed name in `MAGE_SPECIAL_ATTACK_NAME`.
+3. Change MP cost in `SPECIAL_ATTACK_MANA_COST`.
+4. Change animation wait time in `SPECIAL_ATTACK_DURATION`.
+5. Change visual motion, glow, title text, and impact lines in `BattleScreen.draw_player_special_fx`.
+6. Change startup particles in `BattleScreen.start_special_animation`.
+7. Change damage in `BattleScreen.execute_special_attack`.
+8. Replace the imported frames in `assets/processed/effects/flame_tornado/` if you want a different animation.
+9. Replace Mage Fire Blast impact frames in `assets/processed/effects/fire_blast/`.
+10. Add new imported effect folder paths in `systems/assets.py`, not directly in `main.py`.
+
+## How To Tune Mage Normal Magic Graphics
+
+Mage's normal `MAGIC` button still uses the older procedural magic ring, beam,
+particles, and explosion. The imported projectile is an extra overlay.
+
+1. Replace frames in `assets/processed/effects/mage_magic_fireball/` to change the imported fireball overlay.
+2. Change the overlay size in `BattleScreen.start_magic_animation`, where it calls `load_animation_frames(MAGE_MAGIC_FIREBALL_FRAME_DIR, target_height=82)`.
+3. Change how the cutout is positioned in the fireball drawing block inside `BattleScreen.draw`.
+4. Keep the old procedural circles in that same draw block if you want the fallback to remain visible.
+5. Add future imported magic frame folder paths in `systems/assets.py`.
+
+## Future Asset Import Wishlist
+
+These would give the biggest visible upgrade next:
+
+1. Overworld walk cycles for Warrior, Mage, and Rogue: idle/down/up/left/right frames so movement feels animated instead of sliding one still sprite.
+2. Battle idle, hurt, attack, and victory poses for each hero class.
+3. Enemy sprites for common area enemies: fire, ice, shadow, and crystal variants so random battles stop relying on drawn circles.
+4. Boss dragon sprites: idle, wing flap, roar, bite/claw, fire breath, hurt, and defeat.
+5. Town and building tiles: grass, dirt paths, walls, roofs, doors, signs, windows, fountains, trees, and interior furniture.
+6. UI icons: health potion, mana potion, sword, staff, dagger, shield, gold, quest marker, save marker, and update/download marker.
+7. Attack effects by class: Warrior slash arcs, Mage lightning/ice/fire variants, Rogue knife trails, poison clouds, smoke bombs, and critical-hit bursts.
+8. Status effect icons and overlays: burn, chill, poison, stun, shield, haste, and low-health warning.
+9. Item pickup sprites: treasure chest, potion bottle, mana crystal, key, scroll, and rare relic.
+10. Audio imports: menu confirm/cancel, footsteps, sword hit, staff cast, dagger throw, enemy hit, boss roar, victory sting, game-over sting, and loopable town/battle/boss music.
+11. App/UI polish assets: cleaner launcher icon variants, title logo, start-menu background, loading/update screen art, and Android notification icon.
 
 ## How To Tune Ghost Face
 
@@ -126,9 +159,9 @@ Fire Tornado is the player's `SPECIAL` battle action.
 The active imported character art lives in `assets/processed/characters/`.
 
 1. Replace `warrior.png`, `mage.png`, or `rogue.png` with a transparent PNG.
-2. Keep the class names in `CHARACTER_SPRITE_PATHS` in `main.py` unchanged unless you also rename the character class.
-3. `load_sprite_by_height` loads and resizes each PNG while keeping its original shape.
-4. `draw_character_sprite` places the sprite by its center and feet so it lines up in both world and battle screens.
+2. Keep the class names in `CHARACTER_SPRITE_PATHS` in `systems/assets.py` unchanged unless you also rename the character class.
+3. `systems/assets.py` has `load_sprite_by_height`, which loads and resizes each PNG while keeping its original shape.
+4. `systems/assets.py` has `draw_character_sprite`, which places the sprite by its center and feet so it lines up in both world and battle screens.
 5. `Character.draw` calls `draw_character_sprite` first. If the imported PNG cannot load, the older Python-drawn character code below it still draws a fallback hero.
 6. The world map uses `sprite_mode="world"` and battle uses `sprite_mode="battle"` to choose different sprite heights.
 

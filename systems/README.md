@@ -3,6 +3,7 @@
 `systems/` contains active helper modules that are small enough to split out of `main.py` without moving core gameplay classes yet.
 
 - `input_actions.py`: maps keyboard and Android virtual button inputs to gameplay actions.
+- `assets.py`: centralizes imported art paths, sprite caching, animation frame loading, and reusable sprite drawing.
 - `save_load.py`: serializes and loads JSON save data for the player, score, boss progress, visited areas, and town interaction progress.
 
 Keep this folder for reusable runtime systems. Pure tuning data still belongs in `game_data/`.
@@ -27,6 +28,24 @@ When adding a new control:
 - Add keyboard keys to `KEY_ACTIONS`.
 - Add Android button keys to `ANDROID_BUTTON_KEYS` if needed.
 - Update `main.py` to react to the new action.
+
+## `assets.py`
+
+This module keeps imported-art plumbing out of `main.py`.
+
+- Asset path constants point to the active processed PNG files and frame folders.
+- `load_scaled_sprite` loads square enemy/UI-style sprites.
+- `load_sprite_by_height` loads tall character/effect sprites without squashing them.
+- `load_animation_frames` loads numbered PNG frame folders such as `frame_00.png`.
+- `draw_character_sprite` draws Warrior/Mage/Rogue imported sprites with a shared foot anchor.
+- `draw_enemy_sprite` draws enemies that have an imported sprite path.
+
+When adding a new imported effect:
+
+- Save the raw upload under `assets/source/<category>/`.
+- Save transparent game-ready PNG frames under `assets/processed/<category>/<effect_name>/`.
+- Add the processed path constant to `assets.py`.
+- Call `load_animation_frames` from the gameplay code that owns the timing.
 
 ## `save_load.py`
 

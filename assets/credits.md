@@ -43,3 +43,19 @@ License: AI-generated project asset
 Attribution text: Generated Rogue character sprite
 Used for: Rogue class sprite in character select, overworld, and battle
 ```
+
+```text
+Asset: Fire Blast impact GIF and processed PNG frames
+Source URL: User-supplied upload in Codex chat
+License: User-provided asset
+Attribution text: User-supplied Fire Blast impact animation
+Used for: Mage SPECIAL attack impact animation in battle
+```
+
+```text
+Asset: Mage normal magic fireball GIF and processed PNG frames
+Source URL: User-supplied upload in Codex chat
+License: User-provided asset
+Attribution text: User-supplied Mage magic fireball animation
+Used for: Mage normal MAGIC projectile overlay in battle
+```

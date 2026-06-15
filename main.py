@@ -105,6 +105,16 @@ from systems.input_actions import (
     action_for_key,
     key_for_android_button,
 )
+from systems.assets import (
+    FIRE_BLAST_FRAME_DIR,
+    FLAME_TORNADO_FRAME_DIR,
+    GHOST_FACE_SPRITE_PATH,
+    MAGE_MAGIC_FIREBALL_FRAME_DIR,
+    draw_character_sprite,
+    draw_enemy_sprite,
+    load_animation_frames,
+    load_scaled_sprite,
+)
 from systems.save_load import DEFAULT_SAVE_PATH, load_game_state, save_game_state
 
 # Initialize Pygame
@@ -202,8 +212,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.8"
-APP_NUMERIC_VERSION = 9
+APP_VERSION = "0.1.9"
+APP_NUMERIC_VERSION = 10
 
 # BEGINNER NOTE: The UPDATE APP button opens this stable GitHub Release asset.
 # The filename stays the same, but GitHub Actions replaces the file whenever a
@@ -215,33 +225,14 @@ APP_UPDATE_APK_URL = "https://github.com/Tboy450/Tboy450-new-rpg-update/releases
 # APP_NUMERIC_VERSION above.
 APP_VERSION_SPEC_URL = "https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/buildozer.spec"
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# BEGINNER NOTE: Imported art should use absolute paths based on BASE_DIR.
-# That makes the same file paths work on Windows, GitHub Actions, and Android.
-GHOST_FACE_SPRITE_PATH = os.path.join(BASE_DIR, "assets", "processed", "enemies", "ghost_face.png")
-FLAME_TORNADO_FRAME_DIR = os.path.join(BASE_DIR, "assets", "processed", "effects", "flame_tornado")
-
-# BEGINNER NOTE: These are the active imported hero sprites.
-# The keys must match the playable class names exactly: "Warrior", "Mage",
-# and "Rogue". If you replace one PNG later, keep the same filename if you
-# want the game to pick it up automatically.
-CHARACTER_SPRITE_PATHS = {
-    "Warrior": os.path.join(BASE_DIR, "assets", "processed", "characters", "warrior.png"),
-    "Mage": os.path.join(BASE_DIR, "assets", "processed", "characters", "mage.png"),
-    "Rogue": os.path.join(BASE_DIR, "assets", "processed", "characters", "rogue.png"),
-}
-
-# BEGINNER NOTE: These caches keep Pygame from reloading and resizing PNG files
-# every frame. Loading images is slow; drawing already-loaded surfaces is fast.
-SPRITE_CACHE = {}
-ANIMATION_FRAME_CACHE = {}
-
-# BEGINNER NOTE: Fire Tornado tuning lives here first.
-# To rename the attack, change SPECIAL_ATTACK_NAME.
+# BEGINNER NOTE: Special attack tuning lives here first.
+# Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
+# second imported impact animation when the tornado reaches the enemy.
+# To rename the default attack, change SPECIAL_ATTACK_NAME.
 # To make it cheaper or more expensive, change SPECIAL_ATTACK_MANA_COST.
 # To make the animation wait longer before the enemy acts, change duration.
 SPECIAL_ATTACK_NAME = "Fire Tornado"
+MAGE_SPECIAL_ATTACK_NAME = "Fire Blast"
 SPECIAL_ATTACK_MANA_COST = 35
 SPECIAL_ATTACK_DURATION = 58
 
@@ -340,147 +331,6 @@ def present_frame():
         scaled = pygame.transform.scale(screen, display_surface.get_size())
         display_surface.blit(scaled, (0, 0))
     pygame.display.flip()
-
-
-def load_scaled_sprite(path, size):
-    cache_key = (path, size)
-    if cache_key in SPRITE_CACHE:
-        return SPRITE_CACHE[cache_key]
-
-    try:
-        sprite = pygame.image.load(path).convert_alpha()
-        sprite = pygame.transform.smoothscale(sprite, (size, size))
-    except Exception as exc:
-        print(f"[WARN] Could not load sprite {path}: {exc}")
-        sprite = None
-
-    SPRITE_CACHE[cache_key] = sprite
-    return sprite
-
-
-def draw_enemy_sprite(surface, enemy, x, y, size):
-    sprite_path = getattr(enemy, "sprite_path", None)
-    if not sprite_path:
-        return False
-    sprite = load_scaled_sprite(sprite_path, int(size))
-    if not sprite:
-        return False
-    surface.blit(sprite, (int(x), int(y)))
-    return True
-
-
-def load_sprite_by_height(path, target_height):
-    """Load a PNG once and resize it by height.
-
-    Beginner note:
-        Character art comes from tall imported PNGs instead of Python shapes.
-        The world and battle screens need different sizes, so this helper keeps
-        the sprite's original width/height ratio while resizing only by height.
-
-        The cache key includes `target_height`, which means the 76-pixel world
-        sprite and the 170-pixel battle sprite are stored separately.
-    """
-    cache_key = (path, "height", int(target_height))
-    if cache_key in SPRITE_CACHE:
-        return SPRITE_CACHE[cache_key]
-
-    try:
-        sprite = pygame.image.load(path).convert_alpha()
-        scale = int(target_height) / max(1, sprite.get_height())
-        target_width = max(1, int(sprite.get_width() * scale))
-
-        # Pixel-art sprites stay sharper with nearest-neighbor scaling.
-        # smoothscale is useful for photos, but it softens retro sprite pixels.
-        sprite = pygame.transform.scale(sprite, (target_width, int(target_height)))
-    except Exception as exc:
-        print(f"[WARN] Could not load sprite {path}: {exc}")
-        sprite = None
-
-    SPRITE_CACHE[cache_key] = sprite
-    return sprite
-
-
-def draw_character_sprite(surface, char_type, anchor_x, foot_y, target_height, hit_timer=0):
-    """Draw one imported player class sprite.
-
-    Beginner note:
-        `anchor_x` is the middle of the character.
-        `foot_y` is where the feet touch the ground.
-        That makes a tall battle sprite and a small world-map sprite line up
-        the same way even though their sizes are different.
-
-        This returns True when a PNG was drawn. If a file is missing or broken,
-        Character.draw() falls back to the older Python-drawn character code.
-    """
-    sprite_path = CHARACTER_SPRITE_PATHS.get(char_type)
-    if not sprite_path:
-        return False
-
-    sprite = load_sprite_by_height(sprite_path, target_height)
-    if not sprite:
-        return False
-
-    shadow_width = max(34, int(sprite.get_width() * 0.55))
-    shadow_height = max(7, int(target_height * 0.075))
-    shadow_rect = (
-        int(anchor_x - shadow_width / 2),
-        int(foot_y - shadow_height / 2),
-        shadow_width,
-        shadow_height,
-    )
-    pygame.draw.ellipse(surface, (0, 0, 0), shadow_rect)
-
-    draw_sprite = sprite
-    if hit_timer > 0:
-        # Red flash while the player is being hit. Copying protects the cached
-        # original sprite from being permanently tinted.
-        draw_sprite = sprite.copy()
-        draw_sprite.fill((255, 70, 70, 60), special_flags=pygame.BLEND_RGBA_ADD)
-
-    draw_x = int(anchor_x - draw_sprite.get_width() / 2)
-    draw_y = int(foot_y - draw_sprite.get_height())
-    surface.blit(draw_sprite, (draw_x, draw_y))
-    return True
-
-
-def load_animation_frames(directory, target_height=None):
-    """Load a folder of numbered PNG frames for an animation.
-
-    Beginner note:
-        Fire Tornado was cut from a GIF into:
-        assets/processed/effects/flame_tornado/frame_00.png, frame_01.png, ...
-
-        This function loads every PNG in that folder, sorts them by filename,
-        optionally resizes each frame to a shared height, and stores the result
-        in ANIMATION_FRAME_CACHE. Future calls reuse the cached frames.
-
-        To add another imported animation later, create a new processed folder
-        with numbered PNG frames and call this helper with that folder path.
-    """
-    cache_key = (directory, target_height)
-    if cache_key in ANIMATION_FRAME_CACHE:
-        return ANIMATION_FRAME_CACHE[cache_key]
-
-    frames = []
-    try:
-        frame_paths = [
-            os.path.join(directory, name)
-            for name in sorted(os.listdir(directory))
-            if name.lower().endswith(".png")
-        ]
-        for path in frame_paths:
-            frame = pygame.image.load(path).convert_alpha()
-            if target_height:
-                scale = target_height / max(1, frame.get_height())
-                width = max(1, int(frame.get_width() * scale))
-                frame = pygame.transform.smoothscale(frame, (width, target_height))
-            frames.append(frame)
-    except Exception as exc:
-        print(f"[WARN] Could not load animation frames from {directory}: {exc}")
-        frames = []
-
-    ANIMATION_FRAME_CACHE[cache_key] = frames
-    return frames
 
 
 def fetch_latest_android_numeric_version(timeout=4):
@@ -3187,6 +3037,18 @@ class BattleScreen:
                 f"{self.enemy.name} descends!",
                 getattr(self.enemy, "boss_hint", "A dragon boss blocks your path."),
             ]
+
+    def get_special_attack_name(self):
+        """Return the class-specific SPECIAL attack name.
+
+        Beginner note:
+            The button, battle log, and animation title all call this one helper
+            so the Mage can say "Fire Blast" while Warrior/Rogue still say
+            "Fire Tornado". Add more class-specific names here later.
+        """
+        if self.player.type == "Mage":
+            return MAGE_SPECIAL_ATTACK_NAME
+        return SPECIAL_ATTACK_NAME
         
     def start_transition(self):
         self.transition_state = "in"
@@ -3231,7 +3093,7 @@ class BattleScreen:
                 self.draw_ghostface_scream_fx(surface, progress, fx["seed"])
 
     def draw_player_special_fx(self, surface):
-        """Draw the player's active SPECIAL attack, currently Fire Tornado.
+        """Draw the player's active SPECIAL attack.
 
         Beginner note:
             This is visual-only. Damage and MP cost are handled by
@@ -3242,8 +3104,9 @@ class BattleScreen:
             1. A charge ring near the player at the beginning.
             2. Glowing trail rings that mark the path across the screen.
             3. The imported PNG tornado frame from assets/processed/effects.
-            4. Extra impact lines when the tornado reaches the enemy.
-            5. The "FIRE TORNADO" label that fades in and out.
+            4. For Mage only, imported Fire Blast frames when the tornado hits.
+            5. Extra impact lines when the attack reaches the enemy.
+            6. The class-specific attack label that fades in and out.
         """
         fx = self.player_special_fx
         if not fx:
@@ -3252,6 +3115,9 @@ class BattleScreen:
         # progress always stays between 0.0 and 1.0.
         # 0.0 means the animation just started; 1.0 means it is finished.
         frames = fx.get("frames", [])
+        impact_frames = fx.get("impact_frames", [])
+        special_name = fx.get("name", SPECIAL_ATTACK_NAME)
+        is_fire_blast = fx.get("kind") == "fire_blast"
         timer = fx["timer"]
         duration = max(1, fx["duration"])
         progress = min(1.0, timer / duration)
@@ -3295,7 +3161,7 @@ class BattleScreen:
             pygame.draw.circle(overlay, (255, 90, 20, alpha), (int(tx), int(ty)), radius, 3)
             pygame.draw.circle(overlay, (255, 220, 130, max(0, alpha - 28)), (int(tx), int(ty)), max(8, radius // 2), 2)
 
-        if frames:
+        if frames and (not is_fire_blast or progress < 0.74):
             # Pick a source PNG frame. `timer // 2` means each imported frame is
             # shown for two game frames, which slows the GIF down slightly.
             frame = frames[(timer // 2) % len(frames)]
@@ -3310,6 +3176,10 @@ class BattleScreen:
                 alpha = int(255 * progress / 0.08)
             elif progress > 0.92:
                 alpha = int(255 * (1 - progress) / 0.08)
+            if is_fire_blast and progress > 0.55:
+                # The Mage's tornado transforms into the Fire Blast impact, so
+                # fade the moving tornado as the imported blast frames appear.
+                alpha = min(alpha, int(255 * max(0.0, 1 - (progress - 0.55) / 0.19)))
             frame.set_alpha(max(0, min(255, alpha)))
 
             # Ghost copies behind the main sprite create a fast afterimage.
@@ -3333,6 +3203,34 @@ class BattleScreen:
                 y = center_y + math.sin(angle) * radius
                 pygame.draw.circle(overlay, (255, 120, 25, 210), (int(x), int(y)), 12)
 
+        # Mage-only Fire Blast impact. The cutout frames were processed from
+        # assets/source/effects/fire_blast_impact.gif into transparent PNGs.
+        if is_fire_blast and impact_frames and progress > 0.52:
+            blast_progress = min(1.0, (progress - 0.52) / 0.38)
+            frame_index = min(len(impact_frames) - 1, int(blast_progress * len(impact_frames)))
+            blast_frame = impact_frames[frame_index]
+            blast_surge = math.sin(blast_progress * math.pi)
+            blast_width = max(1, int(blast_frame.get_width() * (0.92 + blast_surge * 0.16)))
+            blast_height = max(1, int(blast_frame.get_height() * (0.92 + blast_surge * 0.16)))
+            blast_frame = pygame.transform.smoothscale(blast_frame, (blast_width, blast_height))
+
+            blast_alpha = 255
+            if blast_progress < 0.14:
+                blast_alpha = int(255 * blast_progress / 0.14)
+            elif blast_progress > 0.86:
+                blast_alpha = int(255 * (1 - blast_progress) / 0.14)
+            blast_frame.set_alpha(max(0, min(255, blast_alpha)))
+
+            glow_radius = int(52 + blast_surge * 130)
+            pygame.draw.circle(overlay, (255, 88, 12, 76), (740, 285), glow_radius)
+            pygame.draw.circle(overlay, (255, 235, 140, 54), (740, 285), max(16, glow_radius // 2))
+
+            # The source blast already sweeps across the frame from left to
+            # right, so anchoring it on the enemy side makes it read like the
+            # tornado opened into a wide explosion at impact.
+            blast_rect = blast_frame.get_rect(center=(735 + rng.randint(-5, 5), 282 + rng.randint(-4, 4)))
+            overlay.blit(blast_frame, blast_rect)
+
         # Impact burst. It starts after 58% progress, when the moving tornado is
         # near the enemy side. These lines sell the hit even before damage text.
         if progress > 0.58:
@@ -3351,8 +3249,8 @@ class BattleScreen:
         # does not cover the battle menu or result text for too long.
         if 0.18 < progress < 0.78:
             text_alpha = int(220 * math.sin((progress - 0.18) / 0.60 * math.pi))
-            title = font_medium.render(SPECIAL_ATTACK_NAME.upper(), True, (255, 250, 210))
-            shadow = font_medium.render(SPECIAL_ATTACK_NAME.upper(), True, (255, 80, 20))
+            title = font_medium.render(special_name.upper(), True, (255, 250, 210))
+            shadow = font_medium.render(special_name.upper(), True, (255, 80, 20))
             title.set_alpha(text_alpha)
             shadow.set_alpha(text_alpha)
             overlay.blit(shadow, (382 + rng.randint(-2, 2), 158 + rng.randint(-2, 2)))
@@ -3653,6 +3551,7 @@ class BattleScreen:
             x, y = int(self.fireball_projectile['x']), int(self.fireball_projectile['y'])
             size = self.fireball_projectile['size']
             color = self.fireball_projectile['color']
+            imported_frames = self.fireball_projectile.get("frames", [])
             
             # Outer glow
             for i in range(3, 0, -1):
@@ -3662,6 +3561,24 @@ class BattleScreen:
                 glow_surf = pygame.Surface((glow_size * 2, glow_size * 2), pygame.SRCALPHA)
                 pygame.draw.circle(glow_surf, glow_color, (glow_size, glow_size), glow_size)
                 temp_surface.blit(glow_surf, (x - glow_size, y - glow_size))
+
+            if imported_frames:
+                # BEGINNER NOTE: Imported Mage MAGIC overlay.
+                # This does not replace the old fireball. It draws the cutout
+                # GIF frame between the old glow above and the old circle below.
+                # If assets/processed/effects/mage_magic_fireball/ is missing,
+                # imported_frames is empty and the old circles still draw.
+                frame_index = (self.fireball_projectile["timer"] // 2) % len(imported_frames)
+                fireball_frame = imported_frames[frame_index].copy()
+                if self.fireball_projectile["timer"] < 5:
+                    fireball_frame.set_alpha(int(255 * self.fireball_projectile["timer"] / 5))
+
+                # The source fireball's bright head is near the right edge of
+                # the frame. Place that head on the projectile x/y point while
+                # the tail stretches behind it.
+                draw_x = int(x - fireball_frame.get_width() * 0.82)
+                draw_y = int(y - fireball_frame.get_height() * 0.50)
+                temp_surface.blit(fireball_frame, (draw_x, draw_y))
             
             # Main fireball
             pygame.draw.circle(temp_surface, color, (x, y), size)
@@ -3853,10 +3770,10 @@ class BattleScreen:
         self.enemy_attack_fx = [fx for fx in self.enemy_attack_fx if fx["timer"] <= fx["duration"]]
 
         if self.player_special_fx:
-            # BEGINNER NOTE: This is the Fire Tornado animation clock.
+            # BEGINNER NOTE: This is the SPECIAL attack animation clock.
             # The dictionary is created in start_special_animation().
             # Each call to update() is one game frame, so timer += 1 advances
-            # the tornado one frame. When timer passes duration, the effect ends.
+            # the effect one frame. When timer passes duration, the effect ends.
             self.player_special_fx["timer"] += 1
             timer = self.player_special_fx["timer"]
             duration = max(1, self.player_special_fx["duration"])
@@ -4316,9 +4233,10 @@ class BattleScreen:
                 lambda item_type=item_type: self.execute_item(item_type)
             ]
         elif self.selected_option == 3:  # Special
-            # Fire Tornado is a stronger player move, so it costs MP.
+            # The class special is a stronger player move, so it costs MP.
             # The constant at the top of the file is the only number to change
             # if the special should be easier or harder to use.
+            special_name = self.get_special_attack_name()
             if self.player.mana >= SPECIAL_ATTACK_MANA_COST:
                 if game and hasattr(game, 'SFX_MAGIC') and game.SFX_MAGIC: game.SFX_MAGIC.play()
 
@@ -4326,13 +4244,13 @@ class BattleScreen:
                 # update() pops and runs one lambda per frame/cycle. That lets
                 # the battle log, animation start, and damage happen in order.
                 self.action_steps = [
-                    lambda: self.add_log(f"You summon {SPECIAL_ATTACK_NAME}!"),
+                    lambda special_name=special_name: self.add_log(f"You summon {special_name}!"),
                     lambda: self.start_special_animation(),
                     lambda: self.execute_special_attack()
                 ]
             else:
                 if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
-                self.add_log(f"Need {SPECIAL_ATTACK_MANA_COST} MP for {SPECIAL_ATTACK_NAME}!")
+                self.add_log(f"Need {SPECIAL_ATTACK_MANA_COST} MP for {special_name}!")
         elif self.selected_option == 4:  # Run
             if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
             self.action_steps = [
@@ -4430,6 +4348,11 @@ class BattleScreen:
     
     def start_magic_animation(self):
         self.player.start_attack_animation()
+        if hasattr(self, 'fireball_projectile'):
+            delattr(self, 'fireball_projectile')
+        if hasattr(self, 'knife_projectile'):
+            delattr(self, 'knife_projectile')
+
         self.magic_effect = {
             'active': True,
             'x': 700 + 30,  # Enemy center x (where magic hits)
@@ -4438,6 +4361,27 @@ class BattleScreen:
             'max_radius': 100,
             'color': random.choice(MAGIC_COLORS)
         }
+
+        if self.player.type == "Mage":
+            # BEGINNER NOTE: Mage normal MAGIC now uses an imported cutout GIF
+            # overlay, but the old ring/beam/particle effects below still run.
+            # If the PNG frames are missing, `frames` is empty and the old
+            # procedural magic graphics still carry the attack.
+            frames = load_animation_frames(MAGE_MAGIC_FIREBALL_FRAME_DIR, target_height=82)
+            self.fireball_projectile = {
+                'active': True,
+                'x': 200 + 25,
+                'y': 350 + 15,
+                'target_x': 700 + 30,
+                'target_y': 250 + 30,
+                'speed': 54,
+                'size': 12,
+                'color': random.choice(FIRE_COLORS),
+                'trail_particles': [],
+                'timer': 0,
+                'max_timer': 36,
+                'frames': frames,
+            }
         
         for _ in range(20):
             angle = random.uniform(0, math.pi*2)
@@ -4451,7 +4395,7 @@ class BattleScreen:
             )
 
     def start_special_animation(self):
-        """Start Fire Tornado's visual effect.
+        """Start the class SPECIAL visual effect.
 
         Beginner note:
             This does NOT apply damage. It only prepares the animation and
@@ -4460,7 +4404,13 @@ class BattleScreen:
         """
         self.player.start_attack_animation()
 
-        # Fire Tornado has its own imported animation, so turn off the normal
+        # BEGINNER NOTE: Warrior/Rogue use Fire Tornado.
+        # Mage starts with the same tornado travel, then adds the imported
+        # Fire Blast impact frames when the tornado reaches the enemy.
+        special_name = self.get_special_attack_name()
+        is_fire_blast = self.player.type == "Mage"
+
+        # The special has its own imported animation, so turn off the normal
         # slash/magic visuals before starting it.
         self.attack_effect_timer = 0
         self.magic_effect["active"] = False
@@ -4475,10 +4425,19 @@ class BattleScreen:
         # Load the transparent PNG frames that were cut out from the uploaded
         # Fire Tornado GIF. `target_height=220` controls the base on-screen size.
         frames = load_animation_frames(FLAME_TORNADO_FRAME_DIR, target_height=220)
+        impact_frames = []
+        if is_fire_blast:
+            # BEGINNER NOTE: These frames were cut out from the uploaded
+            # firestorm GIF. They are only loaded for Mage to keep the regular
+            # Fire Tornado effect unchanged for the other classes.
+            impact_frames = load_animation_frames(FIRE_BLAST_FRAME_DIR, target_height=320)
         self.player_special_fx = {
             "timer": 0,
             "duration": SPECIAL_ATTACK_DURATION,
             "frames": frames,
+            "impact_frames": impact_frames,
+            "kind": "fire_blast" if is_fire_blast else "fire_tornado",
+            "name": special_name,
             "seed": random.randint(1, 999999),
         }
 
@@ -4551,18 +4510,20 @@ class BattleScreen:
         )
         
         self.state = "enemy_turn"
-        self.action_cooldown = self.action_delay
+        self.action_cooldown = 40 if self.player.type == "Mage" else self.action_delay
 
     def execute_special_attack(self):
-        """Apply Fire Tornado's MP cost, damage, and hit feedback.
+        """Apply the class SPECIAL attack's MP cost, damage, and hit feedback.
 
         Beginner note:
             This is the battle-math half of the special attack.
-            To tune Fire Tornado's strength, edit the base_damage line below.
+            To tune Fire Tornado/Fire Blast strength, edit the base_damage
+            lines below.
             To tune the animation, edit draw_player_special_fx() and the
             SPECIAL_ATTACK_DURATION constant instead.
         """
         self.player.mana = max(0, self.player.mana - SPECIAL_ATTACK_MANA_COST)
+        special_name = self.get_special_attack_name()
 
         # Damage formula:
         # - strength is the main stat
@@ -4570,10 +4531,19 @@ class BattleScreen:
         # - level keeps the special useful as the player grows
         # roll_player_damage() is still used so critical hits and chill effects
         # work the same way they do for regular attacks.
-        base_damage = int(self.player.strength * 2.4 + self.player.speed * 0.8 + self.player.level * 3)
+        if self.player.type == "Mage":
+            # Mage has low strength but high mana, so Fire Blast uses max_mana
+            # as part of its power budget. That keeps the Mage special feeling
+            # like a real spell instead of a weak physical attack.
+            base_damage = int(self.player.strength * 2.0 + self.player.max_mana * 0.23 + self.player.level * 4)
+        else:
+            base_damage = int(self.player.strength * 2.4 + self.player.speed * 0.8 + self.player.level * 3)
         damage = self.roll_player_damage(base_damage)
         self.enemy.health = max(0, self.enemy.health - damage)
-        self.add_log(f"{SPECIAL_ATTACK_NAME} tore across {self.enemy.name} for {damage} damage!")
+        if self.player.type == "Mage":
+            self.add_log(f"{special_name} erupted on {self.enemy.name} for {damage} damage!")
+        else:
+            self.add_log(f"{special_name} tore across {self.enemy.name} for {damage} damage!")
         self.damage_target = "enemy"
         self.damage_amount = damage
         self.damage_effect_timer = 34

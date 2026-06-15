@@ -26,6 +26,12 @@ Active enemy asset:
 
 - `assets/processed/enemies/ghost_face.png`: Ghost Face enemy sprite used in the top-center forest area.
 
+Active effect assets:
+
+- `assets/processed/effects/flame_tornado/`: player SPECIAL travel animation.
+- `assets/processed/effects/fire_blast/`: Mage Fire Blast impact animation when the special reaches the enemy.
+- `assets/processed/effects/mage_magic_fireball/`: Mage normal MAGIC projectile overlay. The older procedural glow, beam, and explosion still run with it.
+
 ## Character Animation Sources
 
 Prefer CC0 assets first so we do not have to manage attribution for every import.

@@ -27,7 +27,7 @@
     "status": "active",
     "source_dir": "assets/source/effects",
     "processed_dir": "assets/processed/effects",
-    "notes": "Fire Tornado is the first active player special attack animation. Store raw GIF/video sources here and cut game-ready PNG frames into named processed subfolders."
+    "notes": "Fire Tornado, Mage Fire Blast impact, and Mage normal magic fireball overlays are active. Store raw GIF/video sources here and cut game-ready PNG frames into named processed subfolders."
   },
   "ui": {
     "status": "active",
