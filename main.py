@@ -51,6 +51,7 @@ import sys
 import random
 import math
 import threading
+import subprocess
 import urllib.request
 import webbrowser
 from pygame import gfxdraw
@@ -195,8 +196,8 @@ ENEMY_SIZE = 40
 ITEM_SIZE = 30
 FPS = 60
 
-APP_VERSION = "0.1.4"
-APP_NUMERIC_VERSION = 5
+APP_VERSION = "0.1.5"
+APP_NUMERIC_VERSION = 6
 APP_UPDATE_APK_URL = "https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android.apk"
 APP_VERSION_SPEC_URL = "https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/buildozer.spec"
 
@@ -345,9 +346,24 @@ def fetch_latest_android_numeric_version(timeout=4):
 
 def open_external_url(url):
     if is_android_runtime():
-        safe_url = url.replace('"', "%22")
-        if os.system(f'am start -a android.intent.action.VIEW -d "{safe_url}" >/dev/null 2>&1') == 0:
-            return True
+        intent_command = [
+            "start",
+            "-a", "android.intent.action.VIEW",
+            "-d", url,
+        ]
+        for am_path in ("/system/bin/am", "am"):
+            try:
+                result = subprocess.run(
+                    [am_path, *intent_command],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=4,
+                    check=False,
+                )
+            except Exception:
+                continue
+            if result.returncode == 0:
+                return True
 
     try:
         return bool(webbrowser.open(url))
