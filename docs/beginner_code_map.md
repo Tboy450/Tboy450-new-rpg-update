@@ -121,6 +121,17 @@ Fire Tornado is the player's `SPECIAL` battle action.
 3. Add a new attack effect by adding a new `fx` name in `choose_ghostface_attack`, a matching case in `draw_enemy_attack_fx`, and a drawing method.
 4. Keep `ghost_face` out of `AREA_ENEMY_TYPES` unless you want it to spawn randomly like a normal enemy.
 
+## How To Replace Player Character Sprites
+
+The active imported character art lives in `assets/processed/characters/`.
+
+1. Replace `warrior.png`, `mage.png`, or `rogue.png` with a transparent PNG.
+2. Keep the class names in `CHARACTER_SPRITE_PATHS` in `main.py` unchanged unless you also rename the character class.
+3. `load_sprite_by_height` loads and resizes each PNG while keeping its original shape.
+4. `draw_character_sprite` places the sprite by its center and feet so it lines up in both world and battle screens.
+5. `Character.draw` calls `draw_character_sprite` first. If the imported PNG cannot load, the older Python-drawn character code below it still draws a fallback hero.
+6. The world map uses `sprite_mode="world"` and battle uses `sprite_mode="battle"` to choose different sprite heights.
+
 ## How The Android Update Button Works
 
 1. `APP_NUMERIC_VERSION` in `main.py` is the installed app's current version code.

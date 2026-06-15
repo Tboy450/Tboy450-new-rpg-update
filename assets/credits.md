@@ -19,3 +19,27 @@ License: User-provided asset
 Attribution text: User-supplied Fire Tornado animation
 Used for: Player SPECIAL attack animation in battle
 ```
+
+```text
+Asset: Warrior character sprite
+Source URL: User-supplied upload in Codex chat
+License: User-provided asset
+Attribution text: User-supplied Warrior character sprite
+Used for: Warrior class sprite in character select, overworld, and battle
+```
+
+```text
+Asset: Mage character sprite
+Source URL: Generated from the user-supplied Warrior style reference in Codex chat
+License: AI-generated project asset
+Attribution text: Generated Mage character sprite
+Used for: Mage class sprite in character select, overworld, and battle
+```
+
+```text
+Asset: Rogue character sprite
+Source URL: Generated from the user-supplied Warrior style reference in Codex chat
+License: AI-generated project asset
+Attribution text: Generated Rogue character sprite
+Used for: Rogue class sprite in character select, overworld, and battle
+```

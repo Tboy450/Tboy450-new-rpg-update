@@ -16,6 +16,12 @@ Active UI asset:
 
 - `assets/processed/ui/dragon_app_icon.png`: Android launcher icon used by `buildozer.spec`.
 
+Active character assets:
+
+- `assets/processed/characters/warrior.png`: imported Warrior class sprite used in character select, overworld, and battle.
+- `assets/processed/characters/mage.png`: generated Mage class sprite used in character select, overworld, and battle.
+- `assets/processed/characters/rogue.png`: generated Rogue class sprite used in character select, overworld, and battle.
+
 Active enemy asset:
 
 - `assets/processed/enemies/ghost_face.png`: Ghost Face enemy sprite used in the top-center forest area.

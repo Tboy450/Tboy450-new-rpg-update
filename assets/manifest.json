@@ -1,9 +1,9 @@
 {
   "characters": {
-    "status": "planned",
+    "status": "active",
     "source_dir": "assets/source/characters",
     "processed_dir": "assets/processed/characters",
-    "notes": "Drop raw hero/NPC animation packs here before converting them to game-ready sprites."
+    "notes": "Warrior, Mage, and Rogue imported PNG sprites are active in character select, overworld, and battle. The older Python-drawn characters remain as fallback code in main.py."
   },
   "enemies": {
     "status": "active",

@@ -202,8 +202,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.7"
-APP_NUMERIC_VERSION = 8
+APP_VERSION = "0.1.8"
+APP_NUMERIC_VERSION = 9
 
 # BEGINNER NOTE: The UPDATE APP button opens this stable GitHub Release asset.
 # The filename stays the same, but GitHub Actions replaces the file whenever a
@@ -221,6 +221,16 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # That makes the same file paths work on Windows, GitHub Actions, and Android.
 GHOST_FACE_SPRITE_PATH = os.path.join(BASE_DIR, "assets", "processed", "enemies", "ghost_face.png")
 FLAME_TORNADO_FRAME_DIR = os.path.join(BASE_DIR, "assets", "processed", "effects", "flame_tornado")
+
+# BEGINNER NOTE: These are the active imported hero sprites.
+# The keys must match the playable class names exactly: "Warrior", "Mage",
+# and "Rogue". If you replace one PNG later, keep the same filename if you
+# want the game to pick it up automatically.
+CHARACTER_SPRITE_PATHS = {
+    "Warrior": os.path.join(BASE_DIR, "assets", "processed", "characters", "warrior.png"),
+    "Mage": os.path.join(BASE_DIR, "assets", "processed", "characters", "mage.png"),
+    "Rogue": os.path.join(BASE_DIR, "assets", "processed", "characters", "rogue.png"),
+}
 
 # BEGINNER NOTE: These caches keep Pygame from reloading and resizing PNG files
 # every frame. Loading images is slow; drawing already-loaded surfaces is fast.
@@ -356,6 +366,80 @@ def draw_enemy_sprite(surface, enemy, x, y, size):
     if not sprite:
         return False
     surface.blit(sprite, (int(x), int(y)))
+    return True
+
+
+def load_sprite_by_height(path, target_height):
+    """Load a PNG once and resize it by height.
+
+    Beginner note:
+        Character art comes from tall imported PNGs instead of Python shapes.
+        The world and battle screens need different sizes, so this helper keeps
+        the sprite's original width/height ratio while resizing only by height.
+
+        The cache key includes `target_height`, which means the 76-pixel world
+        sprite and the 170-pixel battle sprite are stored separately.
+    """
+    cache_key = (path, "height", int(target_height))
+    if cache_key in SPRITE_CACHE:
+        return SPRITE_CACHE[cache_key]
+
+    try:
+        sprite = pygame.image.load(path).convert_alpha()
+        scale = int(target_height) / max(1, sprite.get_height())
+        target_width = max(1, int(sprite.get_width() * scale))
+
+        # Pixel-art sprites stay sharper with nearest-neighbor scaling.
+        # smoothscale is useful for photos, but it softens retro sprite pixels.
+        sprite = pygame.transform.scale(sprite, (target_width, int(target_height)))
+    except Exception as exc:
+        print(f"[WARN] Could not load sprite {path}: {exc}")
+        sprite = None
+
+    SPRITE_CACHE[cache_key] = sprite
+    return sprite
+
+
+def draw_character_sprite(surface, char_type, anchor_x, foot_y, target_height, hit_timer=0):
+    """Draw one imported player class sprite.
+
+    Beginner note:
+        `anchor_x` is the middle of the character.
+        `foot_y` is where the feet touch the ground.
+        That makes a tall battle sprite and a small world-map sprite line up
+        the same way even though their sizes are different.
+
+        This returns True when a PNG was drawn. If a file is missing or broken,
+        Character.draw() falls back to the older Python-drawn character code.
+    """
+    sprite_path = CHARACTER_SPRITE_PATHS.get(char_type)
+    if not sprite_path:
+        return False
+
+    sprite = load_sprite_by_height(sprite_path, target_height)
+    if not sprite:
+        return False
+
+    shadow_width = max(34, int(sprite.get_width() * 0.55))
+    shadow_height = max(7, int(target_height * 0.075))
+    shadow_rect = (
+        int(anchor_x - shadow_width / 2),
+        int(foot_y - shadow_height / 2),
+        shadow_width,
+        shadow_height,
+    )
+    pygame.draw.ellipse(surface, (0, 0, 0), shadow_rect)
+
+    draw_sprite = sprite
+    if hit_timer > 0:
+        # Red flash while the player is being hit. Copying protects the cached
+        # original sprite from being permanently tinted.
+        draw_sprite = sprite.copy()
+        draw_sprite.fill((255, 70, 70, 60), special_flags=pygame.BLEND_RGBA_ADD)
+
+    draw_x = int(anchor_x - draw_sprite.get_width() / 2)
+    draw_y = int(foot_y - draw_sprite.get_height())
+    surface.blit(draw_sprite, (draw_x, draw_y))
     return True
 
 
@@ -1975,7 +2059,7 @@ class Character:
         if self.hit_animation > 0:
             self.hit_animation -= 1
             
-    def draw(self, surface):
+    def draw(self, surface, sprite_mode="world"):
         offset_x = self.animation_offset
         offset_y = self.animation_offset
         
@@ -1993,6 +2077,35 @@ class Character:
         
         x = self.x + offset_x
         y = self.y + offset_y
+
+        # BEGINNER NOTE: Imported hero sprite path.
+        # This is the normal drawing path now. The Warrior, Mage, and Rogue PNGs
+        # live in assets/processed/characters/. World-map sprites are smaller
+        # so they fit inside a tile; battle sprites are larger so the imported
+        # detail is visible during fights.
+        if sprite_mode == "battle":
+            sprite_height = 170
+            foot_y = y + PLAYER_SIZE + 10
+        else:
+            sprite_height = 76
+            foot_y = y + PLAYER_SIZE + 4
+
+        if draw_character_sprite(
+            surface,
+            self.type,
+            x + PLAYER_SIZE / 2,
+            foot_y,
+            sprite_height,
+            self.hit_animation,
+        ):
+            return
+
+        # BEGINNER NOTE: Legacy fallback starts here.
+        # The large drawing blocks below are the older Python-drawn characters.
+        # They are intentionally kept instead of deleted. If an imported PNG is
+        # missing, renamed, or broken, the game still draws a playable hero.
+        # Future coders can also compare these old procedural shapes against
+        # the newer imported art path above.
         
         if self.type == "Warrior":
             # Draw shadow first
@@ -3443,8 +3556,10 @@ class BattleScreen:
         original_x, original_y = self.player.x, self.player.y
         self.player.x, self.player.y = player_x, player_y
         
-        # Draw the player directly to the battle surface
-        self.player.draw(temp_surface)
+        # Draw the player directly to the battle surface.
+        # BEGINNER NOTE: sprite_mode="battle" tells Character.draw() to use the
+        # same imported PNG, but at a larger height than the overworld sprite.
+        self.player.draw(temp_surface, sprite_mode="battle")
         
         # Restore original position
         self.player.x, self.player.y = original_x, original_y
@@ -4895,9 +5010,12 @@ class Game:
         self.update_thread.start()
         
         # Character buttons
-        self.warrior_button = Button(SCREEN_WIDTH//2 - 300, 300, 200, 150, "WARRIOR", (0, 255, 0))
-        self.mage_button = Button(SCREEN_WIDTH//2 - 50, 300, 200, 150, "MAGE", (0, 200, 255))
-        self.rogue_button = Button(SCREEN_WIDTH//2 + 200, 300, 200, 150, "ROGUE", (255, 100, 0))
+        # BEGINNER NOTE: These buttons are still the clickable/touchable class
+        # cards. Their text is blank because the draw code renders the imported
+        # sprite preview plus a custom label strip on top of each card.
+        self.warrior_button = Button(SCREEN_WIDTH//2 - 300, 300, 200, 150, "", (0, 255, 0))
+        self.mage_button = Button(SCREEN_WIDTH//2 - 50, 300, 200, 150, "", (0, 200, 255))
+        self.rogue_button = Button(SCREEN_WIDTH//2 + 200, 300, 200, 150, "", (255, 100, 0))
         
         # ========================================
         # AUDIO SYSTEM - Procedurally Generated Sound Effects
@@ -6376,9 +6494,31 @@ class Game:
                 screen.blit(text, (SCREEN_WIDTH//2 + 200, y_pos))
                 y_pos += 25
             
-            self.warrior_button.draw(screen)
-            self.mage_button.draw(screen)
-            self.rogue_button.draw(screen)
+            # BEGINNER NOTE: Character select previews use the same imported
+            # PNG files as the overworld and battle screens. If you replace
+            # assets/processed/characters/mage.png, this menu updates too.
+            character_cards = [
+                (self.warrior_button, "Warrior", (0, 255, 0)),
+                (self.mage_button, "Mage", (0, 200, 255)),
+                (self.rogue_button, "Rogue", (255, 100, 0)),
+            ]
+            for card_index, (button, char_type, label_color) in enumerate(character_cards):
+                button.draw(screen)
+                draw_character_sprite(
+                    screen,
+                    char_type,
+                    button.rect.centerx,
+                    button.rect.y + 120,
+                    116,
+                )
+
+                label_rect = pygame.Rect(button.rect.x + 12, button.rect.bottom - 34, button.rect.width - 24, 26)
+                pygame.draw.rect(screen, UI_BG, label_rect, border_radius=5)
+                border_color = (255, 215, 0) if self.character_menu_index == card_index else label_color
+                pygame.draw.rect(screen, border_color, label_rect, 1, border_radius=5)
+                label = font_tiny.render(char_type.upper(), True, label_color)
+                screen.blit(label, (label_rect.centerx - label.get_width() // 2, label_rect.y + 5))
+
             self.back_button.draw(screen)
             
         elif self.state == "overworld" and self.player:
