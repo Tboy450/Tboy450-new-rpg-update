@@ -5,6 +5,7 @@
 - `input_actions.py`: maps keyboard and Android virtual button inputs to gameplay actions.
 - `assets.py`: centralizes imported art paths, sprite caching, animation frame loading, and reusable sprite drawing.
 - `save_load.py`: serializes and loads JSON save data for the player, score, boss progress, visited areas, and town interaction progress.
+- `__init__.py`: marks this folder as a Python package so helpers can be imported as `systems.assets`, `systems.input_actions`, and `systems.save_load`.
 
 Keep this folder for reusable runtime systems. Pure tuning data still belongs in `game_data/`.
 
@@ -39,6 +40,17 @@ This module keeps imported-art plumbing out of `main.py`.
 - `load_animation_frames` loads numbered PNG frame folders such as `frame_00.png`.
 - `draw_character_sprite` draws Warrior/Mage/Rogue imported sprites with a shared foot anchor.
 - `draw_enemy_sprite` draws enemies that have an imported sprite path.
+- `get_story_sprite_path` maps story keys such as `lion_sage` and `ghost_face` to the active PNG files.
+
+Active imported art paths:
+
+- `GHOST_FACE_SPRITE_PATH`: processed Ghost Face enemy sprite.
+- `LION_SAGE_SPRITE_PATH`: processed Lion Sage story NPC and portrait sprite.
+- `TOWN_GUARD_SPRITE_PATH`: processed imported town guard overlay for the intro cutscene.
+- `TITLE_DRAGON_SPRITE_PATH`: processed imported title-screen dragon.
+- `FLAME_TORNADO_FRAME_DIR`: player SPECIAL travel animation frames.
+- `FIRE_BLAST_FRAME_DIR`: Mage SPECIAL impact animation frames.
+- `MAGE_MAGIC_FIREBALL_FRAME_DIR`: Mage normal MAGIC projectile overlay frames.
 
 When adding a new imported effect:
 

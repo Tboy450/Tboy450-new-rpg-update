@@ -19,6 +19,7 @@ an enemy list changes what can spawn in an area.
 - `npcs.py`: town guard template/dialogue, town service NPC metadata, and rotating interior NPC dialogue.
 - `progression.py`: boss names, boss hints, final boss level, and player-facing quest status.
 - `quests.py`: town errand names, summaries, and rewards.
+- `story.py`: opening story text, Lion Sage map placement/dialogue/reward, and Ghost Face area intro dialogue.
 - `town.py`: town overworld buildings, boundaries, decorations, smoke sources, and building collision tuning.
 - `world.py`: world grid layout, area descriptions, area visuals, area particles, and environmental area effects.
 
@@ -44,6 +45,7 @@ Some strings must match across modules:
 - Enemy element names like `fiery`, `shadow`, and `ice` should match entries in `ELEMENT_PROFILES`.
 - Item keys like `health` and `mana` should match entries in `ITEM_PROFILES`.
 - Area names like `forest`, `town`, and `volcano` should match entries in `WORLD_LAYOUT`, `AREA_VISUALS`, and `AREA_ENEMY_TYPES`.
+- Story sprite keys like `lion_sage` and `ghost_face` should match `STORY_SPRITE_PATHS` in `systems/assets.py`.
 
 ## Placement Rules
 
@@ -52,6 +54,7 @@ Some strings must match across modules:
 - Town NPC/service text and dialogue belongs in `npcs.py`; town room layout and inspect text belongs in `interiors.py`.
 - Town overworld layout belongs in `town.py`; building room contents belong in `interiors.py`.
 - Town errand/reward data belongs in `quests.py`.
+- Main quest story beats, one-shot area dialogue, and friendly story NPC placement belong in `story.py`.
 - Reusable combat or pickup tuning belongs in `mechanics.py`.
 - Do not add new active gameplay data to `archive/`.
 
@@ -63,6 +66,8 @@ Some strings must match across modules:
 - To add a line of shopkeeper dialogue, edit the `shop` `dialogue` tuple in `npcs.py`.
 - To add an inspectable object inside the inn, edit `TOWN_INTERIORS["inn"]["inspect_points"]` in `interiors.py`.
 - To tune critical hits, edit `BATTLE_RULES` in `mechanics.py`.
+- To move the Lion Sage, edit `STORY_NPCS["lion_sage"]["local_position"]` in `story.py`.
+- To change when SPECIAL unlocks, edit the `reward` block in `STORY_AREA_DIALOGUES["lion_sage_swamp"]`.
 
 ## Asset Intake
 

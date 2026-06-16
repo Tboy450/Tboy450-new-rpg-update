@@ -106,5 +106,19 @@ Repository layout:
 - `systems/` holds active helper systems such as input mapping and JSON save/load. See `systems/README.md` before changing helper code.
 - `assets/` is the intake area for future art/audio ports. Keep raw downloads in `assets/source/`, game-ready files in `assets/processed/`, and non-CC0 attribution in `assets/credits.md`.
 - `scripts/` holds setup helpers, including `scripts/build_android.sh`.
+- `.github/` holds GitHub Actions automation, including the APK build workflow.
+- `android-signing/` holds the public development signing key for sideload APK updates.
+- `p4a-recipes/` holds Android build recipes, including the custom `pygame-ce` recipe.
+- `bin/` is where local APK builds place generated files.
 - `buildozer.spec` is the Android APK packaging config.
 - `archive/` contains older snapshot files and experiments kept for reference only. It is not the active game source.
+
+Root files:
+
+- `main.py`: active Pygame RPG source.
+- `buildozer.spec`: Android package name, icon, version, dependencies, SDK/NDK, and APK build settings.
+- `requirements.txt`: desktop Python dependency list.
+- `play_android.py`: Android/Pydroid source-launch helper.
+- `run_android.py`: Android/Pydroid runtime launcher.
+- `Run Dragons Lair RPG.cmd`: Windows double-click launcher.
+- `README.md`: this project overview and install/update guide.

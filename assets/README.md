@@ -1,6 +1,7 @@
 # Asset Sources
 
-This game is still using procedural shapes and generated audio. When we start replacing that with real assets, use this folder as the intake point:
+This folder is the intake and storage area for imported art, animation frames,
+music, sound effects, and UI assets.
 
 ```text
 assets/
@@ -10,27 +11,66 @@ assets/
   credits.md    attribution notes for any non-CC0 items
 ```
 
-The current placeholder folders are split into `characters`, `enemies`, `sounds`, `music`, and `ui`. Keep raw packs under `assets/source/<category>/`, then copy converted game-ready files to `assets/processed/<category>/`.
+Keep raw uploads under `assets/source/<category>/`, then put converted
+game-ready files under `assets/processed/<category>/`.
+
+## Section Map
+
+- `manifest.json`: category status and short notes for what is active or planned.
+- `credits.md`: license and attribution notes for imported assets.
+- `source/`: original uploads and generated chroma-key files kept for future reprocessing.
+- `processed/`: transparent PNGs, resized images, and cut animation frames loaded by the game.
+- `source/characters/`: raw Warrior, Mage, and Rogue source images.
+- `processed/characters/`: game-ready Warrior, Mage, and Rogue PNGs plus the contact sheet.
+- `source/enemies/`: raw enemy source images.
+- `processed/enemies/`: game-ready enemy sprites.
+- `source/npcs/`: raw story/friendly NPC source images.
+- `processed/npcs/`: game-ready story/friendly NPC sprites.
+- `source/effects/`: raw GIF/video effect uploads.
+- `processed/effects/`: extracted PNG animation frame folders used by combat.
+- `source/ui/`: raw UI/title/icon source images.
+- `processed/ui/`: game-ready launcher icon and title-screen art.
+- `source/music/` and `processed/music/`: future music intake and finished loops.
+- `source/sounds/` and `processed/sounds/`: future sound-effect intake and finished WAV/OGG files.
 
 Active UI asset:
 
 - `assets/processed/ui/dragon_app_icon.png`: Android launcher icon used by `buildozer.spec`.
+- `assets/processed/ui/title_dragon.png`: imported title-screen dragon used by `Dragon.draw` in `main.py`. The old procedural dragon remains as fallback code.
 
 Active character assets:
 
 - `assets/processed/characters/warrior.png`: imported Warrior class sprite used in character select, overworld, and battle.
 - `assets/processed/characters/mage.png`: generated Mage class sprite used in character select, overworld, and battle.
 - `assets/processed/characters/rogue.png`: generated Rogue class sprite used in character select, overworld, and battle.
+- `assets/processed/characters/character_contact_sheet.jpg`: preview sheet for checking the three active hero sprites together.
 
 Active enemy asset:
 
 - `assets/processed/enemies/ghost_face.png`: Ghost Face enemy sprite used in the top-center forest area.
+
+Active NPC assets:
+
+- `assets/processed/npcs/lion_sage.png`: Lion Sage story NPC and portrait used in the west swamp area.
+- `assets/processed/npcs/town_guard.png`: imported town guard overlay used during the town intro cutscene.
 
 Active effect assets:
 
 - `assets/processed/effects/flame_tornado/`: player SPECIAL travel animation.
 - `assets/processed/effects/fire_blast/`: Mage Fire Blast impact animation when the special reaches the enemy.
 - `assets/processed/effects/mage_magic_fireball/`: Mage normal MAGIC projectile overlay. The older procedural glow, beam, and explosion still run with it.
+
+Active source files:
+
+- `assets/source/characters/warrior_user_supplied.png`: original Warrior reference supplied by the user.
+- `assets/source/characters/mage_generated_chroma.png`: generated Mage source on chroma background.
+- `assets/source/characters/rogue_generated_chroma.png`: generated Rogue source on chroma background.
+- `assets/source/effects/flame_tornado_attack.gif`: raw Fire Tornado special animation source.
+- `assets/source/effects/fire_blast_impact.gif`: raw Mage Fire Blast impact source.
+- `assets/source/effects/mage_magic_fireball.gif`: raw Mage normal magic projectile source.
+- `assets/source/npcs/lion_sage_generated_chroma.png`: generated Lion Sage source on chroma background.
+- `assets/source/npcs/town_guard_generated_chroma.png`: generated town guard source on chroma background.
+- `assets/source/ui/title_dragon_generated_chroma.png`: generated title dragon source on chroma background.
 
 ## Character Animation Sources
 
