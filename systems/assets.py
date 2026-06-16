@@ -22,9 +22,12 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 # BEGINNER NOTE: Imported art uses project-root based absolute paths.
 # That keeps paths stable on desktop, GitHub Actions, and inside the Android APK.
 GHOST_FACE_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "enemies" / "ghost_face.png")
+LION_SAGE_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "npcs" / "lion_sage.png")
+TOWN_GUARD_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "npcs" / "town_guard.png")
 FLAME_TORNADO_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "flame_tornado")
 FIRE_BLAST_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "fire_blast")
 MAGE_MAGIC_FIREBALL_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "mage_magic_fireball")
+TITLE_DRAGON_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "ui" / "title_dragon.png")
 
 # BEGINNER NOTE: Active imported hero sprites.
 # The keys must match playable class names exactly: "Warrior", "Mage", "Rogue".
@@ -32,6 +35,14 @@ CHARACTER_SPRITE_PATHS = {
     "Warrior": str(BASE_DIR / "assets" / "processed" / "characters" / "warrior.png"),
     "Mage": str(BASE_DIR / "assets" / "processed" / "characters" / "mage.png"),
     "Rogue": str(BASE_DIR / "assets" / "processed" / "characters" / "rogue.png"),
+}
+
+# BEGINNER NOTE: Story portraits and friendly map NPCs use short keys.
+# `game_data/story.py` stores "lion_sage" instead of a full file path, then
+# main.py asks this module for the actual PNG. Add future story sprites here.
+STORY_SPRITE_PATHS = {
+    "ghost_face": GHOST_FACE_SPRITE_PATH,
+    "lion_sage": LION_SAGE_SPRITE_PATH,
 }
 
 # BEGINNER NOTE: These caches prevent Pygame from reloading and resizing PNGs
@@ -55,6 +66,11 @@ def load_scaled_sprite(path, size):
 
     SPRITE_CACHE[cache_key] = sprite
     return sprite
+
+
+def get_story_sprite_path(sprite_key):
+    """Return the PNG path for a story portrait or friendly map NPC."""
+    return STORY_SPRITE_PATHS.get(sprite_key)
 
 
 def load_sprite_by_height(path, target_height):

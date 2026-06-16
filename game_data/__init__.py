@@ -45,6 +45,17 @@ from .progression import (
 # Lightweight town errands and rewards.
 from .quests import TOWN_ERRANDS, get_town_errand, get_town_errand_count
 
+# Main story NPCs and one-shot area dialogue.
+from .story import (
+    OPENING_STORY_LINES,
+    STORY_AREA_DIALOGUES,
+    STORY_NPCS,
+    TOWN_GUARD_STORY_LINES,
+    get_story_dialogue,
+    get_story_dialogues_for_area,
+    get_story_npcs_for_area,
+)
+
 # Outdoor town layout data.
 from .town import (
     TOWN_BOUNDARIES,
@@ -79,7 +90,11 @@ __all__ = [
     "FINAL_BOSS_LEVEL",
     "ITEM_PROFILES",
     "ITEM_SPAWN_TABLE",
+    "OPENING_STORY_LINES",
+    "STORY_AREA_DIALOGUES",
+    "STORY_NPCS",
     "TOWN_GUARD_TEMPLATE",
+    "TOWN_GUARD_STORY_LINES",
     "TOWN_INTERIORS",
     "TOWN_ERRANDS",
     "TOWN_BOUNDARIES",
@@ -90,6 +105,9 @@ __all__ = [
     "WORLD_LAYOUT",
     "clone_town_layout",
     "create_town_guard",
+    "get_story_dialogue",
+    "get_story_dialogues_for_area",
+    "get_story_npcs_for_area",
     "get_town_service_dialogue",
     "get_boss_profile",
     "get_element_profile",

@@ -74,7 +74,10 @@ from game_data import (
     ENEMY_NAME_POOLS,
     ITEM_PROFILES,
     ITEM_SPAWN_TABLE,
+    OPENING_STORY_LINES,
+    STORY_NPCS,
     TOWN_INTERIORS,
+    TOWN_GUARD_STORY_LINES,
     TOWN_SERVICES,
     WORLD_LAYOUT,
     clone_town_layout,
@@ -82,6 +85,9 @@ from game_data import (
     get_boss_profile,
     get_element_profile,
     get_progression_status,
+    get_story_dialogue,
+    get_story_dialogues_for_area,
+    get_story_npcs_for_area,
     get_town_errand,
     get_town_errand_count,
     get_town_service_dialogue,
@@ -110,10 +116,14 @@ from systems.assets import (
     FLAME_TORNADO_FRAME_DIR,
     GHOST_FACE_SPRITE_PATH,
     MAGE_MAGIC_FIREBALL_FRAME_DIR,
+    TITLE_DRAGON_SPRITE_PATH,
+    TOWN_GUARD_SPRITE_PATH,
     draw_character_sprite,
     draw_enemy_sprite,
+    get_story_sprite_path,
     load_animation_frames,
     load_scaled_sprite,
+    load_sprite_by_height,
 )
 from systems.save_load import DEFAULT_SAVE_PATH, load_game_state, save_game_state
 
@@ -195,6 +205,28 @@ def sound_from_pcm(pcm_bytes):
     """Build a pygame Sound directly from stereo 16-bit PCM bytes."""
     return pygame.mixer.Sound(buffer=pcm_bytes)
 
+
+def wrap_text_to_width(text, font_obj, max_width):
+    """Split text into lines that fit inside a pixel width.
+
+    Beginner note:
+        Pygame does not wrap text for us. This helper measures words with the
+        chosen font, builds one line at a time, and starts a new line before a
+        sentence would spill outside the dialogue panel.
+    """
+    lines = []
+    current_line = ""
+    for word in str(text).split():
+        test_line = f"{current_line} {word}".strip()
+        if current_line and font_obj.size(test_line)[0] > max_width:
+            lines.append(current_line)
+            current_line = word
+        else:
+            current_line = test_line
+    if current_line:
+        lines.append(current_line)
+    return lines or [""]
+
 # ============================================================================
 # GAME CONSTANTS AND CONFIGURATION
 # ============================================================================
@@ -212,8 +244,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.9"
-APP_NUMERIC_VERSION = 10
+APP_VERSION = "0.1.10"
+APP_NUMERIC_VERSION = 11
 
 # BEGINNER NOTE: The UPDATE APP button opens this stable GitHub Release asset.
 # The filename stays the same, but GitHub Actions replaces the file whenever a
@@ -355,14 +387,18 @@ def fetch_latest_android_numeric_version(timeout=4):
     raise ValueError("android.numeric_version not found")
 
 
-def open_external_url(url):
+def open_external_url(url, mime_type=None):
     """Open a URL from desktop Python or from the Android APK.
 
     Beginner note:
         On desktop, Python's `webbrowser.open` is enough.
         Inside the Android APK, `webbrowser.open` is unreliable, so we first
-        ask Android's Activity Manager (`am start`) to open the URL. That is the
-        path that makes the in-game UPDATE APP button launch the APK download.
+        ask Android's Activity Manager (`am start`) to open the URL.
+
+        For APK updates, `mime_type` gives Android an extra hint that the link
+        is an installable package. Some Android builds still download first and
+        require the player to open the downloaded APK from Downloads, but this
+        route gives Package Installer the best chance to appear immediately.
     """
     if is_android_runtime():
         intent_command = [
@@ -370,6 +406,8 @@ def open_external_url(url):
             "-a", "android.intent.action.VIEW",
             "-d", url,
         ]
+        if mime_type:
+            intent_command.extend(["-t", mime_type])
         for am_path in ("/system/bin/am", "am"):
             try:
                 result = subprocess.run(
@@ -1208,6 +1246,10 @@ class WorldArea:
             
         # Create guard at the town entrance (near the gate)
         self.guard = create_town_guard()
+        # BEGINNER NOTE: The normal guard greeting lives in game_data/npcs.py.
+        # The main-story warning below lives in game_data/story.py so future
+        # quest text can be edited without touching town-service dialogue.
+        self.guard["dialogue"].extend(TOWN_GUARD_STORY_LINES)
     
     def check_entrance_cutscene(self, player_x, player_y):
         """Check if player should trigger the entrance cutscene"""
@@ -1602,6 +1644,23 @@ class WorldArea:
         pygame.draw.polygon(surface, guard_highlight, 
                           [(sword_x + 4, sword_y + 4), (sword_x + 1, sword_y + 5), (sword_x + 3, sword_y + 3)])
         
+        # BEGINNER NOTE: Imported guard overlay.
+        # The large procedural knight above is kept as fallback art. If the PNG
+        # exists, we draw it over the old shapes so the town intro matches the
+        # newer imported hero/enemy style without deleting the original code.
+        imported_guard = load_sprite_by_height(TOWN_GUARD_SPRITE_PATH, 260)
+        if imported_guard:
+            sprite_x = int(guard_x + guard_w // 2 - imported_guard.get_width() / 2 + 10)
+            sprite_y = int(guard_y + guard_h - imported_guard.get_height() + 16)
+            shadow_w = max(95, int(imported_guard.get_width() * 0.42))
+            shadow_h = max(12, int(imported_guard.get_height() * 0.05))
+            pygame.draw.ellipse(
+                surface,
+                (0, 0, 0),
+                (guard_x - 34, sprite_y + imported_guard.get_height() - 14, shadow_w, shadow_h),
+            )
+            surface.blit(imported_guard, (sprite_x, sprite_y))
+
         # Draw dialogue box
         if self.cutscene_phase == 1:
             # Safety check to prevent index out of bounds
@@ -1620,10 +1679,17 @@ class WorldArea:
             pygame.draw.rect(surface, (40, 40, 60), (box_x, box_y, box_w, box_h))
             pygame.draw.rect(surface, (80, 80, 120), (box_x, box_y, box_w, box_h), 3)
             
-            # Dialogue text
-            text = font_small.render(dialogue, True, (255, 255, 255))
-            text_rect = text.get_rect(center=(box_x + box_w//2, box_y + box_h//2))
-            surface.blit(text, text_rect)
+            # BEGINNER NOTE: The guard has longer story dialogue now, so the
+            # town intro box wraps text instead of trying to force one long
+            # sentence onto a single line.
+            wrapped_dialogue = wrap_text_to_width(dialogue, font_small, box_w - 40)
+            line_height = 24
+            text_y = box_y + 38 + max(0, (3 - len(wrapped_dialogue)) * 6)
+            for wrapped_line in wrapped_dialogue:
+                text = font_small.render(wrapped_line, True, (255, 255, 255))
+                text_rect = text.get_rect(center=(box_x + box_w//2, text_y))
+                surface.blit(text, text_rect)
+                text_y += line_height
             
             # Dragon Knight name
             name_text = font_tiny.render("Sir Marcus - Dragon Knight", True, (255, 215, 0))
@@ -1632,7 +1698,7 @@ class WorldArea:
         
         # Draw "Press SPACE to continue" prompt
         if self.cutscene_phase == 1 and self.cutscene_timer > 60:
-            prompt_text = font_tiny.render("Press SPACE to continue", True, (200, 200, 200))
+            prompt_text = font_tiny.render("ENTER/SPACE to continue", True, (200, 200, 200))
             prompt_rect = prompt_text.get_rect(center=(500, 620))
             surface.blit(prompt_text, prompt_rect)
 
@@ -1889,6 +1955,10 @@ class Character:
         self.just_leveled_up = False
         self.boss_cooldown = False  # Prevent boss battles during cooldown
         self.town_service_claims = set()
+        # BEGINNER NOTE: The player does not start with SPECIAL unlocked.
+        # Lion Sage grants this early in the story. BattleScreen checks this
+        # flag before allowing the SPECIAL button to spend MP and attack.
+        self.special_unlocked = False
         
     def move(self, dx, dy):
         new_x = self.x + dx * GRID_SIZE
@@ -2896,6 +2966,53 @@ class Dragon:
         self.flap_speed = 0.1
         
     def draw(self, surface):
+        # BEGINNER NOTE: Imported title art path.
+        # If the PNG is available, we use it for the menu dragon so the start
+        # screen matches the newer imported sprite look. The older procedural
+        # dragon remains below as fallback and as a readable example of manual
+        # drawing with Pygame primitives.
+        imported_dragon = load_sprite_by_height(TITLE_DRAGON_SPRITE_PATH, 250)
+        if imported_dragon:
+            bob_offset = int(math.sin(self.animation_frame) * 6)
+            draw_x = int(self.x + 110)
+            draw_y = int(self.y - 40 + bob_offset)
+
+            shadow_w = max(180, int(imported_dragon.get_width() * 0.54))
+            shadow_h = max(18, int(imported_dragon.get_height() * 0.08))
+            pygame.draw.ellipse(
+                surface,
+                (0, 0, 0),
+                (
+                    draw_x + imported_dragon.get_width() // 2 - shadow_w // 2,
+                    draw_y + imported_dragon.get_height() - 18,
+                    shadow_w,
+                    shadow_h,
+                ),
+            )
+
+            surface.blit(imported_dragon, (draw_x, draw_y))
+
+            # The sprite already contains a fire breath beam. While the old
+            # `fire_active` timer is running, add extra heat shimmer and sparks
+            # so the menu still feels animated instead of becoming a static PNG.
+            if self.fire_active:
+                ember_overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+                mouth_x = draw_x + int(imported_dragon.get_width() * 0.35)
+                mouth_y = draw_y + int(imported_dragon.get_height() * 0.23)
+                for i in range(18):
+                    travel = i / 17
+                    flame_x = int(mouth_x - 260 * travel + self.fire_frame * 2.4)
+                    flame_y = int(mouth_y + 82 * travel + math.sin(self.fire_frame * 0.18 + i) * 7)
+                    flame_size = max(4, int(12 - travel * 6))
+                    ember_color = (255, 180 + (i % 2) * 40, 40, max(40, 170 - i * 7))
+                    pygame.draw.circle(ember_overlay, ember_color, (flame_x, flame_y), flame_size)
+                glow_radius = 24 + (self.fire_frame % 6)
+                pygame.draw.circle(ember_overlay, (255, 190, 70, 70), (mouth_x, mouth_y), glow_radius)
+                surface.blit(ember_overlay, (0, 0))
+
+            self.animation_frame += self.flap_speed
+            return
+
         pygame.draw.ellipse(surface, DRAGON_COLOR, (self.x, self.y + 30, 180, 70))
         pygame.draw.circle(surface, DRAGON_COLOR, (self.x + 180, self.y + 50), 35)
         pygame.draw.circle(surface, (255, 255, 255), (self.x + 195, self.y + 45), 10)
@@ -2980,17 +3097,22 @@ class BattleScreen:
         self.battle_log = ["Battle started!", "It's your turn!"]
 
         # BEGINNER NOTE: Battle menu button order matters.
-        # `self.selected_option` stores the index of the chosen button:
-        #   0 ATTACK, 1 MAGIC, 2 ITEM, 3 SPECIAL, 4 RUN
-        # If you add another button, update `handle_action` below so the new
-        # index actually does something when the player presses Enter/taps it.
+        # Before Lion Sage unlocks the special technique, the SPECIAL button is
+        # not present at all. That means RUN shifts left by one slot.
         self.buttons = [
             Button(30, 525, 170, 50, "ATTACK"),
             Button(220, 525, 170, 50, "MAGIC"),
             Button(410, 525, 170, 50, "ITEM"),
-            Button(600, 525, 170, 50, "SPECIAL"),
-            Button(790, 525, 170, 50, "RUN")
         ]
+        self.special_button_index = None
+        if getattr(self.player, "special_unlocked", False):
+            self.special_button_index = len(self.buttons)
+            self.buttons.append(Button(600, 525, 170, 50, "SPECIAL"))
+            run_x = 790
+        else:
+            run_x = 600
+        self.run_button_index = len(self.buttons)
+        self.buttons.append(Button(run_x, 525, 170, 50, "RUN"))
         self.selected_option = 0
         self.battle_ended = False
         self.result = None
@@ -3695,12 +3817,13 @@ class BattleScreen:
             bag_rect = bag_text.get_rect(center=(self.buttons[2].rect.centerx, self.buttons[2].rect.bottom + 14))
             temp_surface.blit(bag_text, bag_rect)
 
-            special_text = font_tiny.render(f"MP {SPECIAL_ATTACK_MANA_COST}", True, (255, 190, 90))
-            special_rect = special_text.get_rect(center=(self.buttons[3].rect.centerx, self.buttons[3].rect.bottom + 14))
-            temp_surface.blit(special_text, special_rect)
+            if self.special_button_index is not None:
+                special_text = font_tiny.render(f"MP {SPECIAL_ATTACK_MANA_COST}", True, (255, 190, 90))
+                special_rect = special_text.get_rect(center=(self.buttons[self.special_button_index].rect.centerx, self.buttons[self.special_button_index].rect.bottom + 14))
+                temp_surface.blit(special_text, special_rect)
 
             escape_text = font_tiny.render(f"ESC {int(self.get_escape_chance() * 100)}%", True, (220, 220, 180))
-            escape_rect = escape_text.get_rect(center=(self.buttons[4].rect.centerx, self.buttons[4].rect.bottom + 14))
+            escape_rect = escape_text.get_rect(center=(self.buttons[self.run_button_index].rect.centerx, self.buttons[self.run_button_index].rect.bottom + 14))
             temp_surface.blit(escape_text, escape_rect)
         
         # Draw damage effect
@@ -4197,10 +4320,10 @@ class BattleScreen:
     def handle_action(self, game=None):
         if self.state != "player_turn" or self.battle_ended or self.action_cooldown > 0:
             return
-        # BEGINNER NOTE: This method turns the selected battle menu index into
-        # an action. Keep this order matched with the `self.buttons` list in
-        # BattleScreen.__init__:
-        #   0 ATTACK, 1 MAGIC, 2 ITEM, 3 SPECIAL, 4 RUN
+        # BEGINNER NOTE: This method turns the selected button index into an
+        # action. The first three slots are always ATTACK, MAGIC, ITEM.
+        # SPECIAL only exists after Lion Sage unlocks it. RUN is always the
+        # last button and uses self.run_button_index.
         if self.selected_option == 0:  # Attack
             if game and hasattr(game, 'SFX_ATTACK') and game.SFX_ATTACK: game.SFX_ATTACK.play()
             self.action_steps = [
@@ -4232,7 +4355,7 @@ class BattleScreen:
                 lambda item_label=item_label: self.add_log(f"You used a {item_label} potion!"),
                 lambda item_type=item_type: self.execute_item(item_type)
             ]
-        elif self.selected_option == 3:  # Special
+        elif self.special_button_index is not None and self.selected_option == self.special_button_index:
             # The class special is a stronger player move, so it costs MP.
             # The constant at the top of the file is the only number to change
             # if the special should be easier or harder to use.
@@ -4251,7 +4374,7 @@ class BattleScreen:
             else:
                 if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
                 self.add_log(f"Need {SPECIAL_ATTACK_MANA_COST} MP for {special_name}!")
-        elif self.selected_option == 4:  # Run
+        elif self.selected_option == self.run_button_index:  # Run
             if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
             self.action_steps = [
                 lambda: self.add_log("You attempt to escape..."),
@@ -4722,12 +4845,9 @@ class OpeningCutscene:
         screen.blit(subtitle, (SCREEN_WIDTH//2 - subtitle.get_width()//2, 160))
         
         # Draw intro text
-        intro_text = [
-            "LONG AGO, IN THE KINGDOM OF PIXELONIA,",
-            "AN ANCIENT EVIL AWOKE FROM ITS SLUMBER.",
-            "THE DRAGON MALAKOR, RULER OF SHADOWS,",
-            "THREATENED TO PLUNGE THE WORLD INTO DARKNESS."
-        ]
+        # BEGINNER NOTE: The intro lines live in game_data/story.py now.
+        # Edit OPENING_STORY_LINES there if you want to rewrite the opening.
+        intro_text = list(OPENING_STORY_LINES)
         
         y_pos = 250
         for line in intro_text:
@@ -4807,14 +4927,14 @@ class OpeningCutscene:
             "",
             "THE KINGDOM OF PIXELONIA NEEDS A HERO.",
             "MALAKOR THE TERRIBLE HAS RETURNED,",
-            "AND ONLY YOU CAN STOP HIM.",
+            "BUT THE DRAGON ROAD IS NOT THE FIRST TEST.",
             "",
-            "TRAVEL THROUGH PERILOUS LANDS,",
-            "BATTLE FIERCE MONSTERS,",
-            "AND GATHER POWERFUL ARTIFACTS.",
+            "THE TOWN KNIGHT WILL POINT YOU WEST,",
+            "WHERE THE LION SAGE WAITS IN THE MARSH.",
+            "HE WILL NAME TWO QUESTS:",
             "",
-            "YOUR JOURNEY LEADS TO THE DRAGON'S LAIR,",
-            "WHERE THE FINAL CONFRONTATION AWAITS.",
+            "FACE GHOST FACE IN THE NORTHERN PINES.",
+            "GROW STRONG ENOUGH TO CHALLENGE MALAKOR.",
             "",
             "CHOOSE YOUR HERO WISELY,",
             "FOR THE FATE OF THE KINGDOM RESTS IN YOUR HANDS."
@@ -4930,6 +5050,16 @@ class Game:
         self.town_reputation = 0
         self.completed_town_errands = set()
         self.inspected_town_details = set()
+
+        # Story progression outside town services. These sets keep one-shot
+        # area conversations and one-time Lion Sage rewards from repeating.
+        self.seen_story_dialogues = set()
+        self.claimed_story_rewards = set()
+        self.active_story_dialogue_key = None
+        self.active_story_dialogue = None
+        self.active_story_lines = []
+        self.active_story_line_index = 0
+        self.active_story_repeat = False
         
         # Initialize starfield
         for _ in range(150):
@@ -5180,8 +5310,8 @@ class Game:
 
     def open_update_link(self):
         """Open the APK download link from the title screen."""
-        if open_external_url(APP_UPDATE_APK_URL):
-            self.update_status = "Opened APK update link."
+        if open_external_url(APP_UPDATE_APK_URL, "application/vnd.android.package-archive"):
+            self.update_status = "Opened APK update. If it only downloads, open it from Downloads."
         else:
             self.update_status = "Could not open APK link. Use the README link."
 
@@ -5239,7 +5369,7 @@ class Game:
             "level", "exp", "exp_to_level", "max_health", "health",
             "max_mana", "mana", "strength", "defense", "speed",
             "x", "y", "kills", "items_collected", "last_boss_level",
-            "boss_cooldown",
+            "boss_cooldown", "special_unlocked",
         ):
             if field in player_data:
                 setattr(self.player, field, player_data[field])
@@ -5262,6 +5392,14 @@ class Game:
             for detail in town_data.get("inspected_details", [])
             if isinstance(detail, list) and len(detail) == 2
         }
+        story_data = data.get("story", {})
+        self.seen_story_dialogues = set(story_data.get("seen_dialogues", []))
+        self.claimed_story_rewards = set(story_data.get("claimed_rewards", []))
+        self.active_story_dialogue_key = None
+        self.active_story_dialogue = None
+        self.active_story_lines = []
+        self.active_story_line_index = 0
+        self.active_story_repeat = False
         self.boss_battle_triggered = False
         self.battle_screen = None
         self.current_interior = None
@@ -5330,6 +5468,238 @@ class Game:
                 messages.append(f"{item_type} x{added}")
 
         return ", ".join(messages)
+
+    def start_story_dialogue(self, dialogue_key, repeat=False):
+        """Begin a story dialogue overlay.
+
+        Beginner note:
+            This method does not decide *when* dialogue should happen. It only
+            takes a dialogue key from game_data/story.py, loads the text, and
+            tells draw_story_dialogue() what to show.
+
+            `repeat=True` means the player has already seen the full scene and
+            is talking to the same NPC again. Repeat dialogue does not grant
+            rewards or mark quest progress.
+        """
+        dialogue = get_story_dialogue(dialogue_key)
+        if not dialogue:
+            return False
+
+        already_seen = dialogue_key in self.seen_story_dialogues
+        if already_seen and not repeat:
+            return False
+
+        if repeat and dialogue.get("repeat_lines"):
+            lines = list(dialogue["repeat_lines"])
+        else:
+            lines = list(dialogue.get("lines", ()))
+        if not lines:
+            return False
+
+        self.active_story_dialogue_key = dialogue_key
+        self.active_story_dialogue = dialogue
+        self.active_story_lines = lines
+        self.active_story_line_index = 0
+        self.active_story_repeat = bool(repeat)
+        self.show_world_map = False
+        self.show_journal = False
+        if self.SFX_ENTER:
+            self.SFX_ENTER.play()
+        return True
+
+    def advance_story_dialogue(self):
+        """Move to the next line or finish the current story dialogue."""
+        if not self.active_story_dialogue:
+            return False
+
+        self.active_story_line_index += 1
+        if self.active_story_line_index < len(self.active_story_lines):
+            if self.SFX_CLICK:
+                self.SFX_CLICK.play()
+            return True
+
+        self.finish_story_dialogue()
+        return True
+
+    def finish_story_dialogue(self):
+        """Close the story dialogue and apply any first-time reward."""
+        dialogue_key = self.active_story_dialogue_key
+        dialogue = self.active_story_dialogue
+        repeat = self.active_story_repeat
+
+        self.active_story_dialogue_key = None
+        self.active_story_dialogue = None
+        self.active_story_lines = []
+        self.active_story_line_index = 0
+        self.active_story_repeat = False
+
+        if not dialogue_key or not dialogue or repeat:
+            return
+
+        self.seen_story_dialogues.add(dialogue_key)
+        self.apply_story_reward(dialogue_key, dialogue)
+
+    def apply_story_reward(self, dialogue_key, dialogue):
+        """Apply a one-time story reward such as the Lion Sage blessing.
+
+        Beginner note:
+            Rewards are stored in the dialogue data because the text and reward
+            belong to the same story beat. This method is the only place that
+            turns those data numbers into live player stats.
+        """
+        reward = dialogue.get("reward")
+        if not reward or dialogue_key in self.claimed_story_rewards or not self.player:
+            return
+
+        self.claimed_story_rewards.add(dialogue_key)
+        health_gain = int(reward.get("health", 0))
+        mana_gain = int(reward.get("mana", 0))
+
+        if health_gain:
+            self.player.health = min(self.player.max_health, self.player.health + health_gain)
+        if mana_gain:
+            self.player.mana = min(self.player.max_mana, self.player.mana + mana_gain)
+        if reward.get("score"):
+            self.score += int(reward["score"])
+        if reward.get("reputation"):
+            self.town_reputation += int(reward["reputation"])
+        for item_type, amount in reward.get("items", {}).items():
+            self.player.add_inventory_item(item_type, int(amount))
+        if reward.get("unlock_special"):
+            self.player.special_unlocked = True
+
+        message_template = reward.get("message", "Story reward received.")
+        self.set_town_service_message(
+            message_template.format(health=health_gain, mana=mana_gain)
+        )
+        if self.SFX_LEVELUP:
+            self.SFX_LEVELUP.play()
+
+    def trigger_area_story_dialogue(self, current_area):
+        """Start one-shot dialogue when entering a special world area."""
+        if not current_area or self.active_story_dialogue:
+            return False
+
+        for dialogue_key, dialogue in get_story_dialogues_for_area(current_area.area_x, current_area.area_y):
+            if dialogue.get("trigger") != "enter_area":
+                continue
+            if dialogue_key not in self.seen_story_dialogues:
+                return self.start_story_dialogue(dialogue_key)
+        return False
+
+    def get_story_npc_world_position(self, current_area, npc):
+        """Convert an NPC's local area position into world coordinates."""
+        area_world_x, area_world_y = current_area.get_world_position()
+        local_x, local_y = npc["local_position"]
+        return area_world_x + local_x, area_world_y + local_y
+
+    def get_nearby_story_npc(self, current_area):
+        """Return the friendly story NPC close enough for ENTER interaction."""
+        if not current_area or not self.player:
+            return None
+
+        player_center = (self.player.x + PLAYER_SIZE // 2, self.player.y + PLAYER_SIZE // 2)
+        for npc_key, npc in get_story_npcs_for_area(current_area.area_x, current_area.area_y):
+            npc_x, npc_y = self.get_story_npc_world_position(current_area, npc)
+            distance = math.hypot(player_center[0] - npc_x, player_center[1] - npc_y)
+            # BEGINNER NOTE: A slightly larger talk radius makes the Lion Sage
+            # easier to interact with on mobile and on the scaled Android APK.
+            if distance <= 160:
+                return npc_key, npc
+        return None
+
+    def draw_story_npcs(self, screen, current_area):
+        """Draw friendly story NPCs such as Lion Sage on the overworld map."""
+        if not current_area:
+            return
+
+        nearby = self.get_nearby_story_npc(current_area)
+        nearby_key = nearby[0] if nearby else None
+
+        for npc_key, npc in get_story_npcs_for_area(current_area.area_x, current_area.area_y):
+            world_x, world_y = self.get_story_npc_world_position(current_area, npc)
+            screen_x, screen_y = self.world_map.world_to_screen(world_x, world_y)
+            sprite_path = get_story_sprite_path(npc.get("sprite_key"))
+            sprite = load_sprite_by_height(sprite_path, npc.get("sprite_height", 120)) if sprite_path else None
+
+            aura_color = npc.get("aura_color", TEXT_COLOR)
+            pulse = 6 + int(math.sin(self.game_time * 0.08) * 3)
+            pygame.draw.ellipse(screen, (0, 0, 0), (screen_x - 42, screen_y - 14, 84, 22))
+            pygame.draw.circle(screen, aura_color, (int(screen_x), int(screen_y - 70)), 42 + pulse, 2)
+            pygame.draw.circle(screen, (255, 255, 255), (int(screen_x), int(screen_y - 70)), 30 + pulse, 1)
+            if npc_key not in self.seen_story_dialogues:
+                pygame.draw.line(screen, aura_color, (screen_x, screen_y - 136), (screen_x, screen_y - 178 - pulse), 3)
+                pygame.draw.polygon(
+                    screen,
+                    (255, 245, 180),
+                    [
+                        (screen_x, screen_y - 190 - pulse),
+                        (screen_x - 10, screen_y - 172 - pulse),
+                        (screen_x + 10, screen_y - 172 - pulse),
+                    ],
+                )
+
+            if sprite:
+                screen.blit(sprite, (int(screen_x - sprite.get_width() / 2), int(screen_y - sprite.get_height())))
+            else:
+                # Fallback drawing if the imported PNG is missing.
+                pygame.draw.circle(screen, aura_color, (int(screen_x), int(screen_y - 65)), 36)
+                pygame.draw.circle(screen, (255, 215, 100), (int(screen_x), int(screen_y - 92)), 22)
+
+            name_color = (255, 245, 160) if npc_key == nearby_key else aura_color
+            label = font_tiny.render(npc["name"], True, name_color)
+            screen.blit(label, (screen_x - label.get_width() // 2, screen_y + 8))
+
+            if npc_key == nearby_key:
+                prompt = font_tiny.render(npc["prompt"], True, (255, 245, 160))
+                panel_w = prompt.get_width() + 24
+                panel = pygame.Rect(int(screen_x - panel_w / 2), int(screen_y + 32), panel_w, 30)
+                pygame.draw.rect(screen, UI_BG, panel, border_radius=6)
+                pygame.draw.rect(screen, aura_color, panel, 2, border_radius=6)
+                screen.blit(prompt, (panel.x + 12, panel.y + 7))
+
+    def draw_story_dialogue(self, screen):
+        """Draw the active story dialogue overlay with portrait and wrapped text."""
+        if not self.active_story_dialogue:
+            return
+
+        dialogue = self.active_story_dialogue
+        line = self.active_story_lines[self.active_story_line_index]
+        accent = dialogue.get("color", TEXT_COLOR)
+
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 135))
+        screen.blit(overlay, (0, 0))
+
+        panel = pygame.Rect(80, 430, 840, 210)
+        pygame.draw.rect(screen, UI_BG, panel, border_radius=10)
+        pygame.draw.rect(screen, accent, panel, 3, border_radius=10)
+
+        portrait_box = pygame.Rect(panel.x + 24, panel.y + 24, 150, 150)
+        pygame.draw.rect(screen, (12, 12, 24), portrait_box, border_radius=8)
+        pygame.draw.rect(screen, accent, portrait_box, 2, border_radius=8)
+
+        sprite_path = get_story_sprite_path(dialogue.get("portrait"))
+        portrait = load_sprite_by_height(sprite_path, 142) if sprite_path else None
+        if portrait:
+            portrait_rect = portrait.get_rect(center=portrait_box.center)
+            screen.blit(portrait, portrait_rect)
+
+        title = font_small.render(dialogue.get("title", "Story"), True, accent)
+        speaker = font_tiny.render(dialogue.get("speaker", ""), True, (255, 245, 180))
+        screen.blit(title, (panel.x + 196, panel.y + 24))
+        screen.blit(speaker, (panel.x + 198, panel.y + 55))
+
+        text_x = panel.x + 196
+        text_y = panel.y + 88
+        for wrapped_line in wrap_text_to_width(line, font_small, panel.right - text_x - 28):
+            rendered = font_small.render(wrapped_line, True, (235, 235, 225))
+            screen.blit(rendered, (text_x, text_y))
+            text_y += 31
+
+        step_text = f"{self.active_story_line_index + 1}/{len(self.active_story_lines)}"
+        prompt = font_tiny.render(f"ENTER/SPACE: continue   {step_text}", True, (200, 200, 210))
+        screen.blit(prompt, (panel.right - prompt.get_width() - 24, panel.bottom - 32))
 
     def complete_town_errand(self, service_type):
         errand = get_town_errand(service_type)
@@ -6239,6 +6609,17 @@ class Game:
                     # Position at gate (center horizontally, 4 squares lower)
                     self.player.x = area_world_x + (AREA_WIDTH // 2)  # Center horizontally
                     self.player.y = area_world_y + 260  # 4 squares lower from top (200 + 60 = 260)
+
+                # BEGINNER NOTE: Story area intros start right after the area
+                # changes. The dialogue overlay is not a new game state; it is
+                # a pause layer on top of the overworld.
+                self.trigger_area_story_dialogue(current_area)
+
+            if self.active_story_dialogue:
+                # Keep the camera and dialogue visible, but pause enemy spawns,
+                # enemy collisions, and item pickups until the player advances
+                # through the story text.
+                return
             
             # Add area-specific particle effects
             current_area = self.world_map.get_current_area()
@@ -6524,6 +6905,10 @@ class Game:
                     enemy.x, enemy.y = screen_x, screen_y
                     enemy.draw(screen)
                     enemy.x, enemy.y = original_x, original_y
+
+            # BEGINNER NOTE: Friendly story NPCs are drawn separately from
+            # enemies so they never start battles by touching the player.
+            self.draw_story_npcs(screen, current_area)
             
             # Draw player (convert world coordinates to screen coordinates)
             screen_x, screen_y = self.world_map.world_to_screen(self.player.x, self.player.y)
@@ -6751,6 +7136,9 @@ class Game:
         if self.show_journal and self.state in ["overworld", "interior"] and self.player:
             self.draw_journal(screen)
 
+        if self.active_story_dialogue and self.state == "overworld":
+            self.draw_story_dialogue(screen)
+
         if self.transition_state != "none":
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, self.transition_alpha))
@@ -6898,6 +7286,11 @@ class Game:
                             self.activate_end_menu_selection()
                             continue
 
+                    if self.active_story_dialogue and self.state == "overworld":
+                        if action in [CONFIRM, INTERACT, CANCEL]:
+                            self.advance_story_dialogue()
+                        continue
+
                     if self.show_journal and self.state in ["overworld", "interior"]:
                         if action in [CANCEL, CONFIRM, INTERACT, JOURNAL, MAP]:
                             self.show_journal = False
@@ -6995,9 +7388,16 @@ class Game:
                             service = current_area.get_nearby_town_service(self.player.x, self.player.y)
                             if service:
                                 self.enter_town_interior(service)
-                            elif action == CONFIRM:
-                                self.show_journal = True
-                                self.show_world_map = False
+                            else:
+                                story_npc = self.get_nearby_story_npc(current_area)
+                                if story_npc:
+                                    _, npc = story_npc
+                                    dialogue_key = npc.get("dialogue_key")
+                                    repeat = dialogue_key in self.seen_story_dialogues
+                                    self.start_story_dialogue(dialogue_key, repeat=repeat)
+                                elif action == CONFIRM:
+                                    self.show_journal = True
+                                    self.show_world_map = False
                         continue
                     
                     # Pass input to battle screen
@@ -7195,6 +7595,15 @@ class Game:
         self.town_reputation = 0
         self.completed_town_errands = set()
         self.inspected_town_details = set()
+        self.seen_story_dialogues = set()
+        self.claimed_story_rewards = set()
+        self.active_story_dialogue_key = None
+        self.active_story_dialogue = None
+        self.active_story_lines = []
+        self.active_story_line_index = 0
+        self.active_story_repeat = False
+        if self.player:
+            self.player.special_unlocked = False
         
         # Reset world map
         self.world_map = WorldMap()

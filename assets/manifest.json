@@ -11,6 +11,12 @@
     "processed_dir": "assets/processed/enemies",
     "notes": "Ghost Face is the first active enemy sprite. Enemy and boss sprites should be grouped by element or boss name."
   },
+  "npcs": {
+    "status": "active",
+    "source_dir": "assets/source/npcs",
+    "processed_dir": "assets/processed/npcs",
+    "notes": "Lion Sage and the imported town guard live here. Keep story NPC source art separate from enemies so dialogue portraits, overworld NPCs, and friendly quest givers stay organized."
+  },
   "sounds": {
     "status": "planned",
     "source_dir": "assets/source/sounds",
@@ -33,6 +39,6 @@
     "status": "active",
     "source_dir": "assets/source/ui",
     "processed_dir": "assets/processed/ui",
-    "notes": "Dragon app icon is active. Panels, icons, potion graphics, and map markers also belong here."
+    "notes": "Dragon app icon and imported title-screen dragon are active. Panels, icons, potion graphics, and map markers also belong here."
   }
 }

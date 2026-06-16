@@ -89,6 +89,7 @@ def build_save_data(game):
             "inventory": dict(game.player.inventory),
             "last_boss_level": game.player.last_boss_level,
             "boss_cooldown": game.player.boss_cooldown,
+            "special_unlocked": getattr(game.player, "special_unlocked", False),
             "town_service_claims": claims,
         },
         "world": {
@@ -99,6 +100,10 @@ def build_save_data(game):
             "reputation": getattr(game, "town_reputation", 0),
             "completed_errands": sorted(getattr(game, "completed_town_errands", set())),
             "inspected_details": sorted(inspected_details),
+        },
+        "story": {
+            "seen_dialogues": sorted(getattr(game, "seen_story_dialogues", set())),
+            "claimed_rewards": sorted(getattr(game, "claimed_story_rewards", set())),
         },
     }
 

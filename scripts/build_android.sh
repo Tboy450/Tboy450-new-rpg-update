@@ -14,6 +14,12 @@ cd "$REPO_DIR"
 # User-level Python tools such as Cython are often installed here by pip.
 export PATH="$HOME/.local/bin:$PATH"
 
+# BEGINNER NOTE: Newer Debian/Ubuntu Python installs block pip writes unless
+# the caller explicitly opts in. GitHub Actions already sets this. Exporting it
+# here keeps local Buildozer runs from failing partway through p4a setup with
+# "externally-managed-environment".
+export PIP_BREAK_SYSTEM_PACKAGES="${PIP_BREAK_SYSTEM_PACKAGES:-1}"
+
 if [[ ! -f "main.py" || ! -f "buildozer.spec" ]]; then
     echo "Run this script from the game repository root."
     exit 1
