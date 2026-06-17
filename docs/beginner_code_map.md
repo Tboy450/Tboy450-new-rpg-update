@@ -60,6 +60,7 @@ responsible for. Read this before editing if you are new to Python or this repo.
 
 - `assets.py`: imported-art paths, sprite caches, animation frame loading, and reusable sprite drawing.
 - `android_controls.py`: state-aware Android touch button layout, drawing, and tap hit-testing.
+- `android_update.py`: APK update URL constants, GitHub version-check helper, and Android/desktop link opening helper.
 - `input_actions.py`: translates keyboard or virtual Android button input into action names like `move_up`.
 - `save_load.py`: converts the current `Game` object into JSON and loads saved JSON back later.
 
@@ -235,9 +236,10 @@ The active imported character art lives in `assets/processed/characters/`.
 1. `APP_NUMERIC_VERSION` in `main.py` is the installed app's current version code.
 2. `android.numeric_version` in `buildozer.spec` is the version code Android uses when installing the APK.
 3. Both numbers must increase before publishing a new APK.
-4. `fetch_latest_android_numeric_version` reads `buildozer.spec` from GitHub.
-5. `check_for_updates` compares the GitHub version code with the installed version code.
-6. `open_update_link` opens the stable GitHub APK URL. Android still requires the player to approve the install/update prompt.
+4. `systems/android_update.py` stores the stable APK URL and the GitHub `buildozer.spec` URL.
+5. `fetch_latest_android_numeric_version` in that module reads `buildozer.spec` from GitHub.
+6. `check_for_updates` in `main.py` compares the GitHub version code with the installed version code.
+7. `open_update_link` in `main.py` calls `open_external_url` from `systems/android_update.py`. Android still requires the player to approve the install/update prompt.
 
 ## How To Add Imported Art Or Sound Later
 

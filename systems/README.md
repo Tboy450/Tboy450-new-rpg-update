@@ -4,9 +4,10 @@
 
 - `input_actions.py`: maps keyboard and Android virtual button inputs to gameplay actions.
 - `android_controls.py`: builds and draws the state-aware Android touch layout, including dialogue-safe button placement.
+- `android_update.py`: owns the GitHub APK link, remote version check, and Android/desktop URL opening helpers.
 - `assets.py`: centralizes imported art paths, sprite caching, animation frame loading, and reusable sprite drawing.
 - `save_load.py`: serializes and loads JSON save data for the player, score, boss progress, visited areas, and town interaction progress.
-- `__init__.py`: marks this folder as a Python package so helpers can be imported as `systems.assets`, `systems.input_actions`, `systems.android_controls`, and `systems.save_load`.
+- `__init__.py`: marks this folder as a Python package so helpers can be imported as `systems.assets`, `systems.input_actions`, `systems.android_controls`, `systems.android_update`, and `systems.save_load`.
 
 Keep this folder for reusable runtime systems. Pure tuning data still belongs in `game_data/`.
 
@@ -46,6 +47,19 @@ Current touch-layout rules:
 - Story dialogue and the town-guard cutscene swap that layout for `NEXT` + `MENU`.
 - Journal and world map use close buttons instead of the movement pad.
 - The shared pause menu itself is still drawn by `main.py`, because it owns the actual save/load/journal/map game actions.
+
+## `android_update.py`
+
+This module owns the APK update plumbing.
+
+- `APP_UPDATE_APK_URL` is the stable GitHub release asset URL.
+- `APP_VERSION_SPEC_URL` points at the live `buildozer.spec` file on GitHub.
+- `fetch_latest_android_numeric_version()` reads the remote version code.
+- `open_external_url()` asks Android's Activity Manager to open the APK link when possible, then falls back to Python's browser support.
+
+Use this module when changing update links, version-check behavior, or Android
+intent opening. Keep gameplay menu logic in `main.py`, but keep APK-link logic
+here.
 
 ## `assets.py`
 

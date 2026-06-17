@@ -118,6 +118,7 @@ Android may ask you to allow installs from unknown sources.
 - This creates a debug APK for testing, not a Play Store release.
 - The current game uses Pygame and generated art/audio, so the APK may be large.
 - Android touch controls are now split between `systems/android_controls.py` and the shared pause-menu logic in `main.py`.
+- APK version-check and link-opening helpers now live in `systems/android_update.py`.
 - For APK updates, both `APP_NUMERIC_VERSION` in `main.py` and `android.numeric_version` in `buildozer.spec` must increase.
 - Saves use app/private storage, so uninstalling the app can remove local saves.
 

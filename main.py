@@ -52,9 +52,6 @@ import sys
 import random
 import math
 import threading
-import subprocess
-import urllib.request
-import webbrowser
 from pygame import gfxdraw
 import tempfile
 import wave
@@ -116,6 +113,11 @@ from systems.android_controls import (
     build_android_touch_buttons,
     draw_android_touch_buttons,
     find_android_touch_button,
+)
+from systems.android_update import (
+    APP_UPDATE_APK_URL,
+    fetch_latest_android_numeric_version,
+    open_external_url,
 )
 from systems.assets import (
     FIRE_BLAST_FRAME_DIR,
@@ -250,18 +252,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.11"
-APP_NUMERIC_VERSION = 12
-
-# BEGINNER NOTE: The UPDATE APP button opens this stable GitHub Release asset.
-# The filename stays the same, but GitHub Actions replaces the file whenever a
-# new APK build succeeds. That keeps the README and in-game button from 404ing.
-APP_UPDATE_APK_URL = "https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android.apk"
-
-# BEGINNER NOTE: The game reads buildozer.spec from GitHub to learn the newest
-# Android version number. It compares that file's android.numeric_version with
-# APP_NUMERIC_VERSION above.
-APP_VERSION_SPEC_URL = "https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/buildozer.spec"
+APP_VERSION = "0.1.12"
+APP_NUMERIC_VERSION = 13
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -370,68 +362,6 @@ def present_frame():
         display_surface.blit(scaled, (0, 0))
     pygame.display.flip()
 
-
-def fetch_latest_android_numeric_version(timeout=4):
-    """Read the newest Android version code from GitHub.
-
-    Beginner note:
-        This does not download the APK. It only opens the text version of
-        buildozer.spec on GitHub and finds the `android.numeric_version` line.
-        The start menu uses this to decide whether to say the app is current.
-    """
-    request = urllib.request.Request(
-        APP_VERSION_SPEC_URL,
-        headers={"User-Agent": "DragonsLairRPGUpdateCheck"},
-    )
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        spec_text = response.read(20000).decode("utf-8", errors="replace")
-
-    for line in spec_text.splitlines():
-        if line.strip().startswith("android.numeric_version"):
-            _, value = line.split("=", 1)
-            return int(value.strip())
-    raise ValueError("android.numeric_version not found")
-
-
-def open_external_url(url, mime_type=None):
-    """Open a URL from desktop Python or from the Android APK.
-
-    Beginner note:
-        On desktop, Python's `webbrowser.open` is enough.
-        Inside the Android APK, `webbrowser.open` is unreliable, so we first
-        ask Android's Activity Manager (`am start`) to open the URL.
-
-        For APK updates, `mime_type` gives Android an extra hint that the link
-        is an installable package. Some Android builds still download first and
-        require the player to open the downloaded APK from Downloads, but this
-        route gives Package Installer the best chance to appear immediately.
-    """
-    if is_android_runtime():
-        intent_command = [
-            "start",
-            "-a", "android.intent.action.VIEW",
-            "-d", url,
-        ]
-        if mime_type:
-            intent_command.extend(["-t", mime_type])
-        for am_path in ("/system/bin/am", "am"):
-            try:
-                result = subprocess.run(
-                    [am_path, *intent_command],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    timeout=4,
-                    check=False,
-                )
-            except Exception:
-                continue
-            if result.returncode == 0:
-                return True
-
-    try:
-        return bool(webbrowser.open(url))
-    except Exception:
-        return False
 
 # Font System Setup
 # =================
