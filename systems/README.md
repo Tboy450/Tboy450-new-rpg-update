@@ -52,6 +52,13 @@ Active imported art paths:
 - `FIRE_BLAST_FRAME_DIR`: Mage SPECIAL impact animation frames.
 - `MAGE_MAGIC_FIREBALL_FRAME_DIR`: Mage normal MAGIC projectile overlay frames.
 
+Beginner feature map:
+
+- Lion Sage portrait and overworld sprite use `LION_SAGE_SPRITE_PATH`.
+- The town intro imported knight uses `TOWN_GUARD_SPRITE_PATH`.
+- The start-menu imported dragon uses `TITLE_DRAGON_SPRITE_PATH`.
+- The SPECIAL unlock is gameplay state, but `assets.py` is where the related story/effect art file paths are clearly labeled.
+
 When adding a new imported effect:
 
 - Save the raw upload under `assets/source/<category>/`.

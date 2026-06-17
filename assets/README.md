@@ -54,6 +54,14 @@ Active NPC assets:
 - `assets/processed/npcs/lion_sage.png`: Lion Sage story NPC and portrait used in the west swamp area.
 - `assets/processed/npcs/town_guard.png`: imported town guard overlay used during the town intro cutscene.
 
+Feature map:
+
+- Lion Sage story logic lives in `game_data/story.py`, but his source and processed art live under `assets/source/npcs/` and `assets/processed/npcs/`.
+- The title dragon is a UI/title asset, so its files live under `assets/source/ui/` and `assets/processed/ui/`.
+- The guard is a story-facing NPC visually, so his files live under `assets/source/npcs/` and `assets/processed/npcs/`, even though he appears in the town intro cutscene.
+- The first SPECIAL unlock uses both story data and effect assets:
+  `game_data/story.py` grants it, while `assets/processed/effects/flame_tornado/` and `assets/processed/effects/fire_blast/` provide the related imported battle visuals.
+
 Active effect assets:
 
 - `assets/processed/effects/flame_tornado/`: player SPECIAL travel animation.

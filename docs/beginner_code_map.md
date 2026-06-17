@@ -52,6 +52,7 @@ responsible for. Read this before editing if you are new to Python or this repo.
 - `npcs.py`: town guard data and NPC service dialogue.
 - `progression.py`: boss progression, quest status text, and final boss level.
 - `quests.py`: town errands and reward data.
+- `story.py`: opening story lines, Lion Sage placement and reward, Ghost Face area dialogue, and other first-quest story data.
 - `town.py`: outdoor town buildings, walls, decorations, smoke sources, and collision tuning fields.
 - `world.py`: 3x3 world layout, area descriptions, colors, particles, and environmental effects.
 
@@ -60,6 +61,36 @@ responsible for. Read this before editing if you are new to Python or this repo.
 - `assets.py`: imported-art paths, sprite caches, animation frame loading, and reusable sprite drawing.
 - `input_actions.py`: translates keyboard or virtual Android button input into action names like `move_up`.
 - `save_load.py`: converts the current `Game` object into JSON and loads saved JSON back later.
+
+## Story + Asset Quick Map
+
+Use this when you know the feature name but not the file.
+
+- Lion Sage story logic:
+  `game_data/story.py` stores his world-map placement, dialogue, repeat lines, reward, and the `unlock_special` flag.
+- Lion Sage art:
+  `assets/processed/npcs/lion_sage.png` is the active sprite and portrait.
+  `systems/assets.py` labels the path.
+  `Game.draw_story_npcs` and `Game.draw_story_dialogue` in `main.py` draw it.
+- Town guard story warning:
+  `game_data/npcs.py` stores the base guard template.
+  `game_data/story.py` stores the newer warning lines about the dragon, Ghost Face, and Lion Sage.
+  `main.py` appends those story lines onto the guard dialogue during town setup.
+- Town guard imported art:
+  `assets/processed/npcs/town_guard.png` is the imported overlay.
+  `WorldArea.draw_cutscene` in `main.py` draws it on top of the old procedural guard.
+- Title dragon imported art:
+  `assets/processed/ui/title_dragon.png` is the active title-screen dragon art.
+  `Dragon.draw` in `main.py` uses it first and keeps the older procedural dragon as fallback.
+- SPECIAL unlock flow:
+  `game_data/story.py` grants the first unlock through the Lion Sage reward.
+  `Game.apply_story_reward` in `main.py` sets `player.special_unlocked = True`.
+  `systems/save_load.py` stores that flag in the save file.
+  `BattleScreen.__init__` only creates the `SPECIAL` button if that flag is true.
+- Imported effect art tied to that flow:
+  `assets/processed/effects/flame_tornado/` is the SPECIAL travel animation.
+  `assets/processed/effects/fire_blast/` is the Mage impact animation.
+  `assets/processed/effects/mage_magic_fireball/` is the Mage normal magic overlay.
 
 ## Important Data Patterns
 
@@ -102,6 +133,21 @@ responsible for. Read this before editing if you are new to Python or this repo.
 1. Add the item profile to `ITEM_PROFILES` in `game_data/mechanics.py`.
 2. Add the item key to `ITEM_SPAWN_TABLE` if it should appear in the world.
 3. Make sure `Character.apply_item_effect` in `main.py` knows how to handle the item `effect`.
+
+## How To Edit Lion Sage
+
+1. Change Lion Sage story text, repeat lines, reward, or SPECIAL unlock behavior in `game_data/story.py`.
+2. Move him on the world map by editing `STORY_NPCS["lion_sage"]["local_position"]`.
+3. Change his sprite by replacing `assets/processed/npcs/lion_sage.png`.
+4. If you rename the sprite file or add another story sprite key, update `STORY_SPRITE_PATHS` in `systems/assets.py`.
+5. If you want him easier or harder to interact with, tune `Game.get_nearby_story_npc` in `main.py`.
+
+## How To Edit The Guard + Title Dragon
+
+1. Replace `assets/processed/npcs/town_guard.png` to change the imported guard look.
+2. Replace `assets/processed/ui/title_dragon.png` to change the imported title dragon look.
+3. `WorldArea.draw_cutscene` handles the imported guard overlay and still keeps the procedural guard behind it as fallback.
+4. `Dragon.draw` handles the imported title dragon and still keeps the procedural title dragon as fallback.
 
 ## How To Tune Fire Tornado
 

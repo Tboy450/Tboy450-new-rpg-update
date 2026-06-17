@@ -69,6 +69,21 @@ Some strings must match across modules:
 - To move the Lion Sage, edit `STORY_NPCS["lion_sage"]["local_position"]` in `story.py`.
 - To change when SPECIAL unlocks, edit the `reward` block in `STORY_AREA_DIALOGUES["lion_sage_swamp"]`.
 
+## Story Data Map
+
+`story.py` is the main beginner entry point for the first quest flow.
+
+- `OPENING_STORY_LINES`: title/opening story text shown before character selection.
+- `TOWN_GUARD_STORY_LINES`: extra town-guard warning lines that point the player toward Lion Sage and Ghost Face.
+- `STORY_NPCS`: friendly story NPC placement records for the world map.
+- `STORY_AREA_DIALOGUES`: one-shot or repeat story scenes, including Lion Sage and Ghost Face.
+
+Current first-story path:
+
+- The guard warns about the dragon and sends the player toward Lion Sage.
+- Lion Sage gives the first real quest direction and grants the first SPECIAL unlock.
+- Ghost Face uses area-enter dialogue in the forest instead of a town-service NPC flow.
+
 ## Asset Intake
 
 Use `assets/source/` for raw downloaded art/audio and `assets/processed/` for files ready to load. Record non-CC0 attribution in `assets/credits.md` before wiring assets into the game.
