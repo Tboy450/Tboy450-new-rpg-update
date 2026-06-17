@@ -59,6 +59,7 @@ responsible for. Read this before editing if you are new to Python or this repo.
 ## `systems/` Modules
 
 - `assets.py`: imported-art paths, sprite caches, animation frame loading, and reusable sprite drawing.
+- `android_controls.py`: state-aware Android touch button layout, drawing, and tap hit-testing.
 - `input_actions.py`: translates keyboard or virtual Android button input into action names like `move_up`.
 - `save_load.py`: converts the current `Game` object into JSON and loads saved JSON back later.
 
@@ -91,6 +92,24 @@ Use this when you know the feature name but not the file.
   `assets/processed/effects/flame_tornado/` is the SPECIAL travel animation.
   `assets/processed/effects/fire_blast/` is the Mage impact animation.
   `assets/processed/effects/mage_magic_fireball/` is the Mage normal magic overlay.
+
+## Pause + Touch Control Map
+
+Use this when you want to change Android controls, the pause menu, or the
+beginner-facing control labels.
+
+- Keyboard action names and primary key mappings:
+  `systems/input_actions.py`
+- Android touch layout and draw rules:
+  `systems/android_controls.py`
+- Shared pause-menu logic and button commands:
+  `Game.build_pause_menu_entries`, `Game.toggle_pause_menu`, and `Game.activate_pause_menu_command` in `main.py`
+- Journal control text:
+  `Game.draw_journal` in `main.py`
+- Story dialogue `NEXT` prompt:
+  `Game.draw_story_dialogue` in `main.py`
+- Overworld corner control legend:
+  `Game.draw` in `main.py`
 
 ## Important Data Patterns
 

@@ -7,6 +7,10 @@ If you are new to this codebase, start with
 module owns, and where to safely add characters, enemies, town buildings,
 quests, items, saves, and future assets.
 
+This repository is intentionally labeled for beginner coders, future readers,
+and future AI/code assistants. The active modules and helper systems are
+documented on purpose so the project is easier to extend without guessing.
+
 ## Android Install / Update
 
 The installable Android app is published here after the **Build Android APK**
@@ -92,7 +96,14 @@ Controls:
 - `M`: world map
 - `F5`: save
 - `F9`: load
-- `ESC`: back/menu
+- `ESC`: pause/menu during active gameplay
+
+Android touch controls:
+
+- `MENU`: opens the shared pause menu.
+- `USE`: interact, use town services, or advance town cutscene dialogue.
+- `OK`: confirm, talk, inspect, or advance story dialogue.
+- Pause-menu buttons expose `Journal`, `Map`, `Save`, and `Load` without a hardware keyboard.
 
 The default save file is stored at `~/.dragons_lair_rpg_save.json`. Set `DRAGONS_LAIR_SAVE` to choose a different save path.
 

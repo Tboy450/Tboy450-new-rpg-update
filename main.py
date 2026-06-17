@@ -30,10 +30,11 @@ MAIN CLASSES:
 CONTROLS:
 - Arrow Keys/WASD: Movement in overworld
 - Enter/Space: Confirm actions
-- Escape: Menu navigation
+- Escape: Shared pause/menu overlay in active gameplay
 - M: Toggle world map view
 - J: Toggle quest journal
 - F5/F9: Save/load game
+- Android: Uses on-screen touch buttons plus the same pause/menu overlay
 
 BEGINNER ORIENTATION:
 - `main.py` is still the active game controller and renderer.
@@ -109,7 +110,12 @@ from systems.input_actions import (
     MOVE_UP,
     SAVE,
     action_for_key,
-    key_for_android_button,
+    key_for_action,
+)
+from systems.android_controls import (
+    build_android_touch_buttons,
+    draw_android_touch_buttons,
+    find_android_touch_button,
 )
 from systems.assets import (
     FIRE_BLAST_FRAME_DIR,
@@ -244,8 +250,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.10"
-APP_NUMERIC_VERSION = 11
+APP_VERSION = "0.1.11"
+APP_NUMERIC_VERSION = 12
 
 # BEGINNER NOTE: The UPDATE APP button opens this stable GitHub Release asset.
 # The filename stays the same, but GitHub Actions replaces the file whenever a
@@ -5030,6 +5036,8 @@ class Game:
         self.boss_defeated = False
         self.show_world_map = False
         self.show_journal = False
+        self.show_pause_menu = False
+        self.pause_menu_buttons = []
         self.pickup_message = None
         self.pickup_message_timer = 0
         self.area_effect_timer = 0
@@ -5164,23 +5172,14 @@ class Game:
         # Dynamic music that changes based on game state and area
         self.music = MusicSystem()
         
-        # Virtual button setup for Android
-        self.android_buttons = {}
-        if is_android():
-            button_size = 88
-            button_margin = 24
-            screen_w, screen_h = SCREEN_WIDTH, SCREEN_HEIGHT
-            top_y = screen_h - button_margin - 3*button_size
-            mid_y = screen_h - button_margin - 2*button_size
-            bottom_y = screen_h - button_margin - button_size
-            # D-pad
-            self.android_buttons['up'] = pygame.Rect(button_margin + button_size, top_y, button_size, button_size)
-            self.android_buttons['down'] = pygame.Rect(button_margin + button_size, bottom_y, button_size, button_size)
-            self.android_buttons['left'] = pygame.Rect(button_margin, mid_y, button_size, button_size)
-            self.android_buttons['right'] = pygame.Rect(button_margin + 2*button_size, mid_y, button_size, button_size)
-            # Enter/Space
-            self.android_buttons['enter'] = pygame.Rect(screen_w - button_margin - button_size, mid_y, button_size, button_size)
-            self.android_buttons['space'] = pygame.Rect(screen_w - button_margin - 2*button_size, mid_y, button_size, button_size)
+        # BEGINNER NOTE:
+        # `show_pause_menu` is a shared in-game menu for both keyboard and
+        # Android players. It exposes Journal / Map / Save / Load as clickable
+        # buttons so the game no longer depends on a hardware keyboard.
+        self.show_pause_menu = False
+        self.pause_menu_index = 0
+        self.pause_menu_buttons = []
+        self.android_touch_enabled = is_android()
 
     def apply_world_item(self, item):
         profile = ITEM_PROFILES.get(item.type, ITEM_PROFILES["health"])
@@ -5336,8 +5335,144 @@ class Game:
         else:
             self.state = "start_menu"
 
-    def android_button_hit_rect(self, rect):
-        return rect.inflate(32, 32)
+    def build_pause_menu_entries(self):
+        """Return the clickable actions shown in the shared pause menu.
+
+        Beginner note:
+            Each tuple is `(command_key, label_text)`.
+            The command key is the internal action name.
+            The label text is what the player sees on the button.
+        """
+        entries = [
+            ("resume", "RESUME"),
+            ("journal", "JOURNAL"),
+        ]
+        if self.state == "overworld":
+            entries.append(("map", "WORLD MAP"))
+        entries.extend(
+            [
+                ("save", "SAVE GAME"),
+                ("load", "LOAD GAME"),
+            ]
+        )
+        if self.state == "interior":
+            entries.append(("leave_interior", "LEAVE BUILDING"))
+        entries.append(("main_menu", "MAIN MENU"))
+        return entries
+
+    def rebuild_pause_menu_buttons(self):
+        """Recreate pause-menu buttons after the available commands change."""
+        entries = self.build_pause_menu_entries()
+        button_width = 320
+        button_height = 52
+        gap = 12
+        total_height = len(entries) * button_height + max(0, len(entries) - 1) * gap
+        start_y = max(186, SCREEN_HEIGHT // 2 - total_height // 2)
+        self.pause_menu_buttons = []
+        for index, (command, label) in enumerate(entries):
+            button = Button(
+                SCREEN_WIDTH // 2 - button_width // 2,
+                start_y + index * (button_height + gap),
+                button_width,
+                button_height,
+                label,
+                color=(100, 140, 185),
+            )
+            button.command = command
+            self.pause_menu_buttons.append(button)
+        if self.pause_menu_buttons:
+            self.pause_menu_index = max(0, min(self.pause_menu_index, len(self.pause_menu_buttons) - 1))
+        else:
+            self.pause_menu_index = 0
+
+    def close_pause_menu(self, play_sound=True):
+        """Hide the shared pause menu overlay."""
+        self.show_pause_menu = False
+        self.pause_menu_buttons = []
+        if play_sound and self.SFX_CLICK:
+            self.SFX_CLICK.play()
+
+    def toggle_pause_menu(self):
+        """Open or close the shared pause menu during active gameplay."""
+        if self.state not in ["overworld", "interior"] or not self.player:
+            return
+        self.show_pause_menu = not self.show_pause_menu
+        if self.show_pause_menu:
+            self.show_journal = False
+            self.show_world_map = False
+            self.rebuild_pause_menu_buttons()
+        else:
+            self.pause_menu_buttons = []
+        if self.SFX_CLICK:
+            self.SFX_CLICK.play()
+
+    def activate_pause_menu_command(self, command):
+        """Run one pause-menu command and keep the branching in one place."""
+        if command == "resume":
+            self.close_pause_menu(play_sound=True)
+            return
+
+        if command == "journal":
+            self.show_journal = True
+            self.show_world_map = False
+            self.close_pause_menu(play_sound=True)
+            return
+
+        if command == "map":
+            self.show_world_map = True
+            self.show_journal = False
+            self.close_pause_menu(play_sound=True)
+            return
+
+        if command == "save":
+            self.close_pause_menu(play_sound=False)
+            self.save_current_game()
+            return
+
+        if command == "load":
+            self.close_pause_menu(play_sound=False)
+            self.load_saved_game()
+            return
+
+        if command == "leave_interior":
+            self.close_pause_menu(play_sound=False)
+            self.exit_town_interior()
+            return
+
+        if command == "main_menu":
+            self.close_pause_menu(play_sound=False)
+            self.show_journal = False
+            self.show_world_map = False
+            self.state = "start_menu"
+            if self.SFX_CLICK:
+                self.SFX_CLICK.play()
+            return
+
+    def activate_pause_menu_selection(self):
+        """Run the currently highlighted pause-menu button."""
+        if not self.pause_menu_buttons:
+            return
+        command = getattr(self.pause_menu_buttons[self.pause_menu_index], "command", None)
+        if command:
+            self.activate_pause_menu_command(command)
+
+    def handle_android_touch_command(self, command):
+        """Run a touch button command.
+
+        Touch buttons mostly reuse keyboard actions by posting synthetic key
+        events. That keeps one action path in the main game loop.
+        """
+        if command == "toggle_pause_menu":
+            self.toggle_pause_menu()
+            return True
+
+        key = key_for_action(command)
+        if key is None:
+            return False
+
+        fake_event = pygame.event.Event(pygame.KEYDOWN, key=key)
+        pygame.event.post(fake_event)
+        return True
 
     def save_current_game(self):
         if not self.player:
@@ -5407,6 +5542,8 @@ class Game:
         self.interior_return_position = None
         self.show_world_map = False
         self.show_journal = False
+        self.show_pause_menu = False
+        self.pause_menu_buttons = []
         self.npc_dialogue_index = 0
         self.world_map = WorldMap()
 
@@ -5503,6 +5640,8 @@ class Game:
         self.active_story_repeat = bool(repeat)
         self.show_world_map = False
         self.show_journal = False
+        self.show_pause_menu = False
+        self.pause_menu_buttons = []
         if self.SFX_ENTER:
             self.SFX_ENTER.play()
         return True
@@ -5698,8 +5837,41 @@ class Game:
             text_y += 31
 
         step_text = f"{self.active_story_line_index + 1}/{len(self.active_story_lines)}"
-        prompt = font_tiny.render(f"ENTER/SPACE: continue   {step_text}", True, (200, 200, 210))
+        if is_android():
+            prompt_label = f"NEXT button or ENTER/SPACE   {step_text}"
+        else:
+            prompt_label = f"ENTER/SPACE: continue   {step_text}"
+        prompt = font_tiny.render(prompt_label, True, (200, 200, 210))
         screen.blit(prompt, (panel.right - prompt.get_width() - 24, panel.bottom - 32))
+
+    def draw_pause_menu(self, screen):
+        """Draw the shared in-game pause menu for keyboard and Android players."""
+        if not self.show_pause_menu:
+            return
+
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 170))
+        screen.blit(overlay, (0, 0))
+
+        panel = pygame.Rect(SCREEN_WIDTH // 2 - 220, 110, 440, 470)
+        pygame.draw.rect(screen, UI_BG, panel, border_radius=14)
+        pygame.draw.rect(screen, (255, 215, 0), panel, 3, border_radius=14)
+
+        title = font_large.render("PAUSE MENU", True, (255, 215, 0))
+        screen.blit(title, (panel.centerx - title.get_width() // 2, panel.y + 22))
+
+        if is_android():
+            subtitle_text = "Android touch menu: no hardware keyboard required."
+        else:
+            subtitle_text = "Use arrows + Enter, or click the buttons below."
+        subtitle = font_tiny.render(subtitle_text, True, (210, 210, 220))
+        screen.blit(subtitle, (panel.centerx - subtitle.get_width() // 2, panel.y + 66))
+
+        if not self.pause_menu_buttons:
+            self.rebuild_pause_menu_buttons()
+        self.set_selected_buttons(self.pause_menu_buttons, self.pause_menu_index)
+        for button in self.pause_menu_buttons:
+            button.draw(screen)
 
     def complete_town_errand(self, service_type):
         errand = get_town_errand(service_type)
@@ -5802,6 +5974,8 @@ class Game:
             self.apply_town_service(service)
             return
 
+        self.show_pause_menu = False
+        self.pause_menu_buttons = []
         self.current_interior = room
         self.current_interior_service = dict(service)
         self.interior_return_position = (self.player.x, self.player.y) if self.player else None
@@ -5820,6 +5994,8 @@ class Game:
         if self.player and self.interior_return_position:
             self.player.x, self.player.y = self.interior_return_position
 
+        self.show_pause_menu = False
+        self.pause_menu_buttons = []
         self.current_interior = None
         self.current_interior_service = None
         self.interior_return_position = None
@@ -6001,11 +6177,18 @@ class Game:
         controls_panel = pygame.Rect(left_x, y, 722, 92)
         pygame.draw.rect(screen, (20, 20, 30), controls_panel, border_radius=8)
         pygame.draw.rect(screen, (180, 180, 220), controls_panel, 2, border_radius=8)
-        controls = (
-            "Move: arrows/WASD    Interact: SPACE    Confirm/Talk: ENTER",
-            "Journal: J    Map: M    Save: F5    Load: F9    Close/Menu: ESC",
-            "Save path: " + str(DEFAULT_SAVE_PATH),
-        )
+        if is_android():
+            controls = (
+                "Move: touch d-pad or arrows/WASD    Use: USE or SPACE",
+                "Menu: MENU touch button or ESC    OK: confirm / talk / inspect",
+                "Pause menu buttons: Journal, Map, Save, Load    Save path: " + str(DEFAULT_SAVE_PATH),
+            )
+        else:
+            controls = (
+                "Move: arrows/WASD    Interact: SPACE    Confirm/Talk: ENTER",
+                "Journal: J    Map: M    Save: F5    Load: F9    Close/Menu: ESC",
+                "Save path: " + str(DEFAULT_SAVE_PATH),
+            )
         line_y = y + 14
         for line in controls:
             line_y = self.draw_journal_line(screen, line, left_x + 14, line_y, (210, 210, 225))
@@ -6350,12 +6533,20 @@ class Game:
         screen.blit(message_text, (message_panel.centerx - message_text.get_width() // 2, message_panel.y + 10))
 
         prompt_text = font_tiny.render(room["service_prompt"], True, accent_color)
-        if self.interior_player_near_npc():
-            exit_label = "ENTER: talk   ESC/exit mat: leave"
-        elif nearby_inspect:
-            exit_label = f"ENTER: inspect {nearby_inspect['label']}"
+        if is_android():
+            if self.interior_player_near_npc():
+                exit_label = "OK: talk   MENU: journal/save/load   exit mat: leave"
+            elif nearby_inspect:
+                exit_label = f"OK: inspect {nearby_inspect['label']}"
+            else:
+                exit_label = "OK or exit mat: leave to town"
         else:
-            exit_label = "ENTER/ESC: exit to town"
+            if self.interior_player_near_npc():
+                exit_label = "ENTER: talk   ESC/exit mat: leave"
+            elif nearby_inspect:
+                exit_label = f"ENTER: inspect {nearby_inspect['label']}"
+            else:
+                exit_label = "ENTER/ESC: exit to town"
         exit_text = font_tiny.render(exit_label, True, (200, 200, 210))
         screen.blit(prompt_text, (message_panel.x + 22, message_panel.y + 34))
         screen.blit(exit_text, (message_panel.right - exit_text.get_width() - 22, message_panel.y + 34))
@@ -6570,12 +6761,16 @@ class Game:
             return
 
         elif self.state == "interior" and self.player:
+            if self.show_pause_menu:
+                return
             self.game_time += 1
             self.player.update_animation()
             if self.town_service_message_timer > 0:
                 self.town_service_message_timer -= 1
                 
         elif self.state == "overworld" and self.player:
+            if self.show_pause_menu:
+                return
             # Main gameplay area with movement and exploration
             self.game_time += 1
             self.spawn_timer += 1
@@ -7075,15 +7270,24 @@ class Game:
                 current_area.draw_cutscene(screen)
             
             # Draw controls info
-            controls = [
-                "CONTROLS:",
-                "ARROWS/WASD - MOVE",
-                "SPACE/ENTER - INTERACT",
-                "J - JOURNAL / M - MAP",
-                "F5 SAVE / F9 LOAD",
-                "ESC - MENU"
-            ]
-            
+            if is_android():
+                controls = [
+                    "TOUCH CONTROLS:",
+                    "D-PAD - MOVE",
+                    "USE / OK - INTERACT",
+                    "MENU - JOURNAL / MAP",
+                    "PAUSE MENU - SAVE / LOAD",
+                ]
+            else:
+                controls = [
+                    "CONTROLS:",
+                    "ARROWS/WASD - MOVE",
+                    "SPACE/ENTER - INTERACT",
+                    "J - JOURNAL / M - MAP",
+                    "F5 SAVE / F9 LOAD",
+                    "ESC - MENU",
+                ]
+
             for i, line in enumerate(controls):
                 text = font_tiny.render(line, True, (180, 180, 200))
                 screen.blit(text, (20, SCREEN_HEIGHT - 140 + i * 25))
@@ -7139,46 +7343,20 @@ class Game:
         if self.active_story_dialogue and self.state == "overworld":
             self.draw_story_dialogue(screen)
 
+        if self.show_pause_menu and self.state in ["overworld", "interior"]:
+            self.draw_pause_menu(screen)
+
         if self.transition_state != "none":
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, self.transition_alpha))
             screen.blit(overlay, (0, 0))
             
-        # Draw Android virtual controls if on Android
-        if is_android() and self.android_buttons:
-            # D-pad
-            pygame.draw.rect(screen, (200,200,200), self.android_buttons['up'], border_radius=20)
-            pygame.draw.polygon(screen, (100,100,100), [
-                (self.android_buttons['up'].centerx, self.android_buttons['up'].top+15),
-                (self.android_buttons['up'].left+15, self.android_buttons['up'].bottom-15),
-                (self.android_buttons['up'].right-15, self.android_buttons['up'].bottom-15)
-            ])
-            pygame.draw.rect(screen, (200,200,200), self.android_buttons['down'], border_radius=20)
-            pygame.draw.polygon(screen, (100,100,100), [
-                (self.android_buttons['down'].centerx, self.android_buttons['down'].bottom-15),
-                (self.android_buttons['down'].left+15, self.android_buttons['down'].top+15),
-                (self.android_buttons['down'].right-15, self.android_buttons['down'].top+15)
-            ])
-            pygame.draw.rect(screen, (200,200,200), self.android_buttons['left'], border_radius=20)
-            pygame.draw.polygon(screen, (100,100,100), [
-                (self.android_buttons['left'].left+15, self.android_buttons['left'].centery),
-                (self.android_buttons['left'].right-15, self.android_buttons['left'].top+15),
-                (self.android_buttons['left'].right-15, self.android_buttons['left'].bottom-15)
-            ])
-            pygame.draw.rect(screen, (200,200,200), self.android_buttons['right'], border_radius=20)
-            pygame.draw.polygon(screen, (100,100,100), [
-                (self.android_buttons['right'].right-15, self.android_buttons['right'].centery),
-                (self.android_buttons['right'].left+15, self.android_buttons['right'].top+15),
-                (self.android_buttons['right'].left+15, self.android_buttons['right'].bottom-15)
-            ])
-            # Enter
-            pygame.draw.rect(screen, (255,215,0), self.android_buttons['enter'], border_radius=20)
-            enter_text = font_small.render('ENT', True, (0,0,0))
-            screen.blit(enter_text, enter_text.get_rect(center=self.android_buttons['enter'].center))
-            # Space
-            pygame.draw.rect(screen, (0,255,255), self.android_buttons['space'], border_radius=20)
-            space_text = font_small.render('SPC', True, (0,0,0))
-            screen.blit(space_text, space_text.get_rect(center=self.android_buttons['space'].center))
+        # BEGINNER NOTE:
+        # Android touch buttons are built fresh each frame so the layout can
+        # change for dialogue, journal, map, and normal exploration.
+        if self.android_touch_enabled:
+            touch_buttons = build_android_touch_buttons(self, SCREEN_WIDTH, SCREEN_HEIGHT)
+            draw_android_touch_buttons(screen, touch_buttons, font_small, font_tiny)
         
         if self.state == "victory" and self.player:
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
@@ -7233,15 +7411,17 @@ class Game:
                     
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     mouse_click = True
-                    # Android virtual controls
-                    if is_android() and self.android_buttons:
+                    # BEGINNER NOTE:
+                    # Android touch buttons are not part of the normal menu
+                    # Button class. We detect them here and then translate the
+                    # touch into the same action system used by the keyboard.
+                    if self.android_touch_enabled:
                         mx, my = display_to_game_pos(event.pos)
-                        for name, rect in self.android_buttons.items():
-                            if self.android_button_hit_rect(rect).collidepoint(mx, my):
-                                key = key_for_android_button(name)
-                                if key is not None:
-                                    fake_event = pygame.event.Event(pygame.KEYDOWN, key=key)
-                                    pygame.event.post(fake_event)
+                        touch_buttons = build_android_touch_buttons(self, SCREEN_WIDTH, SCREEN_HEIGHT)
+                        touched_button = find_android_touch_button(touch_buttons, (mx, my))
+                        if touched_button and self.handle_android_touch_command(touched_button["action"]):
+                            mouse_click = False
+                            continue
                 
                 if event.type == pygame.KEYDOWN:
                     action = action_for_key(event.key)
@@ -7286,6 +7466,28 @@ class Game:
                             self.activate_end_menu_selection()
                             continue
 
+                    if self.show_pause_menu and self.state in ["overworld", "interior"]:
+                        if not self.pause_menu_buttons:
+                            self.rebuild_pause_menu_buttons()
+                        if action in [MOVE_UP, MOVE_LEFT]:
+                            self.move_menu_selection("pause_menu_index", len(self.pause_menu_buttons), -1)
+                            continue
+                        if action in [MOVE_DOWN, MOVE_RIGHT]:
+                            self.move_menu_selection("pause_menu_index", len(self.pause_menu_buttons), 1)
+                            continue
+                        if action in [CONFIRM, INTERACT]:
+                            self.activate_pause_menu_selection()
+                            continue
+                        if action == JOURNAL:
+                            self.activate_pause_menu_command("journal")
+                            continue
+                        if action == MAP and self.state == "overworld":
+                            self.activate_pause_menu_command("map")
+                            continue
+                        if action == CANCEL:
+                            self.close_pause_menu(play_sound=True)
+                            continue
+
                     if self.active_story_dialogue and self.state == "overworld":
                         if action in [CONFIRM, INTERACT, CANCEL]:
                             self.advance_story_dialogue()
@@ -7298,6 +7500,13 @@ class Game:
                                 self.SFX_CLICK.play()
                         continue
 
+                    if self.show_world_map and self.state == "overworld":
+                        if action in [CANCEL, CONFIRM, INTERACT, MAP]:
+                            self.show_world_map = False
+                            if self.SFX_CLICK:
+                                self.SFX_CLICK.play()
+                        continue
+
                     if action == JOURNAL and self.state in ["overworld", "interior"] and self.player:
                         self.show_journal = True
                         self.show_world_map = False
@@ -7306,11 +7515,8 @@ class Game:
                         continue
 
                     if action == CANCEL:
-                        if self.state == "interior":
-                            self.exit_town_interior()
-                            continue
-                        elif self.state == "overworld":
-                            self.state = "game_over"
+                        if self.state in ["overworld", "interior"] and self.player:
+                            self.toggle_pause_menu()
                             continue
                         elif self.state == "game_over":
                             self.state = "start_menu"
@@ -7350,6 +7556,9 @@ class Game:
                     # Handle world map toggle
                     if self.state == "overworld" and action == MAP:
                         self.show_world_map = not self.show_world_map
+                        self.show_journal = False
+                        if self.SFX_CLICK:
+                            self.SFX_CLICK.play()
                         continue
                     
                     # Handle movement in overworld
@@ -7405,7 +7614,19 @@ class Game:
                         self.battle_screen.handle_input(event, self)
             
             # Handle button clicks
-            if self.state == "start_menu":
+            if self.show_pause_menu and self.state in ["overworld", "interior"]:
+                if not self.pause_menu_buttons:
+                    self.rebuild_pause_menu_buttons()
+                for index, button in enumerate(self.pause_menu_buttons):
+                    if button.update(mouse_pos):
+                        self.pause_menu_index = index
+                    if button.is_clicked(mouse_pos, mouse_click):
+                        self.pause_menu_index = index
+                        self.activate_pause_menu_selection()
+                        mouse_click = False
+                        break
+
+            elif self.state == "start_menu":
                 if self.start_button.update(mouse_pos):
                     self.start_menu_index = 0
                 if self.load_button.update(mouse_pos):
@@ -7579,6 +7800,8 @@ class Game:
         self.boss_defeated = False
         self.show_world_map = False
         self.show_journal = False
+        self.show_pause_menu = False
+        self.pause_menu_buttons = []
         self.pickup_message = None
         self.pickup_message_timer = 0
         self.area_effect_timer = 0

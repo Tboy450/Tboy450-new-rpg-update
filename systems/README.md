@@ -3,9 +3,10 @@
 `systems/` contains active helper modules that are small enough to split out of `main.py` without moving core gameplay classes yet.
 
 - `input_actions.py`: maps keyboard and Android virtual button inputs to gameplay actions.
+- `android_controls.py`: builds and draws the state-aware Android touch layout, including dialogue-safe button placement.
 - `assets.py`: centralizes imported art paths, sprite caching, animation frame loading, and reusable sprite drawing.
 - `save_load.py`: serializes and loads JSON save data for the player, score, boss progress, visited areas, and town interaction progress.
-- `__init__.py`: marks this folder as a Python package so helpers can be imported as `systems.assets`, `systems.input_actions`, and `systems.save_load`.
+- `__init__.py`: marks this folder as a Python package so helpers can be imported as `systems.assets`, `systems.input_actions`, `systems.android_controls`, and `systems.save_load`.
 
 Keep this folder for reusable runtime systems. Pure tuning data still belongs in `game_data/`.
 
@@ -28,7 +29,23 @@ When adding a new control:
 - Add a new action string constant.
 - Add keyboard keys to `KEY_ACTIONS`.
 - Add Android button keys to `ANDROID_BUTTON_KEYS` if needed.
+- Add a preferred key to `ACTION_PRIMARY_KEYS` if touch buttons should be able to post the same action.
 - Update `main.py` to react to the new action.
+
+## `android_controls.py`
+
+This module owns the Android touch-button layout.
+
+- `build_android_touch_buttons(game, screen_width, screen_height)` decides which touch buttons should exist for the current UI state.
+- `draw_android_touch_buttons(...)` draws those buttons.
+- `find_android_touch_button(...)` hit-tests the buttons with a slightly larger tap target.
+
+Current touch-layout rules:
+
+- Normal overworld/interior play uses a d-pad, `USE`, `OK`, and `MENU`.
+- Story dialogue and the town-guard cutscene swap that layout for `NEXT` + `MENU`.
+- Journal and world map use close buttons instead of the movement pad.
+- The shared pause menu itself is still drawn by `main.py`, because it owns the actual save/load/journal/map game actions.
 
 ## `assets.py`
 
