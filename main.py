@@ -134,6 +134,7 @@ from systems.assets import (
     load_sprite_by_height,
 )
 from systems.save_load import DEFAULT_SAVE_PATH, load_game_state, save_game_state
+from systems.story_ui import draw_pause_menu_overlay, draw_story_dialogue_overlay
 
 # Initialize Pygame
 pygame.mixer.pre_init(44100, -16, 2, 512)
@@ -252,8 +253,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.12"
-APP_NUMERIC_VERSION = 13
+APP_VERSION = "0.1.13"
+APP_NUMERIC_VERSION = 14
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -5734,74 +5735,42 @@ class Game:
 
         dialogue = self.active_story_dialogue
         line = self.active_story_lines[self.active_story_line_index]
-        accent = dialogue.get("color", TEXT_COLOR)
-
-        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 135))
-        screen.blit(overlay, (0, 0))
-
-        panel = pygame.Rect(80, 430, 840, 210)
-        pygame.draw.rect(screen, UI_BG, panel, border_radius=10)
-        pygame.draw.rect(screen, accent, panel, 3, border_radius=10)
-
-        portrait_box = pygame.Rect(panel.x + 24, panel.y + 24, 150, 150)
-        pygame.draw.rect(screen, (12, 12, 24), portrait_box, border_radius=8)
-        pygame.draw.rect(screen, accent, portrait_box, 2, border_radius=8)
-
-        sprite_path = get_story_sprite_path(dialogue.get("portrait"))
-        portrait = load_sprite_by_height(sprite_path, 142) if sprite_path else None
-        if portrait:
-            portrait_rect = portrait.get_rect(center=portrait_box.center)
-            screen.blit(portrait, portrait_rect)
-
-        title = font_small.render(dialogue.get("title", "Story"), True, accent)
-        speaker = font_tiny.render(dialogue.get("speaker", ""), True, (255, 245, 180))
-        screen.blit(title, (panel.x + 196, panel.y + 24))
-        screen.blit(speaker, (panel.x + 198, panel.y + 55))
-
-        text_x = panel.x + 196
-        text_y = panel.y + 88
-        for wrapped_line in wrap_text_to_width(line, font_small, panel.right - text_x - 28):
-            rendered = font_small.render(wrapped_line, True, (235, 235, 225))
-            screen.blit(rendered, (text_x, text_y))
-            text_y += 31
-
-        step_text = f"{self.active_story_line_index + 1}/{len(self.active_story_lines)}"
-        if is_android():
-            prompt_label = f"NEXT button or ENTER/SPACE   {step_text}"
-        else:
-            prompt_label = f"ENTER/SPACE: continue   {step_text}"
-        prompt = font_tiny.render(prompt_label, True, (200, 200, 210))
-        screen.blit(prompt, (panel.right - prompt.get_width() - 24, panel.bottom - 32))
+        draw_story_dialogue_overlay(
+            screen,
+            dialogue,
+            line,
+            self.active_story_line_index,
+            len(self.active_story_lines),
+            font_small=font_small,
+            font_tiny=font_tiny,
+            screen_width=SCREEN_WIDTH,
+            screen_height=SCREEN_HEIGHT,
+            ui_bg=UI_BG,
+            text_color=TEXT_COLOR,
+            android_mode=is_android(),
+            get_story_sprite_path=get_story_sprite_path,
+            load_sprite_by_height=load_sprite_by_height,
+            wrap_text_to_width=wrap_text_to_width,
+        )
 
     def draw_pause_menu(self, screen):
         """Draw the shared in-game pause menu for keyboard and Android players."""
         if not self.show_pause_menu:
             return
 
-        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 170))
-        screen.blit(overlay, (0, 0))
-
-        panel = pygame.Rect(SCREEN_WIDTH // 2 - 220, 110, 440, 470)
-        pygame.draw.rect(screen, UI_BG, panel, border_radius=14)
-        pygame.draw.rect(screen, (255, 215, 0), panel, 3, border_radius=14)
-
-        title = font_large.render("PAUSE MENU", True, (255, 215, 0))
-        screen.blit(title, (panel.centerx - title.get_width() // 2, panel.y + 22))
-
-        if is_android():
-            subtitle_text = "Android touch menu: no hardware keyboard required."
-        else:
-            subtitle_text = "Use arrows + Enter, or click the buttons below."
-        subtitle = font_tiny.render(subtitle_text, True, (210, 210, 220))
-        screen.blit(subtitle, (panel.centerx - subtitle.get_width() // 2, panel.y + 66))
-
         if not self.pause_menu_buttons:
             self.rebuild_pause_menu_buttons()
         self.set_selected_buttons(self.pause_menu_buttons, self.pause_menu_index)
-        for button in self.pause_menu_buttons:
-            button.draw(screen)
+        draw_pause_menu_overlay(
+            screen,
+            self.pause_menu_buttons,
+            font_large=font_large,
+            font_tiny=font_tiny,
+            screen_width=SCREEN_WIDTH,
+            screen_height=SCREEN_HEIGHT,
+            ui_bg=UI_BG,
+            android_mode=is_android(),
+        )
 
     def complete_town_errand(self, service_type):
         errand = get_town_errand(service_type)

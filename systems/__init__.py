@@ -11,4 +11,5 @@ Modules:
     android_update: GitHub APK update URLs, version checks, and external link opening.
     input_actions: keyboard/touch input mapping.
     save_load: JSON save/load helpers.
+    story_ui: reusable dialogue and pause-menu overlay drawing.
 """

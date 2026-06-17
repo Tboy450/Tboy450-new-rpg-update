@@ -63,6 +63,7 @@ responsible for. Read this before editing if you are new to Python or this repo.
 - `android_update.py`: APK update URL constants, GitHub version-check helper, and Android/desktop link opening helper.
 - `input_actions.py`: translates keyboard or virtual Android button input into action names like `move_up`.
 - `save_load.py`: converts the current `Game` object into JSON and loads saved JSON back later.
+- `story_ui.py`: draws the reusable story dialogue panel and the shared pause-menu overlay.
 
 ## Story + Asset Quick Map
 
@@ -105,10 +106,12 @@ beginner-facing control labels.
   `systems/android_controls.py`
 - Shared pause-menu logic and button commands:
   `Game.build_pause_menu_entries`, `Game.toggle_pause_menu`, and `Game.activate_pause_menu_command` in `main.py`
+- Shared pause-menu drawing:
+  `systems/story_ui.py`
 - Journal control text:
   `Game.draw_journal` in `main.py`
-- Story dialogue `NEXT` prompt:
-  `Game.draw_story_dialogue` in `main.py`
+- Story dialogue box, portrait, and `NEXT` prompt:
+  `systems/story_ui.py`, called by `Game.draw_story_dialogue` in `main.py`
 - Overworld corner control legend:
   `Game.draw` in `main.py`
 

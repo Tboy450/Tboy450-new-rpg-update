@@ -7,7 +7,8 @@
 - `android_update.py`: owns the GitHub APK link, remote version check, and Android/desktop URL opening helpers.
 - `assets.py`: centralizes imported art paths, sprite caching, animation frame loading, and reusable sprite drawing.
 - `save_load.py`: serializes and loads JSON save data for the player, score, boss progress, visited areas, and town interaction progress.
-- `__init__.py`: marks this folder as a Python package so helpers can be imported as `systems.assets`, `systems.input_actions`, `systems.android_controls`, `systems.android_update`, and `systems.save_load`.
+- `story_ui.py`: draws reusable overlays such as the story dialogue box and shared pause menu.
+- `__init__.py`: marks this folder as a Python package so helpers can be imported as `systems.assets`, `systems.input_actions`, `systems.android_controls`, `systems.android_update`, `systems.story_ui`, and `systems.save_load`.
 
 Keep this folder for reusable runtime systems. Pure tuning data still belongs in `game_data/`.
 
@@ -96,6 +97,17 @@ When adding a new imported effect:
 - Save transparent game-ready PNG frames under `assets/processed/<category>/<effect_name>/`.
 - Add the processed path constant to `assets.py`.
 - Call `load_animation_frames` from the gameplay code that owns the timing.
+
+## `story_ui.py`
+
+This module owns two beginner-visible overlays that used to sit directly inside
+`Game`:
+
+- `draw_story_dialogue_overlay(...)`: draws the portrait, speaker name, wrapped text, and NEXT/keyboard prompt for Lion Sage, Ghost Face, and future story scenes.
+- `draw_pause_menu_overlay(...)`: draws the dim background, pause panel, subtitle text, and the already-built pause buttons.
+
+Keep story timing, menu commands, and save/load behavior in `main.py`. Use
+`story_ui.py` when the change is only about how those overlays look.
 
 ## `save_load.py`
 
