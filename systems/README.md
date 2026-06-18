@@ -47,7 +47,8 @@ Current touch-layout rules:
 - Normal overworld/interior play uses a d-pad, `USE`, `OK`, and `MENU`.
 - Story dialogue and the town-guard cutscene swap that layout for `NEXT` + `MENU`.
 - Journal and world map use close buttons instead of the movement pad.
-- The shared pause menu itself is still drawn by `main.py`, because it owns the actual save/load/journal/map game actions.
+- The shared pause menu still runs game actions through `main.py`, but the
+  overlay drawing now lives in `systems/story_ui.py`.
 
 ## `android_update.py`
 

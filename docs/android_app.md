@@ -18,6 +18,12 @@ The native APK is the target Android debugging path. The release asset is
 published by GitHub Actions when the **Build Android APK** workflow turns green:
 
 ```text
+https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android.apk
+```
+
+Compatibility filename kept alive for older links:
+
+```text
 https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk
 ```
 
@@ -99,7 +105,7 @@ dragons-lair-rpg-android-debug.apk
 Download the latest CI-built APK:
 
 ```text
-https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android-debug.apk
+https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/android-latest/dragons-lair-rpg-android.apk
 ```
 
 If that URL returns 404, no green APK has been published to the `android-latest`
@@ -117,7 +123,9 @@ Android may ask you to allow installs from unknown sources.
 
 - This creates a debug APK for testing, not a Play Store release.
 - The current game uses Pygame and generated art/audio, so the APK may be large.
-- Android touch controls are now split between `systems/android_controls.py` and the shared pause-menu logic in `main.py`.
+- Android touch layout rules now live in `systems/android_controls.py`.
+- Reusable story dialogue and pause-menu overlay drawing now live in `systems/story_ui.py`.
+- `main.py` still owns the actual pause-menu commands, save/load actions, and gameplay state changes.
 - APK version-check and link-opening helpers now live in `systems/android_update.py`.
 - For APK updates, both `APP_NUMERIC_VERSION` in `main.py` and `android.numeric_version` in `buildozer.spec` must increase.
 - Saves use app/private storage, so uninstalling the app can remove local saves.
