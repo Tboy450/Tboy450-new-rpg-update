@@ -253,8 +253,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.17"
-APP_NUMERIC_VERSION = 18
+APP_VERSION = "0.1.18"
+APP_NUMERIC_VERSION = 19
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -1628,26 +1628,26 @@ class WorldArea:
             dialogue = self.guard["dialogue"][dialogue_index]
             
             # Dialogue box background.
-            # BEGINNER NOTE: This panel sits above the Android touch controls.
-            # The previous 600x100 panel near the bottom was easy to miss on a
-            # phone and long guard story lines could run out of vertical room.
-            box_x = 90
-            box_y = 400
-            box_w = 820
-            box_h = 165
+            # BEGINNER NOTE: Keep this compact. Android already has a separate
+            # NEXT touch button for town-guard cutscenes, so this box only
+            # needs to show the current line clearly.
+            box_x = 200
+            box_y = 500
+            box_w = 600
+            box_h = 100
             
             # Box shadow
-            pygame.draw.rect(surface, (20, 20, 20), (box_x + 4, box_y + 4, box_w, box_h), border_radius=8)
+            pygame.draw.rect(surface, (20, 20, 20), (box_x + 3, box_y + 3, box_w, box_h))
             # Box base
-            pygame.draw.rect(surface, (32, 34, 58), (box_x, box_y, box_w, box_h), border_radius=8)
-            pygame.draw.rect(surface, (112, 112, 165), (box_x, box_y, box_w, box_h), 3, border_radius=8)
+            pygame.draw.rect(surface, (40, 40, 60), (box_x, box_y, box_w, box_h))
+            pygame.draw.rect(surface, (80, 80, 120), (box_x, box_y, box_w, box_h), 3)
             
             # BEGINNER NOTE: The guard has longer story dialogue now, so the
             # town intro box wraps text instead of trying to force one long
             # sentence onto a single line.
-            wrapped_dialogue = wrap_text_to_width(dialogue, font_small, box_w - 56)
-            line_height = 28
-            text_y = box_y + 54
+            wrapped_dialogue = wrap_text_to_width(dialogue, font_small, box_w - 40)
+            line_height = 24
+            text_y = box_y + 38 + max(0, (3 - len(wrapped_dialogue)) * 6)
             for wrapped_line in wrapped_dialogue:
                 text = font_small.render(wrapped_line, True, (255, 255, 255))
                 text_rect = text.get_rect(center=(box_x + box_w//2, text_y))
@@ -1656,12 +1656,14 @@ class WorldArea:
             
             # Dragon Knight name
             name_text = font_tiny.render("Sir Marcus - Dragon Knight", True, (255, 215, 0))
-            name_rect = name_text.get_rect(center=(box_x + box_w//2, box_y + 24))
+            name_rect = name_text.get_rect(center=(box_x + box_w//2, box_y + 20))
             surface.blit(name_text, name_rect)
 
-            prompt_label = "TAP NEXT / ENTER to continue"
-            prompt_text = font_tiny.render(prompt_label, True, (210, 210, 220))
-            prompt_rect = prompt_text.get_rect(center=(box_x + box_w//2, box_y + box_h - 22))
+        # Draw keyboard prompt. Android still uses the separate NEXT button
+        # built in systems/android_controls.py.
+        if self.cutscene_phase == 1 and self.cutscene_timer > 60:
+            prompt_text = font_tiny.render("ENTER/SPACE to continue", True, (200, 200, 200))
+            prompt_rect = prompt_text.get_rect(center=(500, 620))
             surface.blit(prompt_text, prompt_rect)
 
 # ============================================================================
