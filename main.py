@@ -253,8 +253,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.18"
-APP_NUMERIC_VERSION = 19
+APP_VERSION = "0.1.19"
+APP_NUMERIC_VERSION = 20
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -400,6 +400,39 @@ except:
     font_small = pygame.font.SysFont("Courier", 24, bold=True)
     font_tiny = pygame.font.SysFont("Courier", 18, bold=True)
     font_cinematic = pygame.font.SysFont("Courier", 28, bold=True)
+
+
+def render_fitted_text(text, color, max_width, preferred_fonts=None):
+    """Render text with the largest listed font that fits inside max_width.
+
+    Beginner note:
+        Small HUD panels on Android do not have room for full-size labels.
+        This helper measures text before drawing it, then falls back to a
+        smaller font or trims the ending with "..." before the label can spill
+        outside its box.
+    """
+    text = str(text)
+    if max_width <= 0:
+        return font_tiny.render("", True, color)
+
+    fonts_to_try = preferred_fonts or (font_small, font_tiny)
+    for font_obj in fonts_to_try:
+        rendered = font_obj.render(text, True, color)
+        if rendered.get_width() <= max_width:
+            return rendered
+
+    final_font = fonts_to_try[-1]
+    suffix = "..."
+    trimmed = text
+    while trimmed and final_font.size(trimmed + suffix)[0] > max_width:
+        trimmed = trimmed[:-1]
+    if trimmed:
+        text = trimmed + suffix
+    elif final_font.size(suffix)[0] <= max_width:
+        text = suffix
+    else:
+        text = ""
+    return final_font.render(text, True, color)
 
 # ============================================================================
 # WORLD AND GRID SYSTEM CONFIGURATION
@@ -2670,33 +2703,64 @@ class Character:
         self.just_leveled_up = True
         self.boss_cooldown = False  # Reset cooldown on level up
     
-    def draw_stats(self, surface, x, y):
-        pygame.draw.rect(surface, (20, 20, 30), (x, y, 200, 25), border_radius=3)
-        health_width = 196 * (self.health / self.max_health)
-        pygame.draw.rect(surface, HEALTH_COLOR, (x + 2, y + 2, health_width, 21), border_radius=3)
-        health_text = font_small.render(f"HP: {self.health}/{self.max_health}", True, TEXT_COLOR)
-        surface.blit(health_text, (x + 205, y + 4))
-        
-        pygame.draw.rect(surface, (20, 20, 30), (x, y + 30, 200, 20), border_radius=3)
-        mana_width = 196 * (self.mana / self.max_mana)
-        pygame.draw.rect(surface, MANA_COLOR, (x + 2, y + 32, mana_width, 16), border_radius=3)
-        mana_text = font_small.render(f"MP: {self.mana}/{self.max_mana}", True, TEXT_COLOR)
-        surface.blit(mana_text, (x + 205, y + 32))
-        
-        pygame.draw.rect(surface, (20, 20, 30), (x, y + 55, 200, 15), border_radius=3)
-        exp_width = 196 * (self.exp / self.exp_to_level)
-        pygame.draw.rect(surface, EXP_COLOR, (x + 2, y + 57, exp_width, 11), border_radius=3)
-        exp_text = font_small.render(f"Level: {self.level}  Exp: {self.exp}/{self.exp_to_level}", True, TEXT_COLOR)
-        surface.blit(exp_text, (x, y + 75))
-        
-        stats_text = font_small.render(f"Str: {self.strength}  Def: {self.defense}  Spd: {self.speed}", True, TEXT_COLOR)
-        surface.blit(stats_text, (x, y + 100))
+    def draw_stats(self, surface, x, y, width=240):
+        """Draw the compact player HUD used in the upper-left panel.
 
-        bag_text = font_tiny.render(
-            f"Bag: HP x{self.get_inventory_count('health')}  MP x{self.get_inventory_count('mana')}",
-            True, (220, 220, 180)
+        Beginner note:
+            The old HUD placed HP/MP words to the right of the bars, which
+            looked fine on a large desktop window but spilled outside the
+            Android panel. This version keeps every label inside the fixed HUD
+            width so the panel remains neat on phone screens.
+        """
+        bar_bg = (18, 18, 30)
+        label_color = (245, 245, 245)
+        shadow_color = (5, 5, 12)
+        width = max(170, int(width))
+
+        def draw_labeled_bar(row_y, label, current_value, max_value, fill_color, height=24):
+            """Draw one status row, such as HP, MP, or EXP."""
+            outer = pygame.Rect(x, row_y, width, height)
+            inner = outer.inflate(-4, -4)
+            safe_max = max(1, max_value)
+            fill_ratio = clamp(current_value / safe_max, 0.0, 1.0)
+            fill_width = int(inner.width * fill_ratio)
+
+            pygame.draw.rect(surface, bar_bg, outer, border_radius=4)
+            if fill_width > 0:
+                pygame.draw.rect(
+                    surface,
+                    fill_color,
+                    (inner.x, inner.y, fill_width, inner.height),
+                    border_radius=3
+                )
+            pygame.draw.rect(surface, UI_BORDER, outer, 1, border_radius=4)
+
+            text = render_fitted_text(label, label_color, width - 12, (font_tiny,))
+            shadow = render_fitted_text(label, shadow_color, width - 12, (font_tiny,))
+            text_x = outer.x + 6
+            text_y = outer.y + (outer.height - text.get_height()) // 2
+            surface.blit(shadow, (text_x + 1, text_y + 1))
+            surface.blit(text, (text_x, text_y))
+
+        draw_labeled_bar(y, f"HP {self.health}/{self.max_health}", self.health, self.max_health, HEALTH_COLOR)
+        draw_labeled_bar(y + 29, f"MP {self.mana}/{self.max_mana}", self.mana, self.max_mana, MANA_COLOR)
+        draw_labeled_bar(y + 58, f"LV {self.level}  EXP {self.exp}/{self.exp_to_level}", self.exp, self.exp_to_level, EXP_COLOR, 20)
+
+        stats_text = render_fitted_text(
+            f"STR {self.strength}  DEF {self.defense}  SPD {self.speed}",
+            TEXT_COLOR,
+            width,
+            (font_tiny,)
         )
-        surface.blit(bag_text, (x, y + 122))
+        surface.blit(stats_text, (x, y + 86))
+
+        bag_text = render_fitted_text(
+            f"BAG HPx{self.get_inventory_count('health')}  MPx{self.get_inventory_count('mana')}",
+            (220, 220, 180),
+            width,
+            (font_tiny,)
+        )
+        surface.blit(bag_text, (x, y + 108))
 
 # ============================================================================
 # ENEMY SYSTEM - Various enemy types with AI and combat abilities
@@ -6735,9 +6799,12 @@ class Game:
             self.draw_town_errand_board(screen)
 
         if self.player:
-            pygame.draw.rect(screen, UI_BG, (16, 16, 240, 132), border_radius=8)
-            pygame.draw.rect(screen, UI_BORDER, (16, 16, 240, 132), 3, border_radius=8)
-            self.player.draw_stats(screen, 26, 26)
+            # Compact indoor HUD. The renderer receives the usable inside width
+            # so HP/MP/EXP labels stay inside the panel instead of overflowing.
+            indoor_hud = pygame.Rect(16, 16, 250, 136)
+            pygame.draw.rect(screen, UI_BG, indoor_hud, border_radius=8)
+            pygame.draw.rect(screen, UI_BORDER, indoor_hud, 3, border_radius=8)
+            self.player.draw_stats(screen, indoor_hud.x + 10, indoor_hud.y + 10, indoor_hud.width - 20)
 
         message_panel = pygame.Rect(145, SCREEN_HEIGHT - 84, 710, 56)
         pygame.draw.rect(screen, UI_BG, message_panel, border_radius=8)
@@ -7398,12 +7465,14 @@ class Game:
                 instructions = font_tiny.render("Press M to close", True, (180, 180, 200))
                 screen.blit(instructions, (SCREEN_WIDTH//2 - instructions.get_width()//2, map_y + map_size + 10))
             
-            # Draw UI panel
-            pygame.draw.rect(screen, UI_BG, (10, 10, 250, 150), border_radius=8)
-            pygame.draw.rect(screen, UI_BORDER, (10, 10, 250, 150), 3, border_radius=8)
+            # Draw the top-left player HUD. The panel is intentionally wider
+            # than the old one so long HP/MP values still have breathing room.
+            hud_panel = pygame.Rect(10, 10, 280, 144)
+            pygame.draw.rect(screen, UI_BG, hud_panel, border_radius=8)
+            pygame.draw.rect(screen, UI_BORDER, hud_panel, 3, border_radius=8)
             
-            # Draw player stats
-            self.player.draw_stats(screen, 20, 20)
+            # Draw player stats inside the panel's padding.
+            self.player.draw_stats(screen, hud_panel.x + 10, hud_panel.y + 10, hud_panel.width - 20)
 
             if self.pickup_message and self.pickup_message_timer > 0:
                 message_text = font_small.render(self.pickup_message, True, (255, 215, 0))

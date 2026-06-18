@@ -101,6 +101,11 @@ Use this when you know the feature name but not the file.
   `assets/processed/effects/flame_tornado/` is the SPECIAL travel animation.
   `assets/processed/effects/fire_blast/` is the Mage impact animation.
   `assets/processed/effects/mage_magic_fireball/` is the Mage normal magic overlay.
+- Top-left player HUD:
+  `Character.draw_stats` in `main.py` draws HP, MP, EXP, stats, and bag counts.
+  It uses `render_fitted_text` so labels stay inside the small Android panel.
+  The overworld HUD panel is sized in `Game.draw`; the indoor town HUD panel is
+  sized in `Game.draw_interior`.
 
 ## Pause + Touch Control Map
 
