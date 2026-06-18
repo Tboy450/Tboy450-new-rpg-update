@@ -124,6 +124,7 @@ from systems.assets import (
     FLAME_TORNADO_FRAME_DIR,
     GHOST_FACE_SPRITE_PATH,
     MAGE_MAGIC_FIREBALL_FRAME_DIR,
+    TITLE_DRAGON_SPRITE_PATH,
     TOWN_GUARD_SPRITE_PATH,
     draw_character_sprite,
     draw_enemy_sprite,
@@ -252,8 +253,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.16"
-APP_NUMERIC_VERSION = 17
+APP_VERSION = "0.1.17"
+APP_NUMERIC_VERSION = 18
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -1223,6 +1224,9 @@ class WorldArea:
             self.cutscene_active = True
             self.cutscene_timer = 0
             self.cutscene_phase = 0
+            if self.guard:
+                self.guard["visible"] = True
+                self.guard["current_dialogue"] = 0
             return True
         return False
     
@@ -1623,24 +1627,27 @@ class WorldArea:
             dialogue_index = min(self.guard["current_dialogue"], len(self.guard["dialogue"]) - 1)
             dialogue = self.guard["dialogue"][dialogue_index]
             
-            # Dialogue box background
-            box_x = 200
-            box_y = 500
-            box_w = 600
-            box_h = 100
+            # Dialogue box background.
+            # BEGINNER NOTE: This panel sits above the Android touch controls.
+            # The previous 600x100 panel near the bottom was easy to miss on a
+            # phone and long guard story lines could run out of vertical room.
+            box_x = 90
+            box_y = 400
+            box_w = 820
+            box_h = 165
             
             # Box shadow
-            pygame.draw.rect(surface, (20, 20, 20), (box_x + 3, box_y + 3, box_w, box_h))
+            pygame.draw.rect(surface, (20, 20, 20), (box_x + 4, box_y + 4, box_w, box_h), border_radius=8)
             # Box base
-            pygame.draw.rect(surface, (40, 40, 60), (box_x, box_y, box_w, box_h))
-            pygame.draw.rect(surface, (80, 80, 120), (box_x, box_y, box_w, box_h), 3)
+            pygame.draw.rect(surface, (32, 34, 58), (box_x, box_y, box_w, box_h), border_radius=8)
+            pygame.draw.rect(surface, (112, 112, 165), (box_x, box_y, box_w, box_h), 3, border_radius=8)
             
             # BEGINNER NOTE: The guard has longer story dialogue now, so the
             # town intro box wraps text instead of trying to force one long
             # sentence onto a single line.
-            wrapped_dialogue = wrap_text_to_width(dialogue, font_small, box_w - 40)
-            line_height = 24
-            text_y = box_y + 38 + max(0, (3 - len(wrapped_dialogue)) * 6)
+            wrapped_dialogue = wrap_text_to_width(dialogue, font_small, box_w - 56)
+            line_height = 28
+            text_y = box_y + 54
             for wrapped_line in wrapped_dialogue:
                 text = font_small.render(wrapped_line, True, (255, 255, 255))
                 text_rect = text.get_rect(center=(box_x + box_w//2, text_y))
@@ -1649,13 +1656,12 @@ class WorldArea:
             
             # Dragon Knight name
             name_text = font_tiny.render("Sir Marcus - Dragon Knight", True, (255, 215, 0))
-            name_rect = name_text.get_rect(center=(box_x + box_w//2, box_y + 20))
+            name_rect = name_text.get_rect(center=(box_x + box_w//2, box_y + 24))
             surface.blit(name_text, name_rect)
-        
-        # Draw "Press SPACE to continue" prompt
-        if self.cutscene_phase == 1 and self.cutscene_timer > 60:
-            prompt_text = font_tiny.render("ENTER/SPACE to continue", True, (200, 200, 200))
-            prompt_rect = prompt_text.get_rect(center=(500, 620))
+
+            prompt_label = "TAP NEXT / ENTER to continue"
+            prompt_text = font_tiny.render(prompt_label, True, (210, 210, 220))
+            prompt_rect = prompt_text.get_rect(center=(box_x + box_w//2, box_y + box_h - 22))
             surface.blit(prompt_text, prompt_rect)
 
 # ============================================================================
@@ -2922,10 +2928,83 @@ class Dragon:
         self.flap_speed = 0.1
         
     def draw(self, surface):
-        # BEGINNER NOTE:
-        # The start menu uses the original procedural dragon again. The newer
-        # imported title dragon has been archived because its mouth direction
-        # did not fit this fire-breath animation cleanly.
+        imported_dragon = load_sprite_by_height(TITLE_DRAGON_SPRITE_PATH, 270)
+        if imported_dragon:
+            # BEGINNER NOTE: Active title dragon.
+            # This PNG is the newer imported dragon. The older Python-drawn
+            # dragon below is now fallback/archive code only, used if the PNG
+            # cannot load on a future device.
+            bob = int(math.sin(self.animation_frame * 1.4) * 4)
+            draw_x = int(self.x - 72)
+            draw_y = int(self.y - 42 + bob)
+
+            shadow = pygame.Surface((imported_dragon.get_width() + 40, 48), pygame.SRCALPHA)
+            pygame.draw.ellipse(shadow, (0, 0, 0, 110), shadow.get_rect())
+            surface.blit(shadow, (draw_x + 18, draw_y + imported_dragon.get_height() - 28))
+
+            glow = pygame.Surface(imported_dragon.get_size(), pygame.SRCALPHA)
+            glow.blit(imported_dragon, (0, 0))
+            glow.set_alpha(38 + int(18 * math.sin(self.animation_frame * 1.7)))
+            surface.blit(glow, (draw_x - 2, draw_y + 2))
+            surface.blit(imported_dragon, (draw_x, draw_y))
+
+            if self.fire_active:
+                # The imported image already has a base flame. This overlay
+                # extends and animates it from the dragon mouth instead of
+                # drawing the old right-facing procedural fire.
+                scale = imported_dragon.get_height() / 960
+                mouth_x = draw_x + int(488 * scale)
+                mouth_y = draw_y + int(296 * scale)
+                flame_overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+                flame_progress = min(1.0, self.fire_frame / 54)
+                flame_length = 150 + int(260 * flame_progress)
+
+                for i in range(46):
+                    travel = i / 45
+                    wave = math.sin(self.fire_frame * 0.42 + i * 0.7)
+                    flame_x = int(mouth_x - flame_length * travel - self.fire_frame * 1.25)
+                    flame_y = int(mouth_y + 46 * travel + wave * (6 + travel * 18))
+                    outer_size = max(5, int(24 - travel * 11 + math.sin(self.fire_frame * 0.25 + i) * 5))
+                    alpha = max(0, int(235 * (1 - travel * 0.62)))
+
+                    pygame.draw.circle(
+                        flame_overlay,
+                        (255, 68, 0, max(35, alpha - 55)),
+                        (flame_x, flame_y),
+                        outer_size + 9,
+                    )
+                    pygame.draw.circle(
+                        flame_overlay,
+                        (255, 170, 24, alpha),
+                        (flame_x, flame_y),
+                        outer_size,
+                    )
+                    pygame.draw.circle(
+                        flame_overlay,
+                        (255, 250, 172, min(255, alpha + 20)),
+                        (flame_x + 2, flame_y - 1),
+                        max(3, outer_size // 2),
+                    )
+
+                for spark in range(26):
+                    travel = spark / 25
+                    spark_x = int(mouth_x - flame_length * travel + random.randint(-16, 8))
+                    spark_y = int(mouth_y + 56 * travel + random.randint(-18, 18))
+                    pygame.draw.circle(
+                        flame_overlay,
+                        (255, 225, 95, 165),
+                        (spark_x, spark_y),
+                        random.randint(2, 5),
+                    )
+
+                surface.blit(flame_overlay, (0, 0))
+
+            self.animation_frame += self.flap_speed
+            return
+
+        # BEGINNER NOTE: Archived fallback title dragon.
+        # Keep this older Python-drawn dragon only as an emergency fallback.
+        # The active title screen should use assets/processed/ui/title_dragon.png.
         pygame.draw.ellipse(surface, DRAGON_COLOR, (self.x, self.y + 30, 180, 70))
         pygame.draw.circle(surface, DRAGON_COLOR, (self.x + 180, self.y + 50), 35)
         pygame.draw.circle(surface, (255, 255, 255), (self.x + 195, self.y + 45), 10)
@@ -2968,56 +3047,65 @@ class Dragon:
             ])
         
         if self.fire_active:
-            # Extended fire breath. The overlapping circles make a beam, while
-            # the sine-wave offsets and sparks keep it from looking static.
-            mouth_x = self.x + 214
-            mouth_y = self.y + 42
-            flame_progress = min(1.0, self.fire_frame / 30)
-            flame_length = 145 + int(210 * flame_progress)
-            flame_overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-
-            for i in range(28):
-                travel = i / 27
-                wave = math.sin(self.fire_frame * 0.34 + i * 0.9)
-                flame_x = int(mouth_x + flame_length * travel + self.fire_frame * 1.5)
-                flame_y = int(mouth_y + wave * (5 + travel * 15))
-                outer_size = int(20 - travel * 9 + math.sin(self.fire_frame * 0.2 + i) * 3)
-                inner_size = max(4, int(outer_size * 0.52))
-                alpha = max(0, int(225 * (1 - travel * 0.62)))
-
-                pygame.draw.circle(
-                    flame_overlay,
-                    (255, 70 + int(80 * travel), 0, max(30, alpha - 45)),
-                    (flame_x, flame_y),
-                    max(5, outer_size + 5),
-                )
-                pygame.draw.circle(
-                    flame_overlay,
-                    (255, 205, 45, alpha),
-                    (flame_x, flame_y),
-                    max(4, outer_size),
-                )
-                pygame.draw.circle(
-                    flame_overlay,
-                    (255, 250, 180, min(255, alpha + 20)),
-                    (flame_x - 3, flame_y - 2),
-                    inner_size,
-                )
-
-            for spark in range(18):
-                travel = spark / 17
-                spark_x = int(mouth_x + flame_length * travel + random.randint(-6, 14))
-                spark_y = int(mouth_y + math.sin(self.fire_frame * 0.4 + spark) * 18 + random.randint(-10, 10))
-                pygame.draw.circle(
-                    flame_overlay,
-                    (255, 225, 115, max(35, 150 - spark * 5)),
-                    (spark_x, spark_y),
-                    random.randint(2, 5),
-                )
-
-            surface.blit(flame_overlay, (0, 0))
+            self.draw_archived_old_fire_animation(surface)
         
         self.animation_frame += self.flap_speed
+
+    def draw_archived_old_fire_animation(self, surface):
+        """Draw the old procedural title fire only for fallback dragon mode.
+
+        Beginner note:
+            This is archived behavior. The active title screen fire is the
+            left-facing imported-dragon overlay near the top of Dragon.draw().
+            Keep this method only so the old fallback dragon still works if the
+            imported PNG cannot load.
+        """
+        mouth_x = self.x + 214
+        mouth_y = self.y + 42
+        flame_progress = min(1.0, self.fire_frame / 30)
+        flame_length = 145 + int(210 * flame_progress)
+        flame_overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+
+        for i in range(28):
+            travel = i / 27
+            wave = math.sin(self.fire_frame * 0.34 + i * 0.9)
+            flame_x = int(mouth_x + flame_length * travel + self.fire_frame * 1.5)
+            flame_y = int(mouth_y + wave * (5 + travel * 15))
+            outer_size = int(20 - travel * 9 + math.sin(self.fire_frame * 0.2 + i) * 3)
+            inner_size = max(4, int(outer_size * 0.52))
+            alpha = max(0, int(225 * (1 - travel * 0.62)))
+
+            pygame.draw.circle(
+                flame_overlay,
+                (255, 70 + int(80 * travel), 0, max(30, alpha - 45)),
+                (flame_x, flame_y),
+                max(5, outer_size + 5),
+            )
+            pygame.draw.circle(
+                flame_overlay,
+                (255, 205, 45, alpha),
+                (flame_x, flame_y),
+                max(4, outer_size),
+            )
+            pygame.draw.circle(
+                flame_overlay,
+                (255, 250, 180, min(255, alpha + 20)),
+                (flame_x - 3, flame_y - 2),
+                inner_size,
+            )
+
+        for spark in range(18):
+            travel = spark / 17
+            spark_x = int(mouth_x + flame_length * travel + random.randint(-6, 14))
+            spark_y = int(mouth_y + math.sin(self.fire_frame * 0.4 + spark) * 18 + random.randint(-10, 10))
+            pygame.draw.circle(
+                flame_overlay,
+                (255, 225, 115, max(35, 150 - spark * 5)),
+                (spark_x, spark_y),
+                random.randint(2, 5),
+            )
+
+        surface.blit(flame_overlay, (0, 0))
         
     def breathe_fire(self):
         self.fire_active = True
@@ -3026,7 +3114,7 @@ class Dragon:
     def update(self):
         if self.fire_active:
             self.fire_frame += 1
-            if self.fire_frame > 30:
+            if self.fire_frame > 54:
                 self.fire_active = False
 
 # ============================================================================
@@ -3070,6 +3158,10 @@ class BattleScreen:
         self.combat_toggle_button = Button(
             SCREEN_WIDTH - 150, 166, 128, 42, "HIDE",
             (135, 95, 35), (255, 220, 120)
+        )
+        self.battle_continue_button = Button(
+            SCREEN_WIDTH - 150, 218, 128, 42, "NEXT",
+            (45, 92, 80), (150, 255, 220)
         )
         self.update_combat_toggle_button_label()
 
@@ -3818,6 +3910,8 @@ class BattleScreen:
         if self.waiting_for_continue:
             continue_text = font_small.render("(Press ENTER to continue...)", True, (255, 215, 0))
             temp_surface.blit(continue_text, (120, 70 + self.log_lines_per_page * 30))
+            self.battle_continue_button.selected = True
+            self.battle_continue_button.draw(temp_surface)
         
         # Draw buttons
         if self.state == "player_turn" and not self.waiting_for_continue and not self.battle_ended:
@@ -4344,7 +4438,10 @@ class BattleScreen:
                     if game and hasattr(game, 'SFX_ENTER') and game.SFX_ENTER: game.SFX_ENTER.play()
                     self.handle_action(game)
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_pos = get_game_mouse_pos()
+                # BEGINNER NOTE: Use this event's real touch/click position.
+                # Android can scale the game surface, so relying on
+                # pygame.mouse.get_pos() can read a stale or mismatched point.
+                mouse_pos = display_to_game_pos(event.pos)
                 # BEGINNER NOTE: Check the small toggle before the large action
                 # buttons. That prevents a tap on HIDE/ACTIONS from also
                 # activating a battle command in the same frame.
@@ -7539,6 +7636,11 @@ class Game:
 
                     if self.state == "opening_cutscene":
                         self.opening_cutscene.skip()
+                        continue
+
+                    if self.state == "battle" and self.battle_screen:
+                        self.battle_screen.handle_input(event, self)
+                        mouse_click = False
                         continue
                 
                 if event.type == pygame.KEYDOWN:

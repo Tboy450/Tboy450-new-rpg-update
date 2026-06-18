@@ -86,8 +86,10 @@ Use this when you know the feature name but not the file.
   `assets/processed/npcs/town_guard.png` is the imported overlay.
   `WorldArea.draw_cutscene` in `main.py` draws it on top of the old procedural guard.
 - Title dragon and title fire:
-  `Dragon.draw` in `main.py` is the active start-menu dragon and fire-breath animation.
-  The mismatched generated title-dragon PNG is archived in `archive/assets/ui/`.
+  `assets/processed/ui/title_dragon.png` is the active imported start-menu dragon.
+  `Dragon.draw` in `main.py` draws that PNG first and adds an animated fire
+  extension from the imported dragon's mouth. The older procedural dragon/fire
+  remains in `Dragon.draw` only as fallback/archive code.
 - SPECIAL unlock flow:
   `game_data/story.py` grants the first unlock through the Lion Sage reward.
   `Game.apply_story_reward` in `main.py` sets `player.special_unlocked = True`.
@@ -182,9 +184,10 @@ beginner-facing control labels.
 ## How To Edit The Guard + Title Dragon
 
 1. Replace `assets/processed/npcs/town_guard.png` to change the imported guard look.
-2. Edit `Dragon.draw` in `main.py` to change the active start-menu dragon or fire-breath animation.
-3. The archived generated title dragon lives in `archive/assets/ui/` for reference, but the game does not load it.
-4. `WorldArea.draw_cutscene` handles the imported guard overlay and still keeps the procedural guard behind it as fallback.
+2. Replace `assets/processed/ui/title_dragon.png` to change the active imported title dragon.
+3. Edit `Dragon.draw` in `main.py` to change the title fire timing, mouth anchor, or fallback procedural dragon.
+4. The archived generated title dragon copy lives in `archive/assets/ui/` for reference.
+5. `WorldArea.draw_cutscene` handles the imported guard overlay and still keeps the procedural guard behind it as fallback.
 
 ## How To Tune Fire Tornado
 

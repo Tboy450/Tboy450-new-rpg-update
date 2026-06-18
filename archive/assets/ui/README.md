@@ -5,11 +5,13 @@ active game path.
 
 ## Files
 
-- `title_dragon.png`: processed generated title dragon that used to be loaded by `Dragon.draw`.
+- `title_dragon.png`: archived copy of the generated title dragon. The active
+  processed copy now lives at `assets/processed/ui/title_dragon.png`.
 - `title_dragon_generated_chroma.png`: original generated chroma-background source for `title_dragon.png`.
 
 ## Why These Are Archived
 
-The generated dragon did not line up with the active title-screen fire-breath
-animation. The start menu now uses the procedural dragon and extended fire in
-`Dragon.draw` inside `main.py`.
+The old procedural title dragon and old right-facing fire animation now remain
+as fallback/archive code inside `Dragon.draw` in `main.py`. The start menu
+loads the imported dragon PNG first and adds a left-facing animated fire
+extension from that sprite's mouth.

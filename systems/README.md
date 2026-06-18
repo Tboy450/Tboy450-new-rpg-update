@@ -86,6 +86,7 @@ Active imported art paths:
 - `GHOST_FACE_SPRITE_PATH`: processed Ghost Face enemy sprite.
 - `LION_SAGE_SPRITE_PATH`: processed Lion Sage story NPC and portrait sprite.
 - `TOWN_GUARD_SPRITE_PATH`: processed imported town guard overlay for the intro cutscene.
+- `TITLE_DRAGON_SPRITE_PATH`: processed imported title-screen dragon.
 - `FLAME_TORNADO_FRAME_DIR`: player SPECIAL travel animation frames.
 - `FIRE_BLAST_FRAME_DIR`: Mage SPECIAL impact animation frames.
 - `MAGE_MAGIC_FIREBALL_FRAME_DIR`: Mage normal MAGIC projectile overlay frames.
@@ -94,8 +95,9 @@ Beginner feature map:
 
 - Lion Sage portrait and overworld sprite use `LION_SAGE_SPRITE_PATH`.
 - The town intro imported knight uses `TOWN_GUARD_SPRITE_PATH`.
-- The start-menu dragon is currently procedural code in `Dragon.draw` inside
-  `main.py`; the mismatched generated title dragon is archived.
+- The start-menu dragon loads `TITLE_DRAGON_SPRITE_PATH` first and then draws
+  an animated fire extension from the imported dragon's mouth. The older
+  procedural dragon remains as fallback/archive code in `Dragon.draw`.
 - The SPECIAL unlock is gameplay state, but `assets.py` is where the related story/effect art file paths are clearly labeled.
 
 When adding a new imported effect:

@@ -24,6 +24,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 GHOST_FACE_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "enemies" / "ghost_face.png")
 LION_SAGE_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "npcs" / "lion_sage.png")
 TOWN_GUARD_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "npcs" / "town_guard.png")
+TITLE_DRAGON_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "ui" / "title_dragon.png")
 FLAME_TORNADO_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "flame_tornado")
 FIRE_BLAST_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "fire_blast")
 MAGE_MAGIC_FIREBALL_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "mage_magic_fireball")
