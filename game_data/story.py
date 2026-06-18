@@ -15,10 +15,10 @@ Beginner note:
 # Opening cutscene text is still drawn by `OpeningCutscene` in main.py. These
 # lines are imported there so the stronger story setup is easy to tune later.
 OPENING_STORY_LINES = (
-    "MALAKOR'S SHADOW DID NOT RISE ALONE.",
-    "A WHITE MASK BEGAN WALKING THE NORTHERN PINES.",
-    "THE TOWN KNIGHT GUARDS THE LAST ROAD.",
-    "THE LION SAGE HOLDS THE FIRST TRUE QUEST.",
+    "Malakor's shadow did not rise alone.",
+    "A white mask began walking the northern pines.",
+    "The town knight guards the last road.",
+    "The Lion Sage holds the first true quest.",
 )
 
 # These lines are appended to the town guard's first conversation. The guard is

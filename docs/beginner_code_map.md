@@ -42,6 +42,9 @@ responsible for. Read this before editing if you are new to Python or this repo.
 - `BattleScreen`: turn-based battle menu, animations, damage, items, and victory/defeat handling.
 - `ParticleSystem`: small visual effects such as smoke, sparks, snow, and magic particles.
 - `OpeningCutscene`: the intro story sequence.
+  It owns the timed scene animation, stable star/mountain backgrounds, and
+  readable parchment story pages. The short opening lines it displays still
+  come from `game_data/story.py`.
 
 ## `game_data/` Modules
 

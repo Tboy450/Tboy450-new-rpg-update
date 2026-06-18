@@ -30,8 +30,8 @@ source.exclude_dirs = archive,.git,.github,.pytest_cache,__pycache__,.buildozer,
 requirements = python3,pygame-ce
 
 # App version fields.
-version = 0.1.15
-android.numeric_version = 16
+version = 0.1.16
+android.numeric_version = 17
 
 # The game is designed for a 1000x700 landscape screen.
 orientation = landscape

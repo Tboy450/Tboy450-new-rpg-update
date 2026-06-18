@@ -252,8 +252,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.15"
-APP_NUMERIC_VERSION = 16
+APP_VERSION = "0.1.16"
+APP_NUMERIC_VERSION = 17
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -4797,7 +4797,10 @@ class OpeningCutscene:
     def __init__(self):
         self.state = "intro"
         self.timer = 0
-        self.scene_duration = 300  # 5 seconds per scene at 60 FPS
+        # BEGINNER NOTE: The opening has three scenes. Each duration is in
+        # frames, so 300 frames is about five seconds at 60 FPS.
+        self.scene_durations = [300, 360, 600]
+        self.scene_duration = self.scene_durations[0]
         self.scene_index = 0
         self.transition_alpha = 0
         self.transition_speed = 5
@@ -4805,18 +4808,63 @@ class OpeningCutscene:
         self.text_appear_speed = 3
         self.text_disappear_speed = 2
         self.particle_system = ParticleSystem()
-        self.scroll_y = SCREEN_HEIGHT
-        self.scroll_speed = 1
         self.transition_state = "none"  # Initialize transition_state
+        self.story_page_duration = 160
+
+        # BEGINNER NOTE: Precompute stars and mountains once. The old opening
+        # used random mountain heights every draw call, which made the scene
+        # flicker instead of feeling animated.
+        self.stars = [
+            (
+                random.randint(0, SCREEN_WIDTH),
+                random.randint(0, SCREEN_HEIGHT),
+                random.choice((1, 1, 1, 2)),
+                random.random() * math.tau,
+            )
+            for _ in range(120)
+        ]
+        self.mountains = [
+            (i * 100, 150 + random.randint(0, 70), random.choice(((24, 24, 52), (34, 28, 60), (44, 30, 48))))
+            for i in range(11)
+        ]
+        self.story_pages = (
+            {
+                "title": "The Last Road",
+                "lines": (
+                    "The kingdom of Pixelonia still has walls, but the roads between them are burning.",
+                    "Malakor has returned. The dragon is real, and every village now watches the sky.",
+                ),
+            },
+            {
+                "title": "The Mask In The Pines",
+                "lines": (
+                    "The dragon is not the first test. In the northern forest, Ghost Face hunts courage before it can grow.",
+                    "The town knight will send you toward the one guide who understands fear and healing.",
+                ),
+            },
+            {
+                "title": "The Guardian Healer",
+                "lines": (
+                    "Find the Lion Sage in the western marsh. Earn his blessing and your first special technique.",
+                    "Then choose your path: break the mask in the pines, or grow strong enough to face Malakor.",
+                ),
+            },
+        )
+
+    def current_scene_duration(self):
+        """Return how long the active opening scene should last."""
+        index = min(self.scene_index, len(self.scene_durations) - 1)
+        return self.scene_durations[index]
         
     def update(self):
         self.timer += 1
         self.particle_system.update()
+        self.scene_duration = self.current_scene_duration()
         
         # Update text alpha
         if self.timer < 120:  # First 2 seconds: text appears
             self.text_alpha = min(255, self.text_alpha + self.text_appear_speed)
-        elif self.timer > 180:  # Last 2 seconds: text disappears
+        elif self.timer > self.scene_duration - 120:  # Last 2 seconds: text disappears
             self.text_alpha = max(0, self.text_alpha - self.text_disappear_speed)
         
         # Scene transitions
@@ -4837,12 +4885,6 @@ class OpeningCutscene:
                 random.randint(3, 7),
                 random.randint(40, 80)
             )
-        
-        # Scroll text for scene 3
-        if self.scene_index == 2:
-            self.scroll_y -= self.scroll_speed
-            if self.scroll_y < -600:
-                self.scroll_y = SCREEN_HEIGHT
         
         # Transition animation
         if self.timer > self.scene_duration - 60:  # Last second of scene
@@ -4873,22 +4915,37 @@ class OpeningCutscene:
         
         # Draw skip prompt
         if pygame.time.get_ticks() % 1000 < 500:  # Blinking text
-            skip_text = font_small.render("Press any key to skip...", True, (200, 200, 200))
-            screen.blit(skip_text, (SCREEN_WIDTH - skip_text.get_width() - 20, SCREEN_HEIGHT - 40))
+            skip_text = font_tiny.render("Tap / press any key to skip", True, (210, 210, 210))
+            screen.blit(skip_text, (SCREEN_WIDTH - skip_text.get_width() - 20, SCREEN_HEIGHT - 34))
     
     def draw_intro_scene(self, screen):
         # Draw starfield background
-        screen.fill(BACKGROUND)
-        for i in range(100):
-            x = i * 10
-            y = math.sin(pygame.time.get_ticks() * 0.001 + i) * 50 + SCREEN_HEIGHT//2
-            pygame.draw.circle(screen, (200, 200, 255), (x, int(y)), 1)
+        screen.fill((5, 8, 24))
+        ticks = pygame.time.get_ticks() * 0.001
+        for x, y, size, phase in self.stars:
+            twinkle = int(35 * (0.5 + 0.5 * math.sin(ticks * 2.0 + phase)))
+            color = (170 + twinkle, 175 + twinkle, 225)
+            pygame.draw.circle(screen, color, (x, y), size)
+
+        # A soft horizon glow makes the opening feel less empty while keeping
+        # the text readable.
+        horizon = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        for radius in range(260, 40, -35):
+            alpha = max(0, 28 - radius // 15)
+            pygame.draw.circle(horizon, (160, 35, 30, alpha), (SCREEN_WIDTH // 2, 520), radius)
+        screen.blit(horizon, (0, 0))
         
         # Draw title
         title = font_large.render("DRAGON'S LAIR", True, (255, 50, 50))
         title_shadow = font_large.render("DRAGON'S LAIR", True, (150, 0, 0))
-        screen.blit(title_shadow, (SCREEN_WIDTH//2 - title.get_width()//2 + 3, 103))
-        screen.blit(title, (SCREEN_WIDTH//2 - title.get_width()//2, 100))
+        title_x = SCREEN_WIDTH//2 - title.get_width()//2
+        for offset in range(10, 1, -2):
+            glow = font_large.render("DRAGON'S LAIR", True, (120, 20, 20))
+            glow.set_alpha(16)
+            screen.blit(glow, (title_x - offset, 100))
+            screen.blit(glow, (title_x + offset, 100))
+        screen.blit(title_shadow, (title_x + 3, 103))
+        screen.blit(title, (title_x, 100))
         
         # Draw subtitle
         subtitle = font_medium.render("A RETRO RPG ADVENTURE", True, TEXT_COLOR)
@@ -4901,25 +4958,39 @@ class OpeningCutscene:
         # Edit OPENING_STORY_LINES there if you want to rewrite the opening.
         intro_text = list(OPENING_STORY_LINES)
         
-        y_pos = 250
+        panel = pygame.Rect(150, 240, 700, 235)
+        pygame.draw.rect(screen, (8, 10, 26), panel, border_radius=8)
+        pygame.draw.rect(screen, (80, 54, 82), panel, 2, border_radius=8)
+
+        y_pos = panel.y + 28
         for line in intro_text:
             text = font_cinematic.render(line, True, TEXT_COLOR)
             text.set_alpha(self.text_alpha)
             text_rect = text.get_rect(center=(SCREEN_WIDTH//2, y_pos))
             screen.blit(text, text_rect)
-            y_pos += 50
+            y_pos += 44
     
     def draw_dragon_scene(self, screen):
         # Draw dark background
         screen.fill((10, 5, 20))
+        ticks = pygame.time.get_ticks() * 0.001
+
+        # Distant moon and smoke clouds.
+        pygame.draw.circle(screen, (92, 82, 110), (770, 120), 54)
+        pygame.draw.circle(screen, (10, 5, 20), (748, 108), 50)
+        smoke_layer = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        for i in range(16):
+            sx = 40 + i * 70
+            sy = 150 + math.sin(ticks * 0.8 + i) * 18
+            pygame.draw.circle(smoke_layer, (70, 55, 70, 28), (int(sx), int(sy)), 45 + (i % 3) * 12)
+        screen.blit(smoke_layer, (0, 0))
         
         # Draw mountains
-        for i in range(10):
-            height = 150 + random.randint(0, 50)
-            pygame.draw.polygon(screen, (30, 30, 60), [
-                (i * 100, SCREEN_HEIGHT),
-                (i * 100 + 50, SCREEN_HEIGHT - height),
-                (i * 100 + 100, SCREEN_HEIGHT)
+        for base_x, height, color in self.mountains:
+            pygame.draw.polygon(screen, color, [
+                (base_x, SCREEN_HEIGHT),
+                (base_x + 50, SCREEN_HEIGHT - height),
+                (base_x + 100, SCREEN_HEIGHT)
             ])
         
         # Draw dragon silhouette
@@ -4944,12 +5015,16 @@ class OpeningCutscene:
         ])
         
         # Draw fire breath
+        fire_layer = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         for i in range(20):
             x = dragon_x + 230 + i * 10
             y = dragon_y + 40 + math.sin(pygame.time.get_ticks() * 0.01 + i) * 10
             size = 10 - i * 0.4
             if size > 0:
-                pygame.draw.circle(screen, (255, 150, 0), (x, y), int(size))
+                pygame.draw.circle(fire_layer, (255, 80, 0, 100), (int(x), int(y)), int(size + 8))
+                pygame.draw.circle(fire_layer, (255, 170, 30, 230), (int(x), int(y)), int(size))
+                pygame.draw.circle(fire_layer, (255, 245, 150, 240), (int(x - 2), int(y - 1)), max(2, int(size * 0.45)))
+        screen.blit(fire_layer, (0, 0))
         
         # Draw scene text
         scene_text = [
@@ -4959,58 +5034,88 @@ class OpeningCutscene:
             "AND CHALLENGE THE ANCIENT EVIL."
         ]
         
-        y_pos = 100
+        y_pos = 86
         for line in scene_text:
             text = font_cinematic.render(line, True, (255, 200, 100))
             text.set_alpha(self.text_alpha)
+            shadow = font_cinematic.render(line, True, (35, 15, 10))
+            shadow.set_alpha(self.text_alpha)
             text_rect = text.get_rect(center=(SCREEN_WIDTH//2, y_pos))
+            screen.blit(shadow, (text_rect.x + 2, text_rect.y + 2))
             screen.blit(text, text_rect)
-            y_pos += 50
+            y_pos += 42
     
     def draw_story_scene(self, screen):
-        # Draw parchment background
-        screen.fill((200, 180, 120))
-        pygame.draw.rect(screen, (180, 150, 100), (50, 50, SCREEN_WIDTH - 100, SCREEN_HEIGHT - 100))
-        pygame.draw.rect(screen, (150, 120, 80), (50, 50, SCREEN_WIDTH - 100, SCREEN_HEIGHT - 100), 3)
-        
-        # Draw story text (scrolling)
-        story = [
-            "YOUR QUEST BEGINS...",
-            "",
-            "THE KINGDOM OF PIXELONIA NEEDS A HERO.",
-            "MALAKOR THE TERRIBLE HAS RETURNED,",
-            "BUT THE DRAGON ROAD IS NOT THE FIRST TEST.",
-            "",
-            "THE TOWN KNIGHT WILL POINT YOU WEST,",
-            "WHERE THE LION SAGE WAITS IN THE MARSH.",
-            "HE WILL NAME TWO QUESTS:",
-            "",
-            "FACE GHOST FACE IN THE NORTHERN PINES.",
-            "GROW STRONG ENOUGH TO CHALLENGE MALAKOR.",
-            "",
-            "CHOOSE YOUR HERO WISELY,",
-            "FOR THE FATE OF THE KINGDOM RESTS IN YOUR HANDS."
-        ]
-        
-        y_pos = self.scroll_y
-        for line in story:
-            text = font_cinematic.render(line, True, (60, 40, 20))
-            text_rect = text.get_rect(center=(SCREEN_WIDTH//2, y_pos))
-            screen.blit(text, text_rect)
-            y_pos += 50
-        
-        # Draw decorative elements
-        pygame.draw.line(screen, (100, 80, 60), (100, 100), (100, SCREEN_HEIGHT - 100), 2)
-        pygame.draw.line(screen, (100, 80, 60), (SCREEN_WIDTH - 100, 100), (SCREEN_WIDTH - 100, SCREEN_HEIGHT - 100), 2)
-        
-        # Draw scroll top and bottom
-        pygame.draw.rect(screen, (150, 120, 80), (40, 40, SCREEN_WIDTH - 80, 20))
-        pygame.draw.rect(screen, (150, 120, 80), (40, SCREEN_HEIGHT - 60, SCREEN_WIDTH - 80, 20))
-        
+        # Draw parchment background.
+        screen.fill((42, 30, 24))
+        board = pygame.Rect(72, 56, SCREEN_WIDTH - 144, SCREEN_HEIGHT - 112)
+        inner = board.inflate(-74, -88)
+
+        pygame.draw.rect(screen, (76, 45, 28), board.move(8, 10), border_radius=12)
+        pygame.draw.rect(screen, (205, 181, 126), board, border_radius=12)
+        pygame.draw.rect(screen, (136, 91, 45), board, 5, border_radius=12)
+        pygame.draw.rect(screen, (232, 210, 154), inner, border_radius=8)
+        pygame.draw.rect(screen, (116, 76, 38), inner, 3, border_radius=8)
+
+        # Decorative scroll rods.
+        pygame.draw.rect(screen, (114, 74, 36), (44, 38, SCREEN_WIDTH - 88, 22), border_radius=8)
+        pygame.draw.rect(screen, (114, 74, 36), (44, SCREEN_HEIGHT - 60, SCREEN_WIDTH - 88, 22), border_radius=8)
+        pygame.draw.circle(screen, (88, 54, 28), (56, 49), 20)
+        pygame.draw.circle(screen, (88, 54, 28), (SCREEN_WIDTH - 56, 49), 20)
+        pygame.draw.circle(screen, (88, 54, 28), (56, SCREEN_HEIGHT - 49), 20)
+        pygame.draw.circle(screen, (88, 54, 28), (SCREEN_WIDTH - 56, SCREEN_HEIGHT - 49), 20)
+
+        # BEGINNER NOTE: The old opening scrolled one long list of text upward.
+        # On Android that could pass through the border and leave the screen
+        # before the player could read it. These pages are static, clipped to
+        # the parchment's inner rectangle, and changed by the timer instead.
+        page_index = min(len(self.story_pages) - 1, self.timer // self.story_page_duration)
+        page = self.story_pages[page_index]
+        page_timer = self.timer - page_index * self.story_page_duration
+        fade_in = min(255, page_timer * 10)
+        if page_index < len(self.story_pages) - 1 and page_timer > self.story_page_duration - 30:
+            fade_out = max(0, (self.story_page_duration - page_timer) * 10)
+        else:
+            fade_out = 255
+        page_alpha = min(self.text_alpha, fade_in, fade_out)
+
+        old_clip = screen.get_clip()
+        screen.set_clip(inner.inflate(-28, -22))
+
+        title = font_medium.render(page["title"].upper(), True, (78, 39, 20))
+        title.set_alpha(page_alpha)
+        title_rect = title.get_rect(center=(SCREEN_WIDTH // 2, inner.y + 58))
+        screen.blit(title, title_rect)
+
+        divider_y = inner.y + 100
+        divider_color = (130, 82, 40)
+        pygame.draw.line(screen, divider_color, (inner.x + 60, divider_y), (inner.right - 60, divider_y), 3)
+
+        y_pos = inner.y + 138
+        for paragraph in page["lines"]:
+            wrapped_lines = wrap_text_to_width(paragraph, font_small, inner.width - 110)
+            for wrapped_line in wrapped_lines:
+                text = font_small.render(wrapped_line, True, (55, 35, 22))
+                text.set_alpha(page_alpha)
+                text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, y_pos))
+                screen.blit(text, text_rect)
+                y_pos += 34
+            y_pos += 18
+
+        screen.set_clip(old_clip)
+
+        # Page dots tell the player the story is progressing without needing a
+        # fast scroll.
+        dot_y = inner.bottom - 42
+        start_x = SCREEN_WIDTH // 2 - (len(self.story_pages) - 1) * 16
+        for i in range(len(self.story_pages)):
+            color = (90, 52, 24) if i == page_index else (160, 122, 76)
+            pygame.draw.circle(screen, color, (start_x + i * 32, dot_y), 7)
+
         # Draw continue prompt
         if self.timer > 180 and pygame.time.get_ticks() % 1000 < 500:
-            prompt = font_medium.render("PRESS ENTER TO CONTINUE", True, (100, 60, 30))
-            screen.blit(prompt, (SCREEN_WIDTH//2 - prompt.get_width()//2, SCREEN_HEIGHT - 80))
+            prompt = font_small.render("TAP OR PRESS ANY KEY TO CONTINUE", True, (100, 60, 30))
+            screen.blit(prompt, (SCREEN_WIDTH//2 - prompt.get_width()//2, SCREEN_HEIGHT - 92))
     
     def skip(self):
         # Skip to the end of the cutscene
@@ -7431,6 +7536,10 @@ class Game:
                         if touched_button and self.handle_android_touch_command(touched_button["action"]):
                             mouse_click = False
                             continue
+
+                    if self.state == "opening_cutscene":
+                        self.opening_cutscene.skip()
+                        continue
                 
                 if event.type == pygame.KEYDOWN:
                     action = action_for_key(event.key)

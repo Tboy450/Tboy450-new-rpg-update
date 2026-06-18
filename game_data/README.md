@@ -73,7 +73,9 @@ Some strings must match across modules:
 
 `story.py` is the main beginner entry point for the first quest flow.
 
-- `OPENING_STORY_LINES`: title/opening story text shown before character selection.
+- `OPENING_STORY_LINES`: short title-scene text shown before character selection.
+  The longer readable parchment pages and their timing live in
+  `OpeningCutscene` in `main.py`, because that layout is tied to animation.
 - `TOWN_GUARD_STORY_LINES`: extra town-guard warning lines that point the player toward Lion Sage and Ghost Face.
 - `STORY_NPCS`: friendly story NPC placement records for the world map.
 - `STORY_AREA_DIALOGUES`: one-shot or repeat story scenes, including Lion Sage and Ghost Face.
