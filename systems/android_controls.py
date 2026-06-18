@@ -79,6 +79,7 @@ def build_android_touch_buttons(game, screen_width, screen_height):
     - Normal overworld/interior play: d-pad + USE/OK + MENU
     - Story dialogue or guard cutscene: NEXT + MENU
     - Journal: CLOSE button only
+    - Inventory: CLOSE button only
     - World map: CLOSE MAP button only
     - Pause menu: pause-menu buttons are drawn by `main.py`, so this helper
       returns an empty list
@@ -115,6 +116,19 @@ def build_android_touch_buttons(game, screen_width, screen_height):
                 CONFIRM,
                 (34, 54, 74),
                 (200, 220, 255),
+            )
+        )
+        return buttons
+
+    if getattr(game, "show_inventory", False):
+        buttons.append(
+            _make_button(
+                "close_inventory",
+                pygame.Rect(screen_width - 190, 82, 168, 48),
+                "CLOSE BAG",
+                CONFIRM,
+                (42, 50, 76),
+                (255, 215, 0),
             )
         )
         return buttons

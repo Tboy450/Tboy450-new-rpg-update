@@ -49,11 +49,15 @@ from .quests import TOWN_ERRANDS, get_town_errand, get_town_errand_count
 from .story import (
     OPENING_STORY_LINES,
     STORY_AREA_DIALOGUES,
+    STORY_ENEMY_REWARDS,
     STORY_NPCS,
+    STORY_REWARD_ITEMS,
     TOWN_GUARD_STORY_LINES,
     get_story_dialogue,
     get_story_dialogues_for_area,
+    get_story_enemy_reward,
     get_story_npcs_for_area,
+    get_story_reward_item,
 )
 
 # Outdoor town layout data.
@@ -92,7 +96,9 @@ __all__ = [
     "ITEM_SPAWN_TABLE",
     "OPENING_STORY_LINES",
     "STORY_AREA_DIALOGUES",
+    "STORY_ENEMY_REWARDS",
     "STORY_NPCS",
+    "STORY_REWARD_ITEMS",
     "TOWN_GUARD_TEMPLATE",
     "TOWN_GUARD_STORY_LINES",
     "TOWN_INTERIORS",
@@ -107,7 +113,9 @@ __all__ = [
     "create_town_guard",
     "get_story_dialogue",
     "get_story_dialogues_for_area",
+    "get_story_enemy_reward",
     "get_story_npcs_for_area",
+    "get_story_reward_item",
     "get_town_service_dialogue",
     "get_boss_profile",
     "get_element_profile",

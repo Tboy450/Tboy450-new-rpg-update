@@ -87,6 +87,7 @@ def build_save_data(game):
             "kills": game.player.kills,
             "items_collected": game.player.items_collected,
             "inventory": dict(game.player.inventory),
+            "story_items": dict(getattr(game.player, "story_items", {})),
             "last_boss_level": game.player.last_boss_level,
             "boss_cooldown": game.player.boss_cooldown,
             "special_unlocked": getattr(game.player, "special_unlocked", False),
@@ -104,6 +105,7 @@ def build_save_data(game):
         "story": {
             "seen_dialogues": sorted(getattr(game, "seen_story_dialogues", set())),
             "claimed_rewards": sorted(getattr(game, "claimed_story_rewards", set())),
+            "enemy_defeats": dict(getattr(game, "story_enemy_defeats", {})),
         },
     }
 

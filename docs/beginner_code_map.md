@@ -73,7 +73,7 @@ responsible for. Read this before editing if you are new to Python or this repo.
 Use this when you know the feature name but not the file.
 
 - Lion Sage story logic:
-  `game_data/story.py` stores his world-map placement, dialogue, repeat lines, reward, and the `unlock_special` flag.
+  `game_data/story.py` stores his world-map placement, dialogue, repeat lines, EXP/trophy reward, and the `unlock_special` flag.
 - Lion Sage art:
   `assets/processed/npcs/lion_sage.png` is the active sprite and portrait.
   `systems/assets.py` labels the path.
@@ -97,6 +97,16 @@ Use this when you know the feature name but not the file.
   `BattleScreen.__init__` only creates the `SPECIAL` button if that flag is true.
   `BattleScreen.combat_buttons_visible` decides whether those battle choices
   are visible or tucked behind the small `ACTIONS` toggle.
+- Story trophies and special enemy rewards:
+  `game_data/story.py` stores `STORY_REWARD_ITEMS` and
+  `STORY_ENEMY_REWARDS`. `Character.story_items` stores trophies and story
+  keepsakes separately from potion inventory. `Game.apply_story_enemy_reward`
+  gives Ghost Face a stronger first-clear reward and smaller repeat rewards
+  while still allowing the enemy to respawn.
+- Inventory screen:
+  `Game.draw_inventory` in `main.py` draws the pause-menu Inventory overlay.
+  `Game.build_pause_menu_entries` adds the Inventory button. `systems/android_controls.py`
+  adds the Android `CLOSE BAG` touch button when the inventory overlay is open.
 - Imported effect art tied to that flow:
   `assets/processed/effects/flame_tornado/` is the SPECIAL travel animation.
   `assets/processed/effects/fire_blast/` is the Mage impact animation.
@@ -128,6 +138,10 @@ beginner-facing control labels.
   `Game.build_pause_menu_entries`, `Game.toggle_pause_menu`, and `Game.activate_pause_menu_command` in `main.py`
 - Shared pause-menu drawing:
   `systems/story_ui.py`
+- Inventory overlay:
+  `Game.draw_inventory` in `main.py`. It currently shows consumables, story
+  trophies, and a planned equipment section. Add real weapon/armor equipment
+  here when that system is built.
 - Journal control text:
   `Game.draw_journal` in `main.py`
 - Story dialogue box, portrait, and `NEXT` prompt:

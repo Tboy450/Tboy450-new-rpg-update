@@ -6,6 +6,7 @@ Beginner note:
     - Which story NPCs should appear on the world map?
     - Which dialogue should start when the player enters a special area?
     - What extra town-guard lines should foreshadow those characters?
+    - Which trophies or story rewards should be granted by major story beats?
 
     The drawing, input handling, and reward code still live in `main.py`.
     Keeping the text here makes future story edits safer because a beginner can
@@ -93,13 +94,54 @@ STORY_AREA_DIALOGUES = {
             "Lion Sage: Study the enemy, then protect what still has a chance to grow.",
         ),
         "reward": {
-            "health": 35,
-            "mana": 30,
+            "exp": 260,
             "items": {"health": 1, "mana": 1},
             "score": 8,
             "reputation": 1,
             "unlock_special": True,
-            "message": "Lion Sage blessing: HP +{health}, MP +{mana}, potions stocked.",
+            "story_items": {"lion_sage_medallion": 1},
+            # This keeps the Sage's training from immediately throwing the
+            # player into a dragon ambush before they can choose the Ghost Face
+            # path or review the new SPECIAL attack.
+            "calm_boss_pressure": True,
+            "message": "Lion Sage blessing: {exp} EXP, SPECIAL awakened, medallion received.",
+        },
+    },
+}
+
+
+# Story item records are non-consumable inventory entries. They are displayed in
+# the pause-menu Inventory screen and saved by systems/save_load.py.
+STORY_REWARD_ITEMS = {
+    "lion_sage_medallion": {
+        "label": "Lion Sage Medallion",
+        "kind": "trophy",
+        "description": "A healer's sigil proving the Guardian Sage awakened your special technique.",
+    },
+    "ghost_face_mask_shard": {
+        "label": "Ghost Face Mask Shard",
+        "kind": "trophy",
+        "description": "A cracked white-mask fragment from your first victory in the northern pines.",
+    },
+}
+
+
+# Special map enemies can respawn, but their first defeat should matter more
+# than repeat farming. These rewards are read by Game.apply_story_enemy_reward.
+STORY_ENEMY_REWARDS = {
+    "ghost_face": {
+        "first": {
+            "exp": 135,
+            "score": 35,
+            "items": {"mana": 1},
+            "story_items": {"ghost_face_mask_shard": 1},
+            "message": "Ghost Face first clear: {exp} EXP, {score} score, Mask Shard claimed.",
+        },
+        "repeat": {
+            "exp": 40,
+            "score": 10,
+            "items": {"health": 1},
+            "message": "Ghost Face fades again: {exp} EXP, {score} score, small supply drop.",
         },
     },
 }
@@ -129,3 +171,16 @@ def get_story_npcs_for_area(area_x, area_y):
         for key, npc in STORY_NPCS.items()
         if tuple(npc.get("area", ())) == (area_x, area_y)
     ]
+
+
+def get_story_reward_item(item_key):
+    """Return display data for one trophy or story inventory item."""
+    return STORY_REWARD_ITEMS.get(item_key)
+
+
+def get_story_enemy_reward(enemy_type, repeat=False):
+    """Return first-clear or repeat reward data for a special story enemy."""
+    rewards = STORY_ENEMY_REWARDS.get(enemy_type)
+    if not rewards:
+        return None
+    return rewards["repeat" if repeat else "first"]

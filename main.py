@@ -85,7 +85,9 @@ from game_data import (
     get_progression_status,
     get_story_dialogue,
     get_story_dialogues_for_area,
+    get_story_enemy_reward,
     get_story_npcs_for_area,
+    get_story_reward_item,
     get_town_errand,
     get_town_errand_count,
     get_town_service_dialogue,
@@ -253,8 +255,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.19"
-APP_NUMERIC_VERSION = 20
+APP_VERSION = "0.1.20"
+APP_NUMERIC_VERSION = 21
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -1945,6 +1947,10 @@ class Character:
         self.kills = 0
         self.items_collected = 0
         self.inventory = {"health": 2, "mana": 1}
+        # Non-consumable story inventory. Potions stay in `inventory`; trophies
+        # and quest keepsakes live here so they can be shown without being used
+        # up in battle.
+        self.story_items = {}
         self.animation_offset = 0
         self.attack_animation = 0
         self.hit_animation = 0
@@ -2677,6 +2683,19 @@ class Character:
 
         self.inventory[item_type] = current - 1
         return True
+
+    def add_story_item(self, item_key, amount=1):
+        """Add a trophy or story keepsake to the player's permanent inventory."""
+        amount = max(0, int(amount))
+        if amount <= 0:
+            return 0
+        current = self.story_items.get(item_key, 0)
+        self.story_items[item_key] = current + amount
+        return amount
+
+    def get_story_item_count(self, item_key):
+        """Return how many copies of a trophy/story item the player owns."""
+        return self.story_items.get(item_key, 0)
         
     def take_damage(self, damage):
         actual_damage = max(1, damage - self.defense // 3)
@@ -3936,7 +3955,6 @@ class BattleScreen:
             pygame.draw.rect(temp_surface, UI_BG, (180, 458, max(90, condition_text.get_width() + 16), 24), border_radius=4)
             pygame.draw.rect(temp_surface, self.player_condition["color"], (180, 458, max(90, condition_text.get_width() + 16), 24), 2, border_radius=4)
             temp_surface.blit(condition_text, (188, 462))
-            self.player_condition_timer -= 1
         # Only draw enemy health bar and name if not a boss dragon
         if not (hasattr(self.enemy, 'enemy_type') and "boss_dragon" in self.enemy.enemy_type):
             enemy_health_width = 150 * (self.enemy.health / max(1, self.enemy.max_health))
@@ -3974,7 +3992,7 @@ class BattleScreen:
             temp_surface.blit(log_text, (120, 70 + i * 30))
         
         if self.waiting_for_continue:
-            continue_text = font_small.render("(Press ENTER to continue...)", True, (255, 215, 0))
+            continue_text = font_small.render("(Tap NEXT or press ENTER...)", True, (255, 215, 0))
             temp_surface.blit(continue_text, (120, 70 + self.log_lines_per_page * 30))
             self.battle_continue_button.selected = True
             self.battle_continue_button.draw(temp_surface)
@@ -4041,35 +4059,45 @@ class BattleScreen:
             temp_surface.blit(overlay, (0, 0))
             
             if self.result == "win":
-                exp_gain = getattr(self.enemy, "exp_reward", 25)
                 summary = [
                     "VICTORY!",
-                    f"EXP GAINED: {exp_gain}",
+                    "Rewards apply after continue.",
                     f"KILLS: {self.player.kills}",
-                    "Press ENTER to continue..."
+                    "Tap NEXT or press ENTER..."
                 ]
             elif self.result == "lose":
                 summary = [
                     "DEFEAT...",
-                    "Press ENTER to continue..."
+                    "Tap NEXT or press ENTER..."
                 ]
             elif self.result == "escape":
                 summary = [
                     "You Escaped!",
-                    "Press ENTER to continue..."
+                    "Tap NEXT or press ENTER..."
                 ]
                 
             for i, line in enumerate(summary):
                 text = font_large.render(line, True, TEXT_COLOR)
                 temp_surface.blit(text, (SCREEN_WIDTH//2 - text.get_width()//2, 250 + i*60))
+            self.battle_continue_button.selected = True
+            self.battle_continue_button.draw(temp_surface)
         
         # Draw the temporary surface to the screen
         surface.blit(temp_surface, (0, 0))
 
     def update(self):
+        if self.battle_ended:
+            # Keep drawing the summary until the player presses NEXT/ENTER.
+            # Game.run resolves the reward only after show_summary is false.
+            return not self.show_summary
+
         self.player.update_animation()
         self.enemy.update_animation()
         self.particle_system.update()
+        if self.player_condition_timer > 0:
+            self.player_condition_timer -= 1
+            if self.player_condition_timer <= 0:
+                self.player_condition = None
         for fx in self.enemy_attack_fx:
             fx["timer"] += 1
         self.enemy_attack_fx = [fx for fx in self.enemy_attack_fx if fx["timer"] <= fx["duration"]]
@@ -4218,13 +4246,13 @@ class BattleScreen:
             self.result = "win"
             self.add_log("You defeated the enemy!")
             self.show_summary = True
-            return True
+            return False
         elif self.player.health <= 0:
             self.battle_ended = True
             self.result = "lose"
             self.add_log("You were defeated...")
             self.show_summary = True
-            return True
+            return False
         
         # Update elemental effect
         if self.elemental_effect_timer > 0:
@@ -4452,29 +4480,23 @@ class BattleScreen:
         )
     
     def handle_input(self, event, game=None):
+        if self.battle_ended and self.show_summary:
+            if event.type == pygame.KEYDOWN and (event.key == pygame.K_RETURN or event.key == pygame.K_SPACE):
+                self.waiting_for_continue = False
+                self.show_summary = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                self.waiting_for_continue = False
+                self.show_summary = False
+            return
+
         if self.waiting_for_continue:
             if event.type == pygame.KEYDOWN and (event.key == pygame.K_RETURN or event.key == pygame.K_SPACE):
                 self.waiting_for_continue = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 self.waiting_for_continue = False
             return
-            
-        if self.battle_ended and self.show_summary:
-            if event.type == pygame.KEYDOWN and (event.key == pygame.K_RETURN or event.key == pygame.K_SPACE):
-                if self.result == "escape" and game:
-                    self.show_summary = False
-                    game.state = "overworld"
-                    game.battle_screen = None
-                else:
-                    self.show_summary = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if self.result == "escape" and game:
-                    self.show_summary = False
-                    game.state = "overworld"
-                    game.battle_screen = None
-                else:
-                    self.show_summary = False
-        elif self.state == "player_turn" and not self.battle_ended and self.action_cooldown == 0:
+
+        if self.state == "player_turn" and not self.battle_ended and self.action_cooldown == 0:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_TAB or event.key == pygame.K_h:
                     self.toggle_combat_buttons()
@@ -5352,6 +5374,7 @@ class Game:
         self.boss_defeated = False
         self.show_world_map = False
         self.show_journal = False
+        self.show_inventory = False
         self.show_pause_menu = False
         self.pause_menu_buttons = []
         self.pickup_message = None
@@ -5379,6 +5402,7 @@ class Game:
         # area conversations and one-time Lion Sage rewards from repeating.
         self.seen_story_dialogues = set()
         self.claimed_story_rewards = set()
+        self.story_enemy_defeats = {}
         self.active_story_dialogue_key = None
         self.active_story_dialogue = None
         self.active_story_lines = []
@@ -5665,6 +5689,7 @@ class Game:
         ]
         if self.state == "overworld":
             entries.append(("map", "WORLD MAP"))
+        entries.append(("inventory", "INVENTORY"))
         entries.extend(
             [
                 ("save", "SAVE GAME"),
@@ -5715,6 +5740,7 @@ class Game:
         self.show_pause_menu = not self.show_pause_menu
         if self.show_pause_menu:
             self.show_journal = False
+            self.show_inventory = False
             self.show_world_map = False
             self.rebuild_pause_menu_buttons()
         else:
@@ -5730,6 +5756,14 @@ class Game:
 
         if command == "journal":
             self.show_journal = True
+            self.show_inventory = False
+            self.show_world_map = False
+            self.close_pause_menu(play_sound=True)
+            return
+
+        if command == "inventory":
+            self.show_inventory = True
+            self.show_journal = False
             self.show_world_map = False
             self.close_pause_menu(play_sound=True)
             return
@@ -5737,6 +5771,7 @@ class Game:
         if command == "map":
             self.show_world_map = True
             self.show_journal = False
+            self.show_inventory = False
             self.close_pause_menu(play_sound=True)
             return
 
@@ -5758,6 +5793,7 @@ class Game:
         if command == "main_menu":
             self.close_pause_menu(play_sound=False)
             self.show_journal = False
+            self.show_inventory = False
             self.show_world_map = False
             self.state = "start_menu"
             if self.SFX_CLICK:
@@ -5825,6 +5861,7 @@ class Game:
             if field in player_data:
                 setattr(self.player, field, player_data[field])
         self.player.inventory = dict(player_data.get("inventory", self.player.inventory))
+        self.player.story_items = dict(player_data.get("story_items", getattr(self.player, "story_items", {})))
         self.player.town_service_claims = {
             (claim[0], claim[1])
             for claim in player_data.get("town_service_claims", [])
@@ -5846,6 +5883,10 @@ class Game:
         story_data = data.get("story", {})
         self.seen_story_dialogues = set(story_data.get("seen_dialogues", []))
         self.claimed_story_rewards = set(story_data.get("claimed_rewards", []))
+        self.story_enemy_defeats = {
+            str(enemy_type): int(count)
+            for enemy_type, count in story_data.get("enemy_defeats", {}).items()
+        }
         self.active_story_dialogue_key = None
         self.active_story_dialogue = None
         self.active_story_lines = []
@@ -5858,6 +5899,7 @@ class Game:
         self.interior_return_position = None
         self.show_world_map = False
         self.show_journal = False
+        self.show_inventory = False
         self.show_pause_menu = False
         self.pause_menu_buttons = []
         self.npc_dialogue_index = 0
@@ -5956,6 +5998,7 @@ class Game:
         self.active_story_repeat = bool(repeat)
         self.show_world_map = False
         self.show_journal = False
+        self.show_inventory = False
         self.show_pause_menu = False
         self.pause_menu_buttons = []
         if self.SFX_ENTER:
@@ -6007,8 +6050,13 @@ class Game:
             return
 
         self.claimed_story_rewards.add(dialogue_key)
+        exp_gain = int(reward.get("exp", 0))
         health_gain = int(reward.get("health", 0))
         mana_gain = int(reward.get("mana", 0))
+        level_before = self.player.level
+
+        if exp_gain:
+            self.player.gain_exp(exp_gain)
 
         if health_gain:
             self.player.health = min(self.player.max_health, self.player.health + health_gain)
@@ -6020,15 +6068,55 @@ class Game:
             self.town_reputation += int(reward["reputation"])
         for item_type, amount in reward.get("items", {}).items():
             self.player.add_inventory_item(item_type, int(amount))
+        for item_key, amount in reward.get("story_items", {}).items():
+            self.player.add_story_item(item_key, int(amount))
         if reward.get("unlock_special"):
             self.player.special_unlocked = True
+        if reward.get("calm_boss_pressure") and self.player.level > level_before:
+            # BEGINNER NOTE: Story training can grant one or more levels. We do
+            # not want the automatic dragon-boss trigger to fire the moment the
+            # Lion Sage dialogue closes, because the Sage is also pointing the
+            # player toward Ghost Face. Mark the hero as recovering so the next
+            # boss waits until the player trains again.
+            self.player.just_leveled_up = False
+            self.player.boss_cooldown = True
 
         message_template = reward.get("message", "Story reward received.")
         self.set_town_service_message(
-            message_template.format(health=health_gain, mana=mana_gain)
+            message_template.format(exp=exp_gain, health=health_gain, mana=mana_gain)
         )
         if self.SFX_LEVELUP:
             self.SFX_LEVELUP.play()
+
+    def apply_story_enemy_reward(self, enemy):
+        """Apply first-clear or repeat rewards for respawning story enemies.
+
+        Beginner note:
+            Story enemies such as Ghost Face are allowed to respawn. The defeat
+            count only decides which reward table is used: first-clear rewards
+            can grant trophies, while repeat clears give smaller farm rewards.
+        """
+        enemy_type = getattr(enemy, "enemy_type", None)
+        defeat_count = self.story_enemy_defeats.get(enemy_type, 0)
+        reward = get_story_enemy_reward(enemy_type, repeat=defeat_count > 0)
+        if not reward:
+            return False
+
+        self.story_enemy_defeats[enemy_type] = defeat_count + 1
+        exp_gain = int(reward.get("exp", 0))
+        score_gain = int(reward.get("score", 0))
+        if exp_gain:
+            self.player.gain_exp(exp_gain)
+        if score_gain:
+            self.score += score_gain
+        for item_type, amount in reward.get("items", {}).items():
+            self.player.add_inventory_item(item_type, int(amount))
+        for item_key, amount in reward.get("story_items", {}).items():
+            self.player.add_story_item(item_key, int(amount))
+
+        message = reward.get("message", "Story enemy reward received.")
+        self.set_town_service_message(message.format(exp=exp_gain, score=score_gain))
+        return True
 
     def trigger_area_story_dialogue(self, current_area):
         """Start one-shot dialogue when entering a special world area."""
@@ -6476,6 +6564,75 @@ class Game:
         line_y = y + 14
         for line in controls:
             line_y = self.draw_journal_line(screen, line, left_x + 14, line_y, (210, 210, 225))
+
+    def draw_inventory(self, screen):
+        """Draw the pause-menu Inventory screen.
+
+        Beginner note:
+            This is not the future equipment system yet. It gives the player a
+            readable place to see consumable potions and permanent story rewards
+            such as trophies. Weapons and armor can later plug into the planned
+            equipment panel without crowding the quest journal.
+        """
+        if not self.player:
+            return
+
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 188))
+        screen.blit(overlay, (0, 0))
+
+        panel = pygame.Rect(110, 58, 780, 560)
+        pygame.draw.rect(screen, UI_BG, panel, border_radius=12)
+        pygame.draw.rect(screen, (255, 215, 0), panel, 3, border_radius=12)
+
+        title = font_large.render("INVENTORY", True, (255, 215, 0))
+        screen.blit(title, (panel.centerx - title.get_width() // 2, panel.y + 18))
+
+        left_x = panel.x + 34
+        right_x = panel.x + 410
+        y = panel.y + 92
+
+        consumables_panel = pygame.Rect(left_x, y, 330, 150)
+        pygame.draw.rect(screen, (20, 20, 30), consumables_panel, border_radius=8)
+        pygame.draw.rect(screen, TEXT_COLOR, consumables_panel, 2, border_radius=8)
+        line_y = self.draw_journal_line(screen, "CONSUMABLES", left_x + 14, y + 12, TEXT_COLOR, font_small)
+        line_y = self.draw_journal_line(screen, f"Health potions: {self.player.get_inventory_count('health')}", left_x + 14, line_y)
+        line_y = self.draw_journal_line(screen, f"Mana tonics: {self.player.get_inventory_count('mana')}", left_x + 14, line_y)
+        self.draw_journal_line(screen, "Used from ITEM during battle.", left_x + 14, line_y, (210, 210, 225))
+
+        equipment_panel = pygame.Rect(left_x, y + 172, 330, 150)
+        pygame.draw.rect(screen, (20, 20, 30), equipment_panel, border_radius=8)
+        pygame.draw.rect(screen, (180, 180, 220), equipment_panel, 2, border_radius=8)
+        line_y = self.draw_journal_line(screen, "EQUIPMENT", left_x + 14, y + 184, (180, 180, 220), font_small)
+        line_y = self.draw_journal_line(screen, "Weapon: starter training gear", left_x + 14, line_y)
+        line_y = self.draw_journal_line(screen, "Armor: class starter outfit", left_x + 14, line_y)
+        self.draw_journal_line(screen, "Weapon/armor stats are planned next.", left_x + 14, line_y, (210, 210, 225))
+
+        trophy_panel = pygame.Rect(right_x, y, 330, 322)
+        pygame.draw.rect(screen, (20, 20, 30), trophy_panel, border_radius=8)
+        pygame.draw.rect(screen, (255, 215, 0), trophy_panel, 2, border_radius=8)
+        line_y = self.draw_journal_line(screen, "TROPHIES / STORY ITEMS", right_x + 14, y + 12, (255, 215, 0), font_small)
+        story_items = getattr(self.player, "story_items", {})
+        if not story_items:
+            self.draw_journal_line(screen, "No trophies yet.", right_x + 14, line_y, (210, 210, 225))
+        else:
+            for item_key, count in sorted(story_items.items()):
+                item = get_story_reward_item(item_key) or {}
+                label = item.get("label", item_key.replace("_", " ").title())
+                kind = item.get("kind", "misc").upper()
+                count_text = f" x{count}" if count > 1 else ""
+                line_y = self.draw_journal_line(screen, f"{kind}: {label}{count_text}", right_x + 14, line_y, (245, 235, 180))
+                description = item.get("description", "")
+                if description:
+                    for wrapped in wrap_text_to_width(description, font_tiny, trophy_panel.width - 28):
+                        line_y = self.draw_journal_line(screen, wrapped, right_x + 14, line_y, (210, 210, 225))
+                line_y += 4
+                if line_y > trophy_panel.bottom - 34:
+                    self.draw_journal_line(screen, "More items hidden; inventory paging planned.", right_x + 14, line_y, (255, 170, 120))
+                    break
+
+        prompt = font_tiny.render("Tap CLOSE BAG / press ENTER or ESC to close", True, (210, 210, 225))
+        screen.blit(prompt, (panel.centerx - prompt.get_width() // 2, panel.bottom - 34))
 
     def draw_interior_prop(self, screen, prop, room):
         kind = prop["kind"]
@@ -7048,7 +7205,7 @@ class Game:
             return
 
         elif self.state == "interior" and self.player:
-            if self.show_pause_menu:
+            if self.show_pause_menu or self.show_inventory:
                 return
             self.game_time += 1
             self.player.update_animation()
@@ -7056,7 +7213,7 @@ class Game:
                 self.town_service_message_timer -= 1
                 
         elif self.state == "overworld" and self.player:
-            if self.show_pause_menu:
+            if self.show_pause_menu or self.show_inventory:
                 return
             # Main gameplay area with movement and exploration
             self.game_time += 1
@@ -7622,6 +7779,9 @@ class Game:
         if self.show_journal and self.state in ["overworld", "interior"] and self.player:
             self.draw_journal(screen)
 
+        if self.show_inventory and self.state in ["overworld", "interior"] and self.player:
+            self.draw_inventory(screen)
+
         if self.active_story_dialogue and self.state == "overworld":
             self.draw_story_dialogue(screen)
 
@@ -7791,6 +7951,13 @@ class Game:
                                 self.SFX_CLICK.play()
                         continue
 
+                    if self.show_inventory and self.state in ["overworld", "interior"]:
+                        if action in [CANCEL, CONFIRM, INTERACT, JOURNAL, MAP]:
+                            self.show_inventory = False
+                            if self.SFX_CLICK:
+                                self.SFX_CLICK.play()
+                        continue
+
                     if self.show_world_map and self.state == "overworld":
                         if action in [CANCEL, CONFIRM, INTERACT, MAP]:
                             self.show_world_map = False
@@ -7800,6 +7967,7 @@ class Game:
 
                     if action == JOURNAL and self.state in ["overworld", "interior"] and self.player:
                         self.show_journal = True
+                        self.show_inventory = False
                         self.show_world_map = False
                         if self.SFX_CLICK:
                             self.SFX_CLICK.play()
@@ -8014,9 +8182,11 @@ class Game:
                             continue
                     else:
                         if self.battle_screen.result == "win":
+                            defeated_enemy = self.battle_screen.enemy
                             self.player.kills += 1
-                            self.player.gain_exp(25)
-                            self.score += 10
+                            if not self.apply_story_enemy_reward(defeated_enemy):
+                                self.player.gain_exp(25)
+                                self.score += 10
                             self.start_transition()
                             print(f"Battle ended - transitioning to overworld")
                             self.state = "overworld"
@@ -8091,6 +8261,7 @@ class Game:
         self.boss_defeated = False
         self.show_world_map = False
         self.show_journal = False
+        self.show_inventory = False
         self.show_pause_menu = False
         self.pause_menu_buttons = []
         self.pickup_message = None
@@ -8111,6 +8282,7 @@ class Game:
         self.inspected_town_details = set()
         self.seen_story_dialogues = set()
         self.claimed_story_rewards = set()
+        self.story_enemy_defeats = {}
         self.active_story_dialogue_key = None
         self.active_story_dialogue = None
         self.active_story_lines = []

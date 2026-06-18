@@ -79,12 +79,14 @@ Some strings must match across modules:
 - `TOWN_GUARD_STORY_LINES`: extra town-guard warning lines that point the player toward Lion Sage and Ghost Face.
 - `STORY_NPCS`: friendly story NPC placement records for the world map.
 - `STORY_AREA_DIALOGUES`: one-shot or repeat story scenes, including Lion Sage and Ghost Face.
+- `STORY_REWARD_ITEMS`: permanent trophies and story keepsakes shown in the Inventory screen.
+- `STORY_ENEMY_REWARDS`: first-clear and repeat-clear rewards for respawning story enemies.
 
 Current first-story path:
 
 - The guard warns about the dragon and sends the player toward Lion Sage.
-- Lion Sage gives the first real quest direction and grants the first SPECIAL unlock.
-- Ghost Face uses area-enter dialogue in the forest instead of a town-service NPC flow.
+- Lion Sage gives the first real quest direction, a large EXP training reward, a trophy, and the first SPECIAL unlock.
+- Ghost Face uses one-time area-enter dialogue in the forest, can respawn, and gives a larger first-clear reward than repeat clears.
 
 ## Asset Intake
 

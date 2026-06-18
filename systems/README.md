@@ -126,6 +126,8 @@ This module is responsible for turning live game objects into JSON-safe data.
 - `save_game_state(game)` writes that JSON-safe data to disk.
 - `load_game_state()` reads the JSON file and checks the save version.
 - `Game.load_saved_game` in `main.py` applies the loaded values back onto the live game objects.
+- Story trophies live on `Character.story_items` and are saved under the player data.
+- Story enemy first-clear/repeat counts live on `Game.story_enemy_defeats` and are saved under story data.
 
 When adding a new saved feature:
 
