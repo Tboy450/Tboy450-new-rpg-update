@@ -252,8 +252,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.14"
-APP_NUMERIC_VERSION = 15
+APP_VERSION = "0.1.15"
+APP_NUMERIC_VERSION = 16
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -3061,6 +3061,18 @@ class BattleScreen:
         self.run_button_index = len(self.buttons)
         self.buttons.append(Button(run_x, 525, 170, 50, "RUN"))
         self.selected_option = 0
+
+        # BEGINNER NOTE: Android battle controls are different from the
+        # overworld d-pad. Battle choices belong to BattleScreen because this
+        # class knows which actions are currently legal. The small toggle stays
+        # out of the way and shows/hides the larger action buttons.
+        self.combat_buttons_visible = True
+        self.combat_toggle_button = Button(
+            SCREEN_WIDTH - 150, 166, 128, 42, "HIDE",
+            (135, 95, 35), (255, 220, 120)
+        )
+        self.update_combat_toggle_button_label()
+
         self.battle_ended = False
         self.result = None
         self.transition_alpha = 0
@@ -3106,6 +3118,29 @@ class BattleScreen:
                 f"{self.enemy.name} descends!",
                 getattr(self.enemy, "boss_hint", "A dragon boss blocks your path."),
             ]
+
+    def update_combat_toggle_button_label(self):
+        """Refresh the small battle touch toggle label.
+
+        Beginner note:
+            `Button` renders its text once when it is created. When we change
+            the label from HIDE to ACTIONS, we also rebuild the rendered text
+            surface and re-center it inside the same rectangle.
+        """
+        label = "HIDE" if self.combat_buttons_visible else "ACTIONS"
+        if self.combat_toggle_button.text == label:
+            return
+
+        self.combat_toggle_button.text = label
+        self.combat_toggle_button.text_surf = font_small.render(label, True, TEXT_COLOR)
+        self.combat_toggle_button.text_rect = self.combat_toggle_button.text_surf.get_rect(
+            center=self.combat_toggle_button.rect.center
+        )
+
+    def toggle_combat_buttons(self):
+        """Show or hide the large battle action buttons."""
+        self.combat_buttons_visible = not self.combat_buttons_visible
+        self.update_combat_toggle_button_label()
 
     def get_special_attack_name(self):
         """Return the class-specific SPECIAL attack name.
@@ -3785,25 +3820,33 @@ class BattleScreen:
             temp_surface.blit(continue_text, (120, 70 + self.log_lines_per_page * 30))
         
         # Draw buttons
-        if self.state == "player_turn" and not self.waiting_for_continue:
-            for i, button in enumerate(self.buttons):
-                button.selected = (i == self.selected_option)
-                button.draw(temp_surface)
-            bag_text = font_tiny.render(
-                f"HP x{self.player.get_inventory_count('health')}  MP x{self.player.get_inventory_count('mana')}",
-                True, (220, 220, 180)
-            )
-            bag_rect = bag_text.get_rect(center=(self.buttons[2].rect.centerx, self.buttons[2].rect.bottom + 14))
-            temp_surface.blit(bag_text, bag_rect)
+        if self.state == "player_turn" and not self.waiting_for_continue and not self.battle_ended:
+            # BEGINNER NOTE: This compact toggle is always available on the
+            # player's turn. Android players can tap ACTIONS to reveal the big
+            # choices, then tap HIDE to clear the lower battlefield view.
+            self.update_combat_toggle_button_label()
+            self.combat_toggle_button.selected = False
+            self.combat_toggle_button.draw(temp_surface)
 
-            if self.special_button_index is not None:
-                special_text = font_tiny.render(f"MP {SPECIAL_ATTACK_MANA_COST}", True, (255, 190, 90))
-                special_rect = special_text.get_rect(center=(self.buttons[self.special_button_index].rect.centerx, self.buttons[self.special_button_index].rect.bottom + 14))
-                temp_surface.blit(special_text, special_rect)
+            if self.combat_buttons_visible:
+                for i, button in enumerate(self.buttons):
+                    button.selected = (i == self.selected_option)
+                    button.draw(temp_surface)
+                bag_text = font_tiny.render(
+                    f"HP x{self.player.get_inventory_count('health')}  MP x{self.player.get_inventory_count('mana')}",
+                    True, (220, 220, 180)
+                )
+                bag_rect = bag_text.get_rect(center=(self.buttons[2].rect.centerx, self.buttons[2].rect.bottom + 14))
+                temp_surface.blit(bag_text, bag_rect)
 
-            escape_text = font_tiny.render(f"ESC {int(self.get_escape_chance() * 100)}%", True, (220, 220, 180))
-            escape_rect = escape_text.get_rect(center=(self.buttons[self.run_button_index].rect.centerx, self.buttons[self.run_button_index].rect.bottom + 14))
-            temp_surface.blit(escape_text, escape_rect)
+                if self.special_button_index is not None:
+                    special_text = font_tiny.render(f"MP {SPECIAL_ATTACK_MANA_COST}", True, (255, 190, 90))
+                    special_rect = special_text.get_rect(center=(self.buttons[self.special_button_index].rect.centerx, self.buttons[self.special_button_index].rect.bottom + 14))
+                    temp_surface.blit(special_text, special_rect)
+
+                escape_text = font_tiny.render(f"ESC {int(self.get_escape_chance() * 100)}%", True, (220, 220, 180))
+                escape_rect = escape_text.get_rect(center=(self.buttons[self.run_button_index].rect.centerx, self.buttons[self.run_button_index].rect.bottom + 14))
+                temp_surface.blit(escape_text, escape_rect)
         
         # Draw damage effect
         if self.damage_effect_timer > 0:
@@ -4040,6 +4083,8 @@ class BattleScreen:
             if self.roll_player_dodge():
                 self.add_log(f"You dodge {self.enemy.name}'s attack!")
                 self.state = "player_turn"
+                self.combat_buttons_visible = True
+                self.update_combat_toggle_button_label()
                 self.add_log("It's your turn!")
                 self.action_cooldown = self.action_delay
                 return False
@@ -4082,6 +4127,8 @@ class BattleScreen:
             self.pending_elemental_effect = self.enemy.enemy_type
             self.elemental_effect_timer = 20
             self.state = "player_turn"
+            self.combat_buttons_visible = True
+            self.update_combat_toggle_button_label()
             self.add_log("It's your turn!")
             self.action_cooldown = self.action_delay
             
@@ -4269,6 +4316,14 @@ class BattleScreen:
                     self.show_summary = False
         elif self.state == "player_turn" and not self.battle_ended and self.action_cooldown == 0:
             if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_TAB or event.key == pygame.K_h:
+                    self.toggle_combat_buttons()
+                    if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
+                    return
+
+                if not self.combat_buttons_visible:
+                    return
+
                 # BEGINNER NOTE: Use len(self.buttons) instead of hardcoding 5.
                 # That way the left/right selection still works if another
                 # battle button is added later.
@@ -4290,6 +4345,17 @@ class BattleScreen:
                     self.handle_action(game)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = get_game_mouse_pos()
+                # BEGINNER NOTE: Check the small toggle before the large action
+                # buttons. That prevents a tap on HIDE/ACTIONS from also
+                # activating a battle command in the same frame.
+                if self.combat_toggle_button.rect.collidepoint(mouse_pos):
+                    self.toggle_combat_buttons()
+                    if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
+                    return
+
+                if not self.combat_buttons_visible:
+                    return
+
                 for i, button in enumerate(self.buttons):
                     if button.rect.collidepoint(mouse_pos):
                         self.selected_option = i
@@ -4359,6 +4425,13 @@ class BattleScreen:
                 lambda: self.add_log("You attempt to escape..."),
                 lambda: self.execute_run()
             ]
+
+        if self.action_steps:
+            # BEGINNER NOTE: Once a real action has been chosen, hide the big
+            # battle buttons until the next player turn. The small ACTIONS
+            # toggle remains available when control returns to the player.
+            self.combat_buttons_visible = False
+            self.update_combat_toggle_button_label()
     
 
     

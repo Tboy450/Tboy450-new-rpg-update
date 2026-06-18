@@ -50,6 +50,9 @@ Current touch-layout rules:
 - Normal overworld/interior play uses a d-pad, `USE`, `OK`, and `MENU`.
 - Story dialogue and the town-guard cutscene swap that layout for `NEXT` + `MENU`.
 - Journal and world map use close buttons instead of the movement pad.
+- Battle action buttons are owned by `BattleScreen` in `main.py`, because
+  combat needs to know whether `SPECIAL` is unlocked and which turn is active.
+  The battle screen now has its own small `ACTIONS` / `HIDE` toggle.
 - The shared pause menu still runs game actions through `main.py`, but the
   overlay drawing now lives in `systems/story_ui.py`.
 

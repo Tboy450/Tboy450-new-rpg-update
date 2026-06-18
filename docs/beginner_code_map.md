@@ -90,6 +90,8 @@ Use this when you know the feature name but not the file.
   `Game.apply_story_reward` in `main.py` sets `player.special_unlocked = True`.
   `systems/save_load.py` stores that flag in the save file.
   `BattleScreen.__init__` only creates the `SPECIAL` button if that flag is true.
+  `BattleScreen.combat_buttons_visible` decides whether those battle choices
+  are visible or tucked behind the small `ACTIONS` toggle.
 - Imported effect art tied to that flow:
   `assets/processed/effects/flame_tornado/` is the SPECIAL travel animation.
   `assets/processed/effects/fire_blast/` is the Mage impact animation.
@@ -108,6 +110,10 @@ beginner-facing control labels.
   `is_touch_ui_runtime` in `main.py`. It enables phone controls through Android
   platform values or Android system paths, and can be forced with
   `DRAGONS_LAIR_FORCE_TOUCH=1` for testing.
+- Battle touch actions:
+  `BattleScreen` in `main.py` owns these instead of `systems/android_controls.py`.
+  Combat has its own `ACTIONS` / `HIDE` toggle because the button list changes
+  when Lion Sage unlocks `SPECIAL`.
 - Shared pause-menu logic and button commands:
   `Game.build_pause_menu_entries`, `Game.toggle_pause_menu`, and `Game.activate_pause_menu_command` in `main.py`
 - Shared pause-menu drawing:

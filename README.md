@@ -103,6 +103,9 @@ Android touch controls:
 - `MENU`: opens the shared pause menu.
 - `USE`: interact, use town services, or advance town cutscene dialogue.
 - `OK`: confirm, talk, inspect, or advance story dialogue.
+- Battle uses a small `ACTIONS` / `HIDE` button near the upper-right of the
+  battle screen. Tap `ACTIONS` to show attack buttons, tap an attack to choose
+  it, and tap `HIDE` when you want the lower battlefield clear.
 - Pause-menu buttons expose `Journal`, `Map`, `Save`, and `Load` without a hardware keyboard.
 
 The default save file is stored at `~/.dragons_lair_rpg_save.json`. Set `DRAGONS_LAIR_SAVE` to choose a different save path.
