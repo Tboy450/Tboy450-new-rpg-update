@@ -36,7 +36,6 @@ game-ready files under `assets/processed/<category>/`.
 Active UI asset:
 
 - `assets/processed/ui/dragon_app_icon.png`: Android launcher icon used by `buildozer.spec`.
-- `assets/processed/ui/title_dragon.png`: imported title-screen dragon used by `Dragon.draw` in `main.py`. The old procedural dragon remains as fallback code.
 
 Active character assets:
 
@@ -57,7 +56,7 @@ Active NPC assets:
 Feature map:
 
 - Lion Sage story logic lives in `game_data/story.py`, but his source and processed art live under `assets/source/npcs/` and `assets/processed/npcs/`.
-- The title dragon is a UI/title asset, so its files live under `assets/source/ui/` and `assets/processed/ui/`.
+- The start-menu dragon is currently procedural code in `main.py`. The previous generated title dragon was archived under `archive/assets/ui/` because it did not fit the active fire animation.
 - The guard is a story-facing NPC visually, so his files live under `assets/source/npcs/` and `assets/processed/npcs/`, even though he appears in the town intro cutscene.
 - The first SPECIAL unlock uses both story data and effect assets:
   `game_data/story.py` grants it, while `assets/processed/effects/flame_tornado/` and `assets/processed/effects/fire_blast/` provide the related imported battle visuals.
@@ -78,7 +77,6 @@ Active source files:
 - `assets/source/effects/mage_magic_fireball.gif`: raw Mage normal magic projectile source.
 - `assets/source/npcs/lion_sage_generated_chroma.png`: generated Lion Sage source on chroma background.
 - `assets/source/npcs/town_guard_generated_chroma.png`: generated town guard source on chroma background.
-- `assets/source/ui/title_dragon_generated_chroma.png`: generated title dragon source on chroma background.
 
 ## Character Animation Sources
 

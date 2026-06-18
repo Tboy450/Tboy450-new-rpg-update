@@ -82,9 +82,9 @@ Use this when you know the feature name but not the file.
 - Town guard imported art:
   `assets/processed/npcs/town_guard.png` is the imported overlay.
   `WorldArea.draw_cutscene` in `main.py` draws it on top of the old procedural guard.
-- Title dragon imported art:
-  `assets/processed/ui/title_dragon.png` is the active title-screen dragon art.
-  `Dragon.draw` in `main.py` uses it first and keeps the older procedural dragon as fallback.
+- Title dragon and title fire:
+  `Dragon.draw` in `main.py` is the active start-menu dragon and fire-breath animation.
+  The mismatched generated title-dragon PNG is archived in `archive/assets/ui/`.
 - SPECIAL unlock flow:
   `game_data/story.py` grants the first unlock through the Lion Sage reward.
   `Game.apply_story_reward` in `main.py` sets `player.special_unlocked = True`.
@@ -104,6 +104,10 @@ beginner-facing control labels.
   `systems/input_actions.py`
 - Android touch layout and draw rules:
   `systems/android_controls.py`
+- Android/touch runtime detection:
+  `is_touch_ui_runtime` in `main.py`. It enables phone controls through Android
+  platform values or Android system paths, and can be forced with
+  `DRAGONS_LAIR_FORCE_TOUCH=1` for testing.
 - Shared pause-menu logic and button commands:
   `Game.build_pause_menu_entries`, `Game.toggle_pause_menu`, and `Game.activate_pause_menu_command` in `main.py`
 - Shared pause-menu drawing:
@@ -113,7 +117,8 @@ beginner-facing control labels.
 - Story dialogue box, portrait, and `NEXT` prompt:
   `systems/story_ui.py`, called by `Game.draw_story_dialogue` in `main.py`
 - Overworld corner control legend:
-  `Game.draw` in `main.py`
+  `Game.draw` in `main.py`. This is desktop-only; Android/touch play uses the
+  on-screen buttons instead.
 
 ## Important Data Patterns
 
@@ -168,9 +173,9 @@ beginner-facing control labels.
 ## How To Edit The Guard + Title Dragon
 
 1. Replace `assets/processed/npcs/town_guard.png` to change the imported guard look.
-2. Replace `assets/processed/ui/title_dragon.png` to change the imported title dragon look.
-3. `WorldArea.draw_cutscene` handles the imported guard overlay and still keeps the procedural guard behind it as fallback.
-4. `Dragon.draw` handles the imported title dragon and still keeps the procedural title dragon as fallback.
+2. Edit `Dragon.draw` in `main.py` to change the active start-menu dragon or fire-breath animation.
+3. The archived generated title dragon lives in `archive/assets/ui/` for reference, but the game does not load it.
+4. `WorldArea.draw_cutscene` handles the imported guard overlay and still keeps the procedural guard behind it as fallback.
 
 ## How To Tune Fire Tornado
 
@@ -187,7 +192,8 @@ it adds a second imported impact animation when the tornado reaches the enemy.
 7. Change damage in `BattleScreen.execute_special_attack`.
 8. Replace the imported frames in `assets/processed/effects/flame_tornado/` if you want a different animation.
 9. Replace Mage Fire Blast impact frames in `assets/processed/effects/fire_blast/`.
-10. Add new imported effect folder paths in `systems/assets.py`, not directly in `main.py`.
+10. Fire Blast also has a crop/fade section inside `BattleScreen.draw_player_special_fx` so the final frames do not show a square edge.
+11. Add new imported effect folder paths in `systems/assets.py`, not directly in `main.py`.
 
 ## How To Tune Mage Normal Magic Graphics
 

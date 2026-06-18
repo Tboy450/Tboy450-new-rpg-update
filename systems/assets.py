@@ -27,7 +27,6 @@ TOWN_GUARD_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "npcs" / "town_
 FLAME_TORNADO_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "flame_tornado")
 FIRE_BLAST_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "fire_blast")
 MAGE_MAGIC_FIREBALL_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "mage_magic_fireball")
-TITLE_DRAGON_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "ui" / "title_dragon.png")
 
 # BEGINNER NOTE: Active imported hero sprites.
 # The keys must match playable class names exactly: "Warrior", "Mage", "Rogue".

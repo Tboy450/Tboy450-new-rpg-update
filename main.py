@@ -124,7 +124,6 @@ from systems.assets import (
     FLAME_TORNADO_FRAME_DIR,
     GHOST_FACE_SPRITE_PATH,
     MAGE_MAGIC_FIREBALL_FRAME_DIR,
-    TITLE_DRAGON_SPRITE_PATH,
     TOWN_GUARD_SPRITE_PATH,
     draw_character_sprite,
     draw_enemy_sprite,
@@ -253,8 +252,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.13"
-APP_NUMERIC_VERSION = 14
+APP_VERSION = "0.1.14"
+APP_NUMERIC_VERSION = 15
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -307,6 +306,26 @@ def is_android_runtime():
     return (
         sys.platform.startswith("android") or
         "ANDROID_ARGUMENT" in os.environ
+    )
+
+
+def is_touch_ui_runtime():
+    """Return True when touch controls should be visible.
+
+    Beginner note:
+        Some Android APK launch paths do not expose the same Python platform
+        value every time. Touch controls are required on the phone, so this
+        check also looks for Android system paths that desktop Python normally
+        will not have.
+    """
+    if os.environ.get("DRAGONS_LAIR_DISABLE_TOUCH", "").lower() in {"1", "true", "yes"}:
+        return False
+    if os.environ.get("DRAGONS_LAIR_FORCE_TOUCH", "").lower() in {"1", "true", "yes"}:
+        return True
+    if is_android_runtime():
+        return True
+    return os.path.exists("/system/bin/am") and (
+        os.path.isdir("/sdcard") or os.path.isdir("/storage/emulated/0")
     )
 
 
@@ -2903,53 +2922,10 @@ class Dragon:
         self.flap_speed = 0.1
         
     def draw(self, surface):
-        # BEGINNER NOTE: Imported title art path.
-        # If the PNG is available, we use it for the menu dragon so the start
-        # screen matches the newer imported sprite look. The older procedural
-        # dragon remains below as fallback and as a readable example of manual
-        # drawing with Pygame primitives.
-        imported_dragon = load_sprite_by_height(TITLE_DRAGON_SPRITE_PATH, 250)
-        if imported_dragon:
-            bob_offset = int(math.sin(self.animation_frame) * 6)
-            draw_x = int(self.x + 110)
-            draw_y = int(self.y - 40 + bob_offset)
-
-            shadow_w = max(180, int(imported_dragon.get_width() * 0.54))
-            shadow_h = max(18, int(imported_dragon.get_height() * 0.08))
-            pygame.draw.ellipse(
-                surface,
-                (0, 0, 0),
-                (
-                    draw_x + imported_dragon.get_width() // 2 - shadow_w // 2,
-                    draw_y + imported_dragon.get_height() - 18,
-                    shadow_w,
-                    shadow_h,
-                ),
-            )
-
-            surface.blit(imported_dragon, (draw_x, draw_y))
-
-            # The sprite already contains a fire breath beam. While the old
-            # `fire_active` timer is running, add extra heat shimmer and sparks
-            # so the menu still feels animated instead of becoming a static PNG.
-            if self.fire_active:
-                ember_overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-                mouth_x = draw_x + int(imported_dragon.get_width() * 0.35)
-                mouth_y = draw_y + int(imported_dragon.get_height() * 0.23)
-                for i in range(18):
-                    travel = i / 17
-                    flame_x = int(mouth_x - 260 * travel + self.fire_frame * 2.4)
-                    flame_y = int(mouth_y + 82 * travel + math.sin(self.fire_frame * 0.18 + i) * 7)
-                    flame_size = max(4, int(12 - travel * 6))
-                    ember_color = (255, 180 + (i % 2) * 40, 40, max(40, 170 - i * 7))
-                    pygame.draw.circle(ember_overlay, ember_color, (flame_x, flame_y), flame_size)
-                glow_radius = 24 + (self.fire_frame % 6)
-                pygame.draw.circle(ember_overlay, (255, 190, 70, 70), (mouth_x, mouth_y), glow_radius)
-                surface.blit(ember_overlay, (0, 0))
-
-            self.animation_frame += self.flap_speed
-            return
-
+        # BEGINNER NOTE:
+        # The start menu uses the original procedural dragon again. The newer
+        # imported title dragon has been archived because its mouth direction
+        # did not fit this fire-breath animation cleanly.
         pygame.draw.ellipse(surface, DRAGON_COLOR, (self.x, self.y + 30, 180, 70))
         pygame.draw.circle(surface, DRAGON_COLOR, (self.x + 180, self.y + 50), 35)
         pygame.draw.circle(surface, (255, 255, 255), (self.x + 195, self.y + 45), 10)
@@ -2992,20 +2968,54 @@ class Dragon:
             ])
         
         if self.fire_active:
-            for i in range(15):
-                fire_size = 5 + i * 1.5
-                alpha = max(0, 200 - i * 10)
-                fire_color = (255, 215, 0, alpha)
-                
-                fire_surf = pygame.Surface((fire_size*2, fire_size*2), pygame.SRCALPHA)
-                pygame.draw.circle(fire_surf, fire_color, (fire_size, fire_size), fire_size)
-                surface.blit(
-                    fire_surf, 
-                    (
-                        self.x + 180 + 35 + i*15 + self.fire_frame*2, 
-                        self.y + 40
-                    )
+            # Extended fire breath. The overlapping circles make a beam, while
+            # the sine-wave offsets and sparks keep it from looking static.
+            mouth_x = self.x + 214
+            mouth_y = self.y + 42
+            flame_progress = min(1.0, self.fire_frame / 30)
+            flame_length = 145 + int(210 * flame_progress)
+            flame_overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+
+            for i in range(28):
+                travel = i / 27
+                wave = math.sin(self.fire_frame * 0.34 + i * 0.9)
+                flame_x = int(mouth_x + flame_length * travel + self.fire_frame * 1.5)
+                flame_y = int(mouth_y + wave * (5 + travel * 15))
+                outer_size = int(20 - travel * 9 + math.sin(self.fire_frame * 0.2 + i) * 3)
+                inner_size = max(4, int(outer_size * 0.52))
+                alpha = max(0, int(225 * (1 - travel * 0.62)))
+
+                pygame.draw.circle(
+                    flame_overlay,
+                    (255, 70 + int(80 * travel), 0, max(30, alpha - 45)),
+                    (flame_x, flame_y),
+                    max(5, outer_size + 5),
                 )
+                pygame.draw.circle(
+                    flame_overlay,
+                    (255, 205, 45, alpha),
+                    (flame_x, flame_y),
+                    max(4, outer_size),
+                )
+                pygame.draw.circle(
+                    flame_overlay,
+                    (255, 250, 180, min(255, alpha + 20)),
+                    (flame_x - 3, flame_y - 2),
+                    inner_size,
+                )
+
+            for spark in range(18):
+                travel = spark / 17
+                spark_x = int(mouth_x + flame_length * travel + random.randint(-6, 14))
+                spark_y = int(mouth_y + math.sin(self.fire_frame * 0.4 + spark) * 18 + random.randint(-10, 10))
+                pygame.draw.circle(
+                    flame_overlay,
+                    (255, 225, 115, max(35, 150 - spark * 5)),
+                    (spark_x, spark_y),
+                    random.randint(2, 5),
+                )
+
+            surface.blit(flame_overlay, (0, 0))
         
         self.animation_frame += self.flap_speed
         
@@ -3266,7 +3276,11 @@ class BattleScreen:
         # assets/source/effects/fire_blast_impact.gif into transparent PNGs.
         if is_fire_blast and impact_frames and progress > 0.52:
             blast_progress = min(1.0, (progress - 0.52) / 0.38)
-            frame_index = min(len(impact_frames) - 1, int(blast_progress * len(impact_frames)))
+            # The final source frames fill the whole rectangle, which can look
+            # boxy in battle. Stop before the last strip of frames and then
+            # fade/crop the blast out procedurally.
+            asset_progress = min(0.82, blast_progress) / 0.82
+            frame_index = min(len(impact_frames) - 1, int(asset_progress * (len(impact_frames) - 1)))
             blast_frame = impact_frames[frame_index]
             blast_surge = math.sin(blast_progress * math.pi)
             blast_width = max(1, int(blast_frame.get_width() * (0.92 + blast_surge * 0.16)))
@@ -3276,13 +3290,41 @@ class BattleScreen:
             blast_alpha = 255
             if blast_progress < 0.14:
                 blast_alpha = int(255 * blast_progress / 0.14)
-            elif blast_progress > 0.86:
-                blast_alpha = int(255 * (1 - blast_progress) / 0.14)
+            elif blast_progress > 0.68:
+                blast_alpha = int(255 * max(0.0, 1 - (blast_progress - 0.68) / 0.32))
             blast_frame.set_alpha(max(0, min(255, blast_alpha)))
+
+            if blast_progress > 0.54:
+                crop_strength = min(1.0, (blast_progress - 0.54) / 0.46)
+                crop_x = int(blast_width * 0.12 * crop_strength)
+                crop_y = int(blast_height * 0.10 * crop_strength)
+                source_rect = pygame.Rect(
+                    crop_x,
+                    crop_y,
+                    max(1, blast_width - crop_x * 2),
+                    max(1, blast_height - crop_y * 2),
+                )
+                cropped_frame = pygame.Surface(source_rect.size, pygame.SRCALPHA)
+                cropped_frame.blit(blast_frame, (0, 0), source_rect)
+                blast_frame = cropped_frame
 
             glow_radius = int(52 + blast_surge * 130)
             pygame.draw.circle(overlay, (255, 88, 12, 76), (740, 285), glow_radius)
             pygame.draw.circle(overlay, (255, 235, 140, 54), (740, 285), max(16, glow_radius // 2))
+
+            if blast_progress > 0.62:
+                fade_sparks = int(24 * (1 - min(1.0, (blast_progress - 0.62) / 0.38)))
+                for _ in range(fade_sparks):
+                    angle = rng.uniform(-0.8, 0.8)
+                    distance = rng.uniform(42, 210)
+                    spark_x = int(735 + math.cos(angle) * distance)
+                    spark_y = int(282 + math.sin(angle) * distance + rng.randint(-36, 36))
+                    pygame.draw.circle(
+                        overlay,
+                        rng.choice([(255, 245, 190, 150), (255, 130, 28, 135), (255, 70, 14, 120)]),
+                        (spark_x, spark_y),
+                        rng.randint(2, 6),
+                    )
 
             # The source blast already sweeps across the frame from left to
             # right, so anchoring it on the enemy side makes it read like the
@@ -4906,10 +4948,12 @@ class OpeningCutscene:
 # ============================================================================
 def is_android():
     """
-    Detects if the game is running on Android platform.
-    Used for enabling touch controls and platform-specific features.
+    Detects if the game should use phone/touch-facing UI text.
+
+    This uses the same robust touch-runtime check as the Android control
+    overlay, so APK builds do not fall back to keyboard-only prompts.
     """
-    return is_android_runtime()
+    return is_touch_ui_runtime()
 
 # ============================================================================
 # MAIN GAME CLASS - Central game controller and state manager
@@ -5110,7 +5154,7 @@ class Game:
         self.show_pause_menu = False
         self.pause_menu_index = 0
         self.pause_menu_buttons = []
-        self.android_touch_enabled = is_android()
+        self.android_touch_enabled = is_touch_ui_runtime()
 
     def apply_world_item(self, item):
         profile = ITEM_PROFILES.get(item.type, ITEM_PROFILES["health"])
@@ -7168,16 +7212,9 @@ class Game:
             if current_area and current_area.cutscene_active:
                 current_area.draw_cutscene(screen)
             
-            # Draw controls info
-            if is_android():
-                controls = [
-                    "TOUCH CONTROLS:",
-                    "D-PAD - MOVE",
-                    "USE / OK - INTERACT",
-                    "MENU - JOURNAL / MAP",
-                    "PAUSE MENU - SAVE / LOAD",
-                ]
-            else:
+            # Draw desktop controls only. Android/touch play uses the visible
+            # on-screen buttons instead of a keyboard legend in the corner.
+            if not self.android_touch_enabled:
                 controls = [
                     "CONTROLS:",
                     "ARROWS/WASD - MOVE",
@@ -7187,9 +7224,9 @@ class Game:
                     "ESC - MENU",
                 ]
 
-            for i, line in enumerate(controls):
-                text = font_tiny.render(line, True, (180, 180, 200))
-                screen.blit(text, (20, SCREEN_HEIGHT - 140 + i * 25))
+                for i, line in enumerate(controls):
+                    text = font_tiny.render(line, True, (180, 180, 200))
+                    screen.blit(text, (20, SCREEN_HEIGHT - 140 + i * 25))
 
         elif self.state == "interior" and self.player:
             self.draw_interior(screen)

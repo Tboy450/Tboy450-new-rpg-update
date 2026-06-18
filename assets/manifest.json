@@ -39,6 +39,6 @@
     "status": "active",
     "source_dir": "assets/source/ui",
     "processed_dir": "assets/processed/ui",
-    "notes": "Dragon app icon and imported title-screen dragon are active. Panels, icons, potion graphics, and map markers also belong here."
+    "notes": "Dragon app icon is active. The generated title-screen dragon was archived because it did not fit the fire animation. Panels, icons, potion graphics, and map markers also belong here."
   }
 }

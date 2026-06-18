@@ -22,7 +22,13 @@ were saved as standalone Python files. This folder keeps those old checkpoints
 for reference so ideas can be copied forward without mixing old code into the
 current runtime.
 
-## Files
+## Folders
+
+- `assets/`
+  Archived generated/imported art that is no longer loaded by the active game.
+  See `archive/assets/README.md` for the current list.
+
+## Snapshot Files
 
 - `cursor game final edit befor shut down for supicious b.s`
   Older full-game single-file RPG snapshot. It uses Windows audio environment
