@@ -70,6 +70,9 @@ from game_data import (
     CHARACTER_CLASS_STATS,
     DRAGON_BOSS_COLORS,
     ENEMY_NAME_POOLS,
+    format_equipment_bonus,
+    get_default_equipment,
+    get_equipment_item,
     ITEM_PROFILES,
     ITEM_SPAWN_TABLE,
     OPENING_STORY_LINES,
@@ -255,8 +258,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.20"
-APP_NUMERIC_VERSION = 21
+APP_VERSION = "0.1.21"
+APP_NUMERIC_VERSION = 22
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -462,7 +465,7 @@ class WorldArea:
     Represents a single area in the 3x3 world grid.
     Each area has its own terrain type, enemies, items, and visual style.
     
-    Area Types: forest, desert, mountain, swamp, volcano, town
+    Area Types: mountain, forest, desert, swamp, plains, volcano, ice, town, cave
 
     Beginner note:
     - `area_x` and `area_y` are grid coordinates from 0 to 2.
@@ -1121,6 +1124,18 @@ class WorldArea:
                     # Flower base
                     pygame.draw.circle(surface, flower_color, (flower_x, flower_y), 3)
                     pygame.draw.circle(surface, (255, 255, 255), (flower_x, flower_y), 1)
+
+            elif decoration["type"] == "sand_patch":
+                # BEGINNER NOTE: Sand patches are scenery only.
+                # They preserve the old beach flavor inside town without making
+                # "beach" a separate overworld map area.
+                pygame.draw.ellipse(surface, (98, 82, 50), (x + 3, y + 4, w, h))
+                pygame.draw.ellipse(surface, (178, 154, 92), (x, y, w, h))
+                pygame.draw.ellipse(surface, (214, 190, 120), (x + 8, y + 6, max(12, w - 16), max(10, h - 12)), 2)
+                for grain_index in range(8):
+                    grain_x = x + 16 + (grain_index * 17) % max(18, w - 20)
+                    grain_y = y + 12 + (grain_index * 11) % max(14, h - 16)
+                    pygame.draw.circle(surface, (128, 106, 62), (grain_x, grain_y), 2)
     
     def generate_town_particles(self, particle_system):
         """Generate town-specific particle effects"""
@@ -1951,6 +1966,16 @@ class Character:
         # and quest keepsakes live here so they can be shown without being used
         # up in battle.
         self.story_items = {}
+        # Equipped gear is its own small system. `equipment` stores what is
+        # currently worn, while `owned_equipment` remembers gear the player has
+        # earned. The first version auto-equips story rewards so beginners do
+        # not need to build a full equipment menu yet.
+        self.equipment = get_default_equipment(char_type)
+        self.owned_equipment = {
+            item_key: 1
+            for item_key in self.equipment.values()
+            if item_key
+        }
         self.animation_offset = 0
         self.attack_animation = 0
         self.hit_animation = 0
@@ -2696,9 +2721,48 @@ class Character:
     def get_story_item_count(self, item_key):
         """Return how many copies of a trophy/story item the player owns."""
         return self.story_items.get(item_key, 0)
+
+    def add_equipment_item(self, item_key, auto_equip=True):
+        """Add a weapon, armor, or accessory and optionally equip it.
+
+        Beginner note:
+            Story rewards can call this with a key from `game_data/equipment.py`.
+            The method validates the key, stores ownership, and equips it in the
+            correct slot. This keeps equipment reward logic out of the story
+            tables and out of battle math.
+        """
+        profile = get_equipment_item(item_key)
+        if not profile:
+            return False
+
+        self.owned_equipment[item_key] = self.owned_equipment.get(item_key, 0) + 1
+        if auto_equip:
+            self.equipment[profile["slot"]] = item_key
+        return True
+
+    def get_equipment_bonus(self, stat_key):
+        """Return the combined equipped bonus for one stat."""
+        total = 0
+        for item_key in self.equipment.values():
+            profile = get_equipment_item(item_key)
+            if profile:
+                total += int(profile.get("bonuses", {}).get(stat_key, 0))
+        return total
+
+    def effective_strength(self):
+        """Base strength plus equipped weapon/accessory bonuses."""
+        return self.strength + self.get_equipment_bonus("strength")
+
+    def effective_defense(self):
+        """Base defense plus equipped armor/accessory bonuses."""
+        return self.defense + self.get_equipment_bonus("defense")
+
+    def effective_speed(self):
+        """Base speed plus equipped gear bonuses."""
+        return self.speed + self.get_equipment_bonus("speed")
         
     def take_damage(self, damage):
-        actual_damage = max(1, damage - self.defense // 3)
+        actual_damage = max(1, damage - self.effective_defense() // 3)
         self.health -= actual_damage
         self.start_hit_animation()
         return actual_damage
@@ -2766,7 +2830,7 @@ class Character:
         draw_labeled_bar(y + 58, f"LV {self.level}  EXP {self.exp}/{self.exp_to_level}", self.exp, self.exp_to_level, EXP_COLOR, 20)
 
         stats_text = render_fitted_text(
-            f"STR {self.strength}  DEF {self.defense}  SPD {self.speed}",
+            f"STR {self.effective_strength()}  DEF {self.effective_defense()}  SPD {self.effective_speed()}",
             TEXT_COLOR,
             width,
             (font_tiny,)
@@ -4277,7 +4341,7 @@ class BattleScreen:
                 self.action_cooldown = self.action_delay
                 return False
 
-            damage = max(1, self.enemy.strength - self.player.defense // 3)
+            damage = max(1, self.enemy.strength - self.player.effective_defense() // 3)
             phase = self.get_boss_phase()
             if phase:
                 damage += phase.get("strength_bonus", 0)
@@ -4419,7 +4483,7 @@ class BattleScreen:
         damage = self.apply_player_damage_modifiers(base_damage)
         crit_chance = min(
             BATTLE_RULES["max_crit_chance"],
-            BATTLE_RULES["base_crit_chance"] + self.player.speed * BATTLE_RULES["speed_crit_bonus"],
+            BATTLE_RULES["base_crit_chance"] + self.player.effective_speed() * BATTLE_RULES["speed_crit_bonus"],
         )
         if random.random() < crit_chance:
             damage = max(1, int(damage * BATTLE_RULES["crit_multiplier"]))
@@ -4427,7 +4491,7 @@ class BattleScreen:
         return damage
 
     def roll_player_dodge(self):
-        speed_edge = max(0, self.player.speed - self.enemy.speed)
+        speed_edge = max(0, self.player.effective_speed() - self.enemy.speed)
         dodge_chance = min(
             BATTLE_RULES["max_dodge_chance"],
             BATTLE_RULES["base_dodge_chance"] + speed_edge * BATTLE_RULES["speed_dodge_bonus"],
@@ -4435,7 +4499,7 @@ class BattleScreen:
         return random.random() < dodge_chance
 
     def get_escape_chance(self):
-        speed_edge = self.player.speed - self.enemy.speed
+        speed_edge = self.player.effective_speed() - self.enemy.speed
         chance = BATTLE_RULES["base_escape_chance"] + speed_edge * BATTLE_RULES["speed_escape_bonus"]
         return max(
             BATTLE_RULES["min_escape_chance"],
@@ -4817,7 +4881,7 @@ class BattleScreen:
         self.add_screen_shake(4, 18)
     
     def execute_attack(self):
-        damage = self.roll_player_damage(self.player.strength)
+        damage = self.roll_player_damage(self.player.effective_strength())
         self.enemy.health = max(0, self.enemy.health - damage)
         
         # Character-specific attack messages and effects
@@ -4847,7 +4911,7 @@ class BattleScreen:
         self.action_cooldown = self.action_delay
     
     def execute_magic(self):
-        damage = self.roll_player_damage(self.player.strength * 2)
+        damage = self.roll_player_damage(self.player.effective_strength() * 2)
         self.enemy.health = max(0, self.enemy.health - damage)
         self.player.mana -= 20
         self.add_log(f"Fireball dealt {damage} damage to {self.enemy.name}!")
@@ -4895,9 +4959,9 @@ class BattleScreen:
             # Mage has low strength but high mana, so Fire Blast uses max_mana
             # as part of its power budget. That keeps the Mage special feeling
             # like a real spell instead of a weak physical attack.
-            base_damage = int(self.player.strength * 2.0 + self.player.max_mana * 0.23 + self.player.level * 4)
+            base_damage = int(self.player.effective_strength() * 2.0 + self.player.max_mana * 0.23 + self.player.level * 4)
         else:
-            base_damage = int(self.player.strength * 2.4 + self.player.speed * 0.8 + self.player.level * 3)
+            base_damage = int(self.player.effective_strength() * 2.4 + self.player.effective_speed() * 0.8 + self.player.level * 3)
         damage = self.roll_player_damage(base_damage)
         self.enemy.health = max(0, self.enemy.health - damage)
         if self.player.type == "Mage":
@@ -5862,6 +5926,21 @@ class Game:
                 setattr(self.player, field, player_data[field])
         self.player.inventory = dict(player_data.get("inventory", self.player.inventory))
         self.player.story_items = dict(player_data.get("story_items", getattr(self.player, "story_items", {})))
+        loaded_equipment = player_data.get("equipment")
+        if isinstance(loaded_equipment, dict):
+            self.player.equipment.update(
+                {
+                    str(slot): item_key if item_key else None
+                    for slot, item_key in loaded_equipment.items()
+                    if slot in {"weapon", "armor", "accessory"}
+                }
+            )
+        loaded_owned_equipment = player_data.get("owned_equipment")
+        if isinstance(loaded_owned_equipment, dict):
+            self.player.owned_equipment = {
+                str(item_key): int(count)
+                for item_key, count in loaded_owned_equipment.items()
+            }
         self.player.town_service_claims = {
             (claim[0], claim[1])
             for claim in player_data.get("town_service_claims", [])
@@ -6070,6 +6149,8 @@ class Game:
             self.player.add_inventory_item(item_type, int(amount))
         for item_key, amount in reward.get("story_items", {}).items():
             self.player.add_story_item(item_key, int(amount))
+        for equipment_key in reward.get("equipment", ()):
+            self.player.add_equipment_item(equipment_key, auto_equip=True)
         if reward.get("unlock_special"):
             self.player.special_unlocked = True
         if reward.get("calm_boss_pressure") and self.player.level > level_before:
@@ -6113,6 +6194,8 @@ class Game:
             self.player.add_inventory_item(item_type, int(amount))
         for item_key, amount in reward.get("story_items", {}).items():
             self.player.add_story_item(item_key, int(amount))
+        for equipment_key in reward.get("equipment", ()):
+            self.player.add_equipment_item(equipment_key, auto_equip=True)
 
         message = reward.get("message", "Story enemy reward received.")
         self.set_town_service_message(message.format(exp=exp_gain, score=score_gain))
@@ -6500,7 +6583,12 @@ class Game:
         pygame.draw.rect(screen, TEXT_COLOR, hero_panel, 2, border_radius=8)
         line_y = self.draw_journal_line(screen, f"HERO: {self.player.type}  LV.{self.player.level}", right_x + 14, y + 12, TEXT_COLOR, font_small)
         line_y = self.draw_journal_line(screen, f"HP {self.player.health}/{self.player.max_health}   MP {self.player.mana}/{self.player.max_mana}", right_x + 14, line_y)
-        line_y = self.draw_journal_line(screen, f"STR {self.player.strength}   DEF {self.player.defense}   SPD {self.player.speed}", right_x + 14, line_y)
+        line_y = self.draw_journal_line(
+            screen,
+            f"STR {self.player.effective_strength()}   DEF {self.player.effective_defense()}   SPD {self.player.effective_speed()}",
+            right_x + 14,
+            line_y,
+        )
         line_y = self.draw_journal_line(
             screen,
             f"Bag: HP x{self.player.get_inventory_count('health')}  MP x{self.player.get_inventory_count('mana')}",
@@ -6569,10 +6657,10 @@ class Game:
         """Draw the pause-menu Inventory screen.
 
         Beginner note:
-            This is not the future equipment system yet. It gives the player a
-            readable place to see consumable potions and permanent story rewards
-            such as trophies. Weapons and armor can later plug into the planned
-            equipment panel without crowding the quest journal.
+            This gives the player a readable place to see consumable potions,
+            equipped gear bonuses, and permanent story rewards such as trophies.
+            It is intentionally display-only for now; story rewards auto-equip
+            gear until a full equipment selection menu is built.
         """
         if not self.player:
             return
@@ -6604,9 +6692,14 @@ class Game:
         pygame.draw.rect(screen, (20, 20, 30), equipment_panel, border_radius=8)
         pygame.draw.rect(screen, (180, 180, 220), equipment_panel, 2, border_radius=8)
         line_y = self.draw_journal_line(screen, "EQUIPMENT", left_x + 14, y + 184, (180, 180, 220), font_small)
-        line_y = self.draw_journal_line(screen, "Weapon: starter training gear", left_x + 14, line_y)
-        line_y = self.draw_journal_line(screen, "Armor: class starter outfit", left_x + 14, line_y)
-        self.draw_journal_line(screen, "Weapon/armor stats are planned next.", left_x + 14, line_y, (210, 210, 225))
+        slot_labels = {"weapon": "Weapon", "armor": "Armor", "accessory": "Charm"}
+        for slot in ("weapon", "armor", "accessory"):
+            item_key = self.player.equipment.get(slot)
+            profile = get_equipment_item(item_key) if item_key else None
+            label = profile.get("label", "None") if profile else "None"
+            bonus_text = format_equipment_bonus(profile.get("bonuses", {})) if profile else "No bonus"
+            line_y = self.draw_journal_line(screen, f"{slot_labels[slot]}: {label}", left_x + 14, line_y)
+            line_y = self.draw_journal_line(screen, f"  {bonus_text}", left_x + 14, line_y, (210, 210, 225))
 
         trophy_panel = pygame.Rect(right_x, y, 330, 322)
         pygame.draw.rect(screen, (20, 20, 30), trophy_panel, border_radius=8)

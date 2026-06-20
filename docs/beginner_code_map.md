@@ -139,9 +139,8 @@ beginner-facing control labels.
 - Shared pause-menu drawing:
   `systems/story_ui.py`
 - Inventory overlay:
-  `Game.draw_inventory` in `main.py`. It currently shows consumables, story
-  trophies, and a planned equipment section. Add real weapon/armor equipment
-  here when that system is built.
+  `Game.draw_inventory` in `main.py`. It shows consumables, equipped weapon /
+  armor / charm bonuses, and story trophies.
 - Journal control text:
   `Game.draw_journal` in `main.py`
 - Story dialogue box, portrait, and `NEXT` prompt:
@@ -185,6 +184,18 @@ beginner-facing control labels.
 4. Optional: add particles in `AREA_PARTICLE_PROFILES`.
 5. Optional: add environmental effects in `AREA_MECHANICS`.
 6. Optional: add enemies in `AREA_ENEMY_TYPES` in `game_data/enemies.py`.
+
+Note: `plains` is the active center map area. Beach/sand details are town
+scenery in `game_data/town.py`, not a separate map area.
+
+## How To Add Equipment
+
+1. Add the gear record to `EQUIPMENT_ITEMS` in `game_data/equipment.py`.
+2. Choose a `slot`: `weapon`, `armor`, or `accessory`.
+3. Add small `bonuses` such as `{"strength": 2}` or `{"defense": 1}`.
+4. If a story beat should award it, add its key to the reward's `equipment`
+   list in `game_data/story.py`.
+5. Save/load already stores `equipment` and `owned_equipment` under player data.
 
 ## How To Add A New Item
 

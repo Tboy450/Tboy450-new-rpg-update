@@ -14,6 +14,15 @@ from .characters import CHARACTER_CLASS_STATS
 # Enemy spawn pools, generated names, and dragon palette data.
 from .enemies import AREA_ENEMY_TYPES, DRAGON_BOSS_COLORS, ENEMY_NAME_POOLS
 
+# Weapons, armor, accessories, and starting gear.
+from .equipment import (
+    DEFAULT_EQUIPMENT_BY_CLASS,
+    EQUIPMENT_ITEMS,
+    format_equipment_bonus,
+    get_default_equipment,
+    get_equipment_item,
+)
+
 # Town building room layouts.
 from .interiors import TOWN_INTERIORS
 
@@ -91,6 +100,8 @@ __all__ = [
     "DRAGON_BOSS_COLORS",
     "ELEMENT_PROFILES",
     "ENEMY_NAME_POOLS",
+    "DEFAULT_EQUIPMENT_BY_CLASS",
+    "EQUIPMENT_ITEMS",
     "FINAL_BOSS_LEVEL",
     "ITEM_PROFILES",
     "ITEM_SPAWN_TABLE",
@@ -111,6 +122,7 @@ __all__ = [
     "WORLD_LAYOUT",
     "clone_town_layout",
     "create_town_guard",
+    "format_equipment_bonus",
     "get_story_dialogue",
     "get_story_dialogues_for_area",
     "get_story_enemy_reward",
@@ -119,6 +131,8 @@ __all__ = [
     "get_town_service_dialogue",
     "get_boss_profile",
     "get_element_profile",
+    "get_default_equipment",
+    "get_equipment_item",
     "get_progression_status",
     "get_town_errand",
     "get_town_errand_count",

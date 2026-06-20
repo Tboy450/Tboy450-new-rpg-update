@@ -62,6 +62,7 @@ AREA_ENEMY_TYPES = {
     "desert": ["fiery"],
     "mountain": ["fiery", "ice"],
     "swamp": ["shadow", "ice"],
+    "plains": ["fiery", "shadow"],
     "volcano": ["fiery"],
     "ice": ["ice"],
     "town": [],

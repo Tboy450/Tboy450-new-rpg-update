@@ -112,6 +112,11 @@ The default save file is stored at `~/.dragons_lair_rpg_save.json`. Set `DRAGONS
 
 Town services now also complete one-time errands for town reputation, score, experience, and occasional potion rewards. Inspecting marked details inside interiors grants a small one-time insight reward.
 
+Inventory now shows real equipped gear. Starter weapons/armor are automatic,
+Lion Sage awards a charm accessory, and Ghost Face's first clear awards a
+Mask-Shard weapon. The center overworld area is `plains`; beach/sand details
+are visual town scenery rather than a separate map area.
+
 Repository layout:
 
 - `main.py` is the active game file.

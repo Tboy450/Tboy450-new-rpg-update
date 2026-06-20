@@ -14,6 +14,7 @@ an enemy list changes what can spawn in an area.
 - `__init__.py`: re-exports active data so `main.py` can import from one stable place.
 - `characters.py`: playable class starting stats. Edit this to tune Warrior, Mage, or Rogue.
 - `enemies.py`: enemy names, area enemy spawn tables, and dragon boss color palettes.
+- `equipment.py`: weapons, armor, accessories, starting gear, and equipment stat bonuses.
 - `interiors.py`: town building interior layouts, props, inspect points, colors, and room prompts.
 - `mechanics.py`: combat tuning, elemental status effects, pickup item profiles, and item spawn tables.
 - `npcs.py`: town guard template/dialogue, town service NPC metadata, and rotating interior NPC dialogue.
@@ -44,6 +45,7 @@ Some strings must match across modules:
 - Town building `type` values in `town.py` should match `TOWN_INTERIORS`, `TOWN_SERVICES`, and optional `TOWN_ERRANDS` keys.
 - Enemy element names like `fiery`, `shadow`, and `ice` should match entries in `ELEMENT_PROFILES`.
 - Item keys like `health` and `mana` should match entries in `ITEM_PROFILES`.
+- Equipment keys like `lion_sage_charm` and `mask_shard_edge` should match entries in `EQUIPMENT_ITEMS`.
 - Area names like `forest`, `town`, and `volcano` should match entries in `WORLD_LAYOUT`, `AREA_VISUALS`, and `AREA_ENEMY_TYPES`.
 - Story sprite keys like `lion_sage` and `ghost_face` should match `STORY_SPRITE_PATHS` in `systems/assets.py`.
 
@@ -56,6 +58,7 @@ Some strings must match across modules:
 - Town errand/reward data belongs in `quests.py`.
 - Main quest story beats, one-shot area dialogue, and friendly story NPC placement belong in `story.py`.
 - Reusable combat or pickup tuning belongs in `mechanics.py`.
+- Wearable weapon/armor/accessory data belongs in `equipment.py`.
 - Do not add new active gameplay data to `archive/`.
 
 ## Safe Editing Examples
@@ -66,6 +69,7 @@ Some strings must match across modules:
 - To add a line of shopkeeper dialogue, edit the `shop` `dialogue` tuple in `npcs.py`.
 - To add an inspectable object inside the inn, edit `TOWN_INTERIORS["inn"]["inspect_points"]` in `interiors.py`.
 - To tune critical hits, edit `BATTLE_RULES` in `mechanics.py`.
+- To tune gear, edit the item record in `EQUIPMENT_ITEMS` in `equipment.py`.
 - To move the Lion Sage, edit `STORY_NPCS["lion_sage"]["local_position"]` in `story.py`.
 - To change when SPECIAL unlocks, edit the `reward` block in `STORY_AREA_DIALOGUES["lion_sage_swamp"]`.
 
@@ -85,8 +89,8 @@ Some strings must match across modules:
 Current first-story path:
 
 - The guard warns about the dragon and sends the player toward Lion Sage.
-- Lion Sage gives the first real quest direction, a large EXP training reward, a trophy, and the first SPECIAL unlock.
-- Ghost Face uses one-time area-enter dialogue in the forest, can respawn, and gives a larger first-clear reward than repeat clears.
+- Lion Sage gives the first real quest direction, a large EXP training reward, a trophy, the first SPECIAL unlock, and the Lion Sage Charm accessory.
+- Ghost Face uses one-time area-enter dialogue in the forest, can respawn, and gives a larger first-clear reward than repeat clears. The first clear also equips the Mask-Shard Edge weapon.
 
 ## Asset Intake
 

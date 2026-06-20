@@ -88,6 +88,8 @@ def build_save_data(game):
             "items_collected": game.player.items_collected,
             "inventory": dict(game.player.inventory),
             "story_items": dict(getattr(game.player, "story_items", {})),
+            "equipment": dict(getattr(game.player, "equipment", {})),
+            "owned_equipment": dict(getattr(game.player, "owned_equipment", {})),
             "last_boss_level": game.player.last_boss_level,
             "boss_cooldown": game.player.boss_cooldown,
             "special_unlocked": getattr(game.player, "special_unlocked", False),

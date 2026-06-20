@@ -100,6 +100,7 @@ STORY_AREA_DIALOGUES = {
             "reputation": 1,
             "unlock_special": True,
             "story_items": {"lion_sage_medallion": 1},
+            "equipment": ["lion_sage_charm"],
             # This keeps the Sage's training from immediately throwing the
             # player into a dragon ambush before they can choose the Ghost Face
             # path or review the new SPECIAL attack.
@@ -135,6 +136,7 @@ STORY_ENEMY_REWARDS = {
             "score": 35,
             "items": {"mana": 1},
             "story_items": {"ghost_face_mask_shard": 1},
+            "equipment": ["mask_shard_edge"],
             "message": "Ghost Face first clear: {exp} EXP, {score} score, Mask Shard claimed.",
         },
         "repeat": {

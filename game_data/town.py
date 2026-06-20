@@ -127,6 +127,10 @@ TOWN_DECORATIONS = (
     {"type": "flowers", "x": 760, "y": 270, "width": 40, "height": 20},
     {"type": "flowers", "x": 200, "y": 730, "width": 40, "height": 20},
     {"type": "flowers", "x": 760, "y": 730, "width": 40, "height": 20},
+    # Beach is town scenery, not a 3x3 map area. These sand patches give the
+    # town a shoreline feel without creating a separate "beach" region.
+    {"type": "sand_patch", "x": 275, "y": 620, "width": 155, "height": 52},
+    {"type": "sand_patch", "x": 585, "y": 622, "width": 145, "height": 48},
 )
 
 # Chimney/smoke emitters. These are read by the town particle generator.

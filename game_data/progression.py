@@ -44,7 +44,7 @@ BOSS_PROGRESSION = {
         "name": "Stormscale Drake",
         "title": "Broken Skies",
         "hint": "Thunder rolls over the lair roads when this drake is near.",
-        "area_hint": "mountain or beach",
+        "area_hint": "mountain or plains",
     },
     7: {
         "name": "Graveflame Dragon",

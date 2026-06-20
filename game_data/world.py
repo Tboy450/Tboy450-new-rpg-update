@@ -16,7 +16,7 @@ Common fields:
 # 3 rows by 3 columns. Row index is y, column index is x.
 WORLD_LAYOUT = (
     ("mountain", "forest", "desert"),
-    ("swamp", "beach", "volcano"),
+    ("swamp", "plains", "volcano"),
     ("ice", "town", "cave"),
 )
 
@@ -26,7 +26,7 @@ AREA_DESCRIPTIONS = {
     "mountain": "Rocky peaks",
     "desert": "Harsh wasteland",
     "swamp": "Misty wetlands",
-    "beach": "Sandy shores",
+    "plains": "Open grasslands",
     "volcano": "Fiery depths",
     "ice": "Frozen wastes",
     "castle": "Ancient fortress",
@@ -68,9 +68,9 @@ AREA_VISUALS = {
         "background_color": (15, 15, 25),
         "grid_color": (35, 35, 45),
     },
-    "beach": {
-        "background_color": (75, 65, 45),
-        "grid_color": (95, 85, 65),
+    "plains": {
+        "background_color": (58, 92, 46),
+        "grid_color": (84, 126, 62),
     },
     "town": {
         "background_color": (80, 120, 60),
@@ -141,12 +141,12 @@ AREA_PARTICLE_PROFILES = {
             "lifetime": 40,
         },
     ],
-    "beach": [
+    "plains": [
         {
             "count": 4,
-            "color": (220, 240, 255),
-            "velocity_x": (-0.4, 0.4),
-            "velocity_y": (-0.2, 0.2),
+            "color": (180, 220, 110),
+            "velocity_x": (-0.5, 0.5),
+            "velocity_y": (-0.4, -0.1),
             "size": 5,
             "lifetime": 55,
         },
@@ -205,12 +205,12 @@ AREA_MECHANICS = {
         "mana": -1,
         "message": "Swamp miasma saps {health} HP and {mana} MP.",
     },
-    "beach": {
-        "label": "Sea Breeze",
-        "color": (180, 230, 255),
+    "plains": {
+        "label": "Open Air",
+        "color": (180, 230, 120),
         "interval": 420,
         "mana": 1,
-        "message": "Sea breeze restores {mana} MP.",
+        "message": "Open plains air restores {mana} MP.",
     },
     "volcano": {
         "label": "Scorching Heat",
