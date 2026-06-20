@@ -5,6 +5,7 @@
 ## Folders
 
 - `characters/`: transparent hero PNGs for Warrior, Mage, and Rogue.
+- `equipment/`: game-ready weapon, armor, and charm icons used by the Inventory equipment menu.
 - `effects/`: PNG animation frame folders for attacks and magic.
 - `enemies/`: transparent enemy sprites.
 - `npcs/`: transparent friendly/story NPC sprites.

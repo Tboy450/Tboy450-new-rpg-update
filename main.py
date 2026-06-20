@@ -73,8 +73,11 @@ from game_data import (
     format_equipment_bonus,
     get_default_equipment,
     get_equipment_item,
+    get_equipment_rarity_color,
+    get_equipment_slot_label,
     ITEM_PROFILES,
     ITEM_SPAWN_TABLE,
+    iter_equipment_for_slot,
     OPENING_STORY_LINES,
     STORY_NPCS,
     TOWN_INTERIORS,
@@ -133,6 +136,7 @@ from systems.assets import (
     TOWN_GUARD_SPRITE_PATH,
     draw_character_sprite,
     draw_enemy_sprite,
+    get_equipment_icon_path,
     get_story_sprite_path,
     load_animation_frames,
     load_scaled_sprite,
@@ -258,8 +262,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.21"
-APP_NUMERIC_VERSION = 22
+APP_VERSION = "0.1.22"
+APP_NUMERIC_VERSION = 23
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -2738,6 +2742,30 @@ class Character:
         self.owned_equipment[item_key] = self.owned_equipment.get(item_key, 0) + 1
         if auto_equip:
             self.equipment[profile["slot"]] = item_key
+        return True
+
+    def get_owned_equipment_for_slot(self, slot):
+        """Return owned gear keys for one slot in progression order."""
+        owned_keys = set(self.owned_equipment)
+        return [
+            item_key
+            for item_key, _profile in iter_equipment_for_slot(slot)
+            if item_key in owned_keys
+        ]
+
+    def equip_owned_item(self, item_key):
+        """Equip an owned gear item and return True when it changed a slot."""
+        profile = get_equipment_item(item_key)
+        if not profile or self.owned_equipment.get(item_key, 0) <= 0:
+            return False
+        self.equipment[profile["slot"]] = item_key
+        return True
+
+    def unequip_slot(self, slot):
+        """Remove the gear from one slot if something is equipped there."""
+        if slot not in self.equipment or not self.equipment.get(slot):
+            return False
+        self.equipment[slot] = None
         return True
 
     def get_equipment_bonus(self, stat_key):
@@ -5439,6 +5467,10 @@ class Game:
         self.show_world_map = False
         self.show_journal = False
         self.show_inventory = False
+        self.inventory_slots = ("weapon", "armor", "accessory")
+        self.inventory_slot_index = 0
+        self.inventory_item_index = 0
+        self.inventory_message = "Select gear with arrows. OK equips. USE unequips."
         self.show_pause_menu = False
         self.pause_menu_buttons = []
         self.pickup_message = None
@@ -5829,6 +5861,9 @@ class Game:
             self.show_inventory = True
             self.show_journal = False
             self.show_world_map = False
+            self.inventory_slot_index = 0
+            self.inventory_item_index = 0
+            self.inventory_message = "Select gear with arrows. OK equips. USE unequips."
             self.close_pause_menu(play_sound=True)
             return
 
@@ -5871,6 +5906,68 @@ class Game:
         command = getattr(self.pause_menu_buttons[self.pause_menu_index], "command", None)
         if command:
             self.activate_pause_menu_command(command)
+
+    def get_active_inventory_slot(self):
+        """Return the currently selected equipment slot in the Inventory screen."""
+        return self.inventory_slots[self.inventory_slot_index % len(self.inventory_slots)]
+
+    def get_inventory_slot_items(self):
+        """Return owned gear keys for the currently selected slot."""
+        if not self.player:
+            return []
+        return self.player.get_owned_equipment_for_slot(self.get_active_inventory_slot())
+
+    def move_inventory_slot(self, direction):
+        """Move left/right between weapon, armor, and charm slots."""
+        self.inventory_slot_index = (self.inventory_slot_index + direction) % len(self.inventory_slots)
+        self.inventory_item_index = 0
+        self.inventory_message = f"Viewing {get_equipment_slot_label(self.get_active_inventory_slot())} gear."
+        if self.SFX_ARROW:
+            self.SFX_ARROW.play()
+
+    def move_inventory_selection(self, direction):
+        """Move up/down through owned gear for the current slot."""
+        slot_items = self.get_inventory_slot_items()
+        if not slot_items:
+            self.inventory_item_index = 0
+            self.inventory_message = "No owned gear in this slot yet."
+            return
+        self.inventory_item_index = (self.inventory_item_index + direction) % len(slot_items)
+        if self.SFX_ARROW:
+            self.SFX_ARROW.play()
+
+    def equip_inventory_selection(self):
+        """Equip the selected owned gear item from the Inventory screen."""
+        slot_items = self.get_inventory_slot_items()
+        if not self.player or not slot_items:
+            self.inventory_message = "No owned gear in this slot yet."
+            return False
+        self.inventory_item_index = max(0, min(self.inventory_item_index, len(slot_items) - 1))
+        item_key = slot_items[self.inventory_item_index]
+        profile = get_equipment_item(item_key) or {}
+        if self.player.equip_owned_item(item_key):
+            self.inventory_message = f"Equipped {profile.get('label', item_key)}."
+            if self.SFX_ITEM:
+                self.SFX_ITEM.play()
+            return True
+        self.inventory_message = "That gear is not owned yet."
+        return False
+
+    def unequip_inventory_slot(self):
+        """Unequip the current slot from the Inventory screen."""
+        if not self.player:
+            return False
+        slot = self.get_active_inventory_slot()
+        old_key = self.player.equipment.get(slot)
+        old_profile = get_equipment_item(old_key) if old_key else None
+        if self.player.unequip_slot(slot):
+            label = old_profile.get("label", "gear") if old_profile else "gear"
+            self.inventory_message = f"Unequipped {label}."
+            if self.SFX_CLICK:
+                self.SFX_CLICK.play()
+            return True
+        self.inventory_message = f"No {get_equipment_slot_label(slot).lower()} equipped."
+        return False
 
     def handle_android_touch_command(self, command):
         """Run a touch button command.
@@ -6658,18 +6755,35 @@ class Game:
 
         Beginner note:
             This gives the player a readable place to see consumable potions,
-            equipped gear bonuses, and permanent story rewards such as trophies.
-            It is intentionally display-only for now; story rewards auto-equip
-            gear until a full equipment selection menu is built.
+            owned equipment, equipped gear bonuses, and permanent story rewards
+            such as trophies. It is also an equipment menu:
+
+            - Left/right changes the active slot.
+            - Up/down chooses owned gear for that slot.
+            - OK equips the selected gear.
+            - USE unequips the active slot.
         """
         if not self.player:
             return
+
+        def draw_equipment_icon(profile, rect):
+            """Draw one equipment icon, with a simple fallback if PNG is missing."""
+            rarity_color = get_equipment_rarity_color(profile.get("rarity", "common"))
+            pygame.draw.rect(screen, (12, 12, 22), rect, border_radius=6)
+            pygame.draw.rect(screen, rarity_color, rect, 2, border_radius=6)
+            icon_path = get_equipment_icon_path(profile.get("icon"))
+            icon = load_scaled_sprite(icon_path, max(1, rect.width - 8)) if icon_path else None
+            if icon:
+                icon_rect = icon.get_rect(center=rect.center)
+                screen.blit(icon, icon_rect)
+            else:
+                pygame.draw.circle(screen, rarity_color, rect.center, max(5, rect.width // 4))
 
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 188))
         screen.blit(overlay, (0, 0))
 
-        panel = pygame.Rect(110, 58, 780, 560)
+        panel = pygame.Rect(80, 48, 840, 590)
         pygame.draw.rect(screen, UI_BG, panel, border_radius=12)
         pygame.draw.rect(screen, (255, 215, 0), panel, 3, border_radius=12)
 
@@ -6677,54 +6791,140 @@ class Game:
         screen.blit(title, (panel.centerx - title.get_width() // 2, panel.y + 18))
 
         left_x = panel.x + 34
-        right_x = panel.x + 410
+        right_x = panel.x + 420
         y = panel.y + 92
 
-        consumables_panel = pygame.Rect(left_x, y, 330, 150)
+        consumables_panel = pygame.Rect(left_x, y, 350, 92)
         pygame.draw.rect(screen, (20, 20, 30), consumables_panel, border_radius=8)
         pygame.draw.rect(screen, TEXT_COLOR, consumables_panel, 2, border_radius=8)
         line_y = self.draw_journal_line(screen, "CONSUMABLES", left_x + 14, y + 12, TEXT_COLOR, font_small)
-        line_y = self.draw_journal_line(screen, f"Health potions: {self.player.get_inventory_count('health')}", left_x + 14, line_y)
-        line_y = self.draw_journal_line(screen, f"Mana tonics: {self.player.get_inventory_count('mana')}", left_x + 14, line_y)
-        self.draw_journal_line(screen, "Used from ITEM during battle.", left_x + 14, line_y, (210, 210, 225))
+        self.draw_journal_line(
+            screen,
+            f"Health potions: {self.player.get_inventory_count('health')}    Mana tonics: {self.player.get_inventory_count('mana')}",
+            left_x + 14,
+            line_y,
+        )
 
-        equipment_panel = pygame.Rect(left_x, y + 172, 330, 150)
+        equipment_panel = pygame.Rect(left_x, y + 112, 350, 228)
         pygame.draw.rect(screen, (20, 20, 30), equipment_panel, border_radius=8)
         pygame.draw.rect(screen, (180, 180, 220), equipment_panel, 2, border_radius=8)
-        line_y = self.draw_journal_line(screen, "EQUIPMENT", left_x + 14, y + 184, (180, 180, 220), font_small)
-        slot_labels = {"weapon": "Weapon", "armor": "Armor", "accessory": "Charm"}
-        for slot in ("weapon", "armor", "accessory"):
+        line_y = self.draw_journal_line(screen, "EQUIPPED", left_x + 14, equipment_panel.y + 12, (180, 180, 220), font_small)
+        active_slot = self.get_active_inventory_slot()
+        for slot in self.inventory_slots:
             item_key = self.player.equipment.get(slot)
             profile = get_equipment_item(item_key) if item_key else None
             label = profile.get("label", "None") if profile else "None"
             bonus_text = format_equipment_bonus(profile.get("bonuses", {})) if profile else "No bonus"
-            line_y = self.draw_journal_line(screen, f"{slot_labels[slot]}: {label}", left_x + 14, line_y)
-            line_y = self.draw_journal_line(screen, f"  {bonus_text}", left_x + 14, line_y, (210, 210, 225))
+            rarity_color = get_equipment_rarity_color(profile.get("rarity", "common")) if profile else (210, 210, 225)
+            row = pygame.Rect(equipment_panel.x + 12, line_y - 2, equipment_panel.width - 24, 52)
+            if slot == active_slot:
+                pygame.draw.rect(screen, (42, 48, 76), row, border_radius=6)
+                pygame.draw.rect(screen, (255, 215, 0), row, 2, border_radius=6)
+            if profile:
+                draw_equipment_icon(profile, pygame.Rect(row.x + 6, row.y + 6, 40, 40))
+            slot_text = render_fitted_text(
+                f"{get_equipment_slot_label(slot)}: {label}",
+                rarity_color,
+                row.width - 62,
+                (font_tiny,),
+            )
+            bonus_surface = render_fitted_text(bonus_text, (210, 210, 225), row.width - 62, (font_tiny,))
+            screen.blit(slot_text, (row.x + 54, row.y + 8))
+            screen.blit(bonus_surface, (row.x + 54, row.y + 29))
+            line_y += 58
 
-        trophy_panel = pygame.Rect(right_x, y, 330, 322)
+        message_panel = pygame.Rect(left_x, y + 358, 350, 76)
+        pygame.draw.rect(screen, (18, 18, 28), message_panel, border_radius=8)
+        pygame.draw.rect(screen, (140, 220, 255), message_panel, 2, border_radius=8)
+        message_lines = wrap_text_to_width(self.inventory_message, font_tiny, message_panel.width - 28)
+        line_y = message_panel.y + 12
+        for line in message_lines[:2]:
+            line_y = self.draw_journal_line(screen, line, message_panel.x + 14, line_y, (220, 235, 255))
+
+        gear_panel = pygame.Rect(right_x, y, 362, 340)
+        pygame.draw.rect(screen, (20, 20, 30), gear_panel, border_radius=8)
+        pygame.draw.rect(screen, (255, 215, 0), gear_panel, 2, border_radius=8)
+        slot_label = get_equipment_slot_label(active_slot).upper()
+        header = font_small.render(f"OWNED {slot_label}", True, (255, 215, 0))
+        screen.blit(header, (gear_panel.x + 14, gear_panel.y + 12))
+
+        slot_items = self.get_inventory_slot_items()
+        if slot_items:
+            self.inventory_item_index = max(0, min(self.inventory_item_index, len(slot_items) - 1))
+        else:
+            self.inventory_item_index = 0
+
+        row_y = gear_panel.y + 48
+        if not slot_items:
+            self.draw_journal_line(screen, "No owned gear in this slot yet.", gear_panel.x + 14, row_y, (210, 210, 225))
+        else:
+            visible_rows = slot_items[:5]
+            if self.inventory_item_index >= 5:
+                start_index = max(0, min(self.inventory_item_index - 4, len(slot_items) - 5))
+                visible_rows = slot_items[start_index:start_index + 5]
+            else:
+                start_index = 0
+            for offset, item_key in enumerate(visible_rows):
+                index = start_index + offset
+                profile = get_equipment_item(item_key) or {}
+                selected = index == self.inventory_item_index
+                equipped = self.player.equipment.get(active_slot) == item_key
+                rarity_color = get_equipment_rarity_color(profile.get("rarity", "common"))
+                row = pygame.Rect(gear_panel.x + 12, row_y, gear_panel.width - 24, 52)
+                if selected:
+                    pygame.draw.rect(screen, (48, 42, 76), row, border_radius=6)
+                    pygame.draw.rect(screen, (255, 215, 0), row, 2, border_radius=6)
+                elif equipped:
+                    pygame.draw.rect(screen, (28, 54, 44), row, border_radius=6)
+                    pygame.draw.rect(screen, (120, 220, 160), row, 1, border_radius=6)
+                draw_equipment_icon(profile, pygame.Rect(row.x + 6, row.y + 6, 40, 40))
+                count = self.player.owned_equipment.get(item_key, 0)
+                count_text = f" x{count}" if count > 1 else ""
+                equipped_text = " [ON]" if equipped else ""
+                label = render_fitted_text(
+                    f"{profile.get('label', item_key)}{count_text}{equipped_text}",
+                    rarity_color,
+                    row.width - 64,
+                    (font_tiny,),
+                )
+                bonus_text = render_fitted_text(
+                    format_equipment_bonus(profile.get("bonuses", {})),
+                    (210, 210, 225),
+                    row.width - 64,
+                    (font_tiny,),
+                )
+                screen.blit(label, (row.x + 54, row.y + 8))
+                screen.blit(bonus_text, (row.x + 54, row.y + 29))
+                row_y += 56
+
+            if len(slot_items) > 5:
+                scroll_text = font_tiny.render(f"{self.inventory_item_index + 1}/{len(slot_items)}", True, (210, 210, 225))
+                screen.blit(scroll_text, (gear_panel.right - scroll_text.get_width() - 16, gear_panel.bottom - 26))
+
+        trophy_panel = pygame.Rect(right_x, y + 358, 362, 120)
         pygame.draw.rect(screen, (20, 20, 30), trophy_panel, border_radius=8)
         pygame.draw.rect(screen, (255, 215, 0), trophy_panel, 2, border_radius=8)
-        line_y = self.draw_journal_line(screen, "TROPHIES / STORY ITEMS", right_x + 14, y + 12, (255, 215, 0), font_small)
+        line_y = self.draw_journal_line(screen, "TROPHIES / STORY ITEMS", trophy_panel.x + 14, trophy_panel.y + 12, (255, 215, 0), font_small)
         story_items = getattr(self.player, "story_items", {})
         if not story_items:
-            self.draw_journal_line(screen, "No trophies yet.", right_x + 14, line_y, (210, 210, 225))
+            self.draw_journal_line(screen, "No trophies yet.", trophy_panel.x + 14, line_y, (210, 210, 225))
         else:
             for item_key, count in sorted(story_items.items()):
                 item = get_story_reward_item(item_key) or {}
                 label = item.get("label", item_key.replace("_", " ").title())
                 kind = item.get("kind", "misc").upper()
                 count_text = f" x{count}" if count > 1 else ""
-                line_y = self.draw_journal_line(screen, f"{kind}: {label}{count_text}", right_x + 14, line_y, (245, 235, 180))
+                line_y = self.draw_journal_line(screen, f"{kind}: {label}{count_text}", trophy_panel.x + 14, line_y, (245, 235, 180))
                 description = item.get("description", "")
                 if description:
-                    for wrapped in wrap_text_to_width(description, font_tiny, trophy_panel.width - 28):
-                        line_y = self.draw_journal_line(screen, wrapped, right_x + 14, line_y, (210, 210, 225))
+                    for wrapped in wrap_text_to_width(description, font_tiny, trophy_panel.width - 28)[:1]:
+                        line_y = self.draw_journal_line(screen, wrapped, trophy_panel.x + 14, line_y, (210, 210, 225))
                 line_y += 4
                 if line_y > trophy_panel.bottom - 34:
-                    self.draw_journal_line(screen, "More items hidden; inventory paging planned.", right_x + 14, line_y, (255, 170, 120))
+                    self.draw_journal_line(screen, "More hidden.", trophy_panel.x + 14, line_y, (255, 170, 120))
                     break
 
-        prompt = font_tiny.render("Tap CLOSE BAG / press ENTER or ESC to close", True, (210, 210, 225))
+        prompt = font_tiny.render("LEFT/RIGHT slot  UP/DOWN gear  OK equip  USE unequip  ESC/CLOSE exits", True, (210, 210, 225))
         screen.blit(prompt, (panel.centerx - prompt.get_width() // 2, panel.bottom - 34))
 
     def draw_interior_prop(self, screen, prop, room):
@@ -8045,7 +8245,25 @@ class Game:
                         continue
 
                     if self.show_inventory and self.state in ["overworld", "interior"]:
-                        if action in [CANCEL, CONFIRM, INTERACT, JOURNAL, MAP]:
+                        if action == MOVE_LEFT:
+                            self.move_inventory_slot(-1)
+                            continue
+                        if action == MOVE_RIGHT:
+                            self.move_inventory_slot(1)
+                            continue
+                        if action == MOVE_UP:
+                            self.move_inventory_selection(-1)
+                            continue
+                        if action == MOVE_DOWN:
+                            self.move_inventory_selection(1)
+                            continue
+                        if action == CONFIRM:
+                            self.equip_inventory_selection()
+                            continue
+                        if action == INTERACT:
+                            self.unequip_inventory_slot()
+                            continue
+                        if action in [CANCEL, JOURNAL, MAP]:
                             self.show_inventory = False
                             if self.SFX_CLICK:
                                 self.SFX_CLICK.play()

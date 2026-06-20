@@ -18,9 +18,14 @@ from .enemies import AREA_ENEMY_TYPES, DRAGON_BOSS_COLORS, ENEMY_NAME_POOLS
 from .equipment import (
     DEFAULT_EQUIPMENT_BY_CLASS,
     EQUIPMENT_ITEMS,
+    EQUIPMENT_SLOT_LABELS,
+    RARITY_COLORS,
     format_equipment_bonus,
     get_default_equipment,
     get_equipment_item,
+    get_equipment_rarity_color,
+    get_equipment_slot_label,
+    iter_equipment_for_slot,
 )
 
 # Town building room layouts.
@@ -102,10 +107,12 @@ __all__ = [
     "ENEMY_NAME_POOLS",
     "DEFAULT_EQUIPMENT_BY_CLASS",
     "EQUIPMENT_ITEMS",
+    "EQUIPMENT_SLOT_LABELS",
     "FINAL_BOSS_LEVEL",
     "ITEM_PROFILES",
     "ITEM_SPAWN_TABLE",
     "OPENING_STORY_LINES",
+    "RARITY_COLORS",
     "STORY_AREA_DIALOGUES",
     "STORY_ENEMY_REWARDS",
     "STORY_NPCS",
@@ -133,7 +140,10 @@ __all__ = [
     "get_element_profile",
     "get_default_equipment",
     "get_equipment_item",
+    "get_equipment_rarity_color",
+    "get_equipment_slot_label",
     "get_progression_status",
     "get_town_errand",
     "get_town_errand_count",
+    "iter_equipment_for_slot",
 ]

@@ -107,15 +107,20 @@ Android touch controls:
   battle screen. Tap `ACTIONS` to show attack buttons, tap an attack to choose
   it, and tap `HIDE` when you want the lower battlefield clear.
 - Pause-menu buttons expose `Journal`, `Map`, `Save`, and `Load` without a hardware keyboard.
+- Inventory opens from the pause menu. In Inventory, use `SLOT <` / `SLOT >`
+  to switch weapon, armor, and charm slots; arrows to choose owned gear;
+  `EQUIP` to equip it; and `UNEQUIP` to clear the active slot.
 
 The default save file is stored at `~/.dragons_lair_rpg_save.json`. Set `DRAGONS_LAIR_SAVE` to choose a different save path.
 
 Town services now also complete one-time errands for town reputation, score, experience, and occasional potion rewards. Inspecting marked details inside interiors grants a small one-time insight reward.
 
-Inventory now shows real equipped gear. Starter weapons/armor are automatic,
-Lion Sage awards a charm accessory, and Ghost Face's first clear awards a
-Mask-Shard weapon. The center overworld area is `plains`; beach/sand details
-are visual town scenery rather than a separate map area.
+Inventory now shows and manages real equipped gear. Starter weapons/armor are
+automatic, Lion Sage awards a charm accessory, and Ghost Face's first clear
+awards a Mask-Shard weapon. Standard progression gear and future rare/special
+gear are stored in `game_data/equipment.py`, with matching icons in
+`assets/processed/equipment/`. The center overworld area is `plains`;
+beach/sand details are visual town scenery rather than a separate map area.
 
 Repository layout:
 

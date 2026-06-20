@@ -80,6 +80,7 @@ This module keeps imported-art plumbing out of `main.py`.
 - `draw_character_sprite` draws Warrior/Mage/Rogue imported sprites with a shared foot anchor.
 - `draw_enemy_sprite` draws enemies that have an imported sprite path.
 - `get_story_sprite_path` maps story keys such as `lion_sage` and `ghost_face` to the active PNG files.
+- `get_equipment_icon_path` maps equipment icon filenames to the processed equipment icon folder.
 
 Active imported art paths:
 
@@ -90,6 +91,7 @@ Active imported art paths:
 - `FLAME_TORNADO_FRAME_DIR`: player SPECIAL travel animation frames.
 - `FIRE_BLAST_FRAME_DIR`: Mage SPECIAL impact animation frames.
 - `MAGE_MAGIC_FIREBALL_FRAME_DIR`: Mage normal MAGIC projectile overlay frames.
+- `EQUIPMENT_ICON_DIR`: processed Inventory equipment icons.
 
 Beginner feature map:
 
@@ -99,6 +101,7 @@ Beginner feature map:
   an animated fire extension from the imported dragon's mouth. The older
   procedural dragon remains as fallback/archive code in `Dragon.draw`.
 - The SPECIAL unlock is gameplay state, but `assets.py` is where the related story/effect art file paths are clearly labeled.
+- Inventory gear uses icon filenames from `game_data/equipment.py`; those filenames are joined to `EQUIPMENT_ICON_DIR` by `get_equipment_icon_path`.
 
 When adding a new imported effect:
 

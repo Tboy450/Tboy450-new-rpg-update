@@ -17,7 +17,7 @@ Why this exists:
 
 import pygame
 
-from .input_actions import CONFIRM, INTERACT, MAP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, MOVE_UP
+from .input_actions import CANCEL, CONFIRM, INTERACT, MAP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, MOVE_UP
 
 
 def _make_button(name, rect, label, action, fill, border, kind="text", alpha=210):
@@ -79,7 +79,7 @@ def build_android_touch_buttons(game, screen_width, screen_height):
     - Normal overworld/interior play: d-pad + USE/OK + MENU
     - Story dialogue or guard cutscene: NEXT + MENU
     - Journal: CLOSE button only
-    - Inventory: CLOSE button only
+    - Inventory: slot/selection/equip/unequip/close buttons
     - World map: CLOSE MAP button only
     - Pause menu: pause-menu buttons are drawn by `main.py`, so this helper
       returns an empty list
@@ -121,15 +121,68 @@ def build_android_touch_buttons(game, screen_width, screen_height):
         return buttons
 
     if getattr(game, "show_inventory", False):
-        buttons.append(
-            _make_button(
-                "close_inventory",
-                pygame.Rect(screen_width - 190, 82, 168, 48),
-                "CLOSE BAG",
-                CONFIRM,
-                (42, 50, 76),
-                (255, 215, 0),
-            )
+        base_y = screen_height - 54
+        buttons.extend(
+            [
+                _make_button(
+                    "inventory_slot_left",
+                    pygame.Rect(28, base_y, 88, 42),
+                    "SLOT <",
+                    MOVE_LEFT,
+                    (42, 50, 76),
+                    (180, 220, 255),
+                ),
+                _make_button(
+                    "inventory_slot_right",
+                    pygame.Rect(126, base_y, 88, 42),
+                    "SLOT >",
+                    MOVE_RIGHT,
+                    (42, 50, 76),
+                    (180, 220, 255),
+                ),
+                _make_button(
+                    "inventory_up",
+                    pygame.Rect(514, base_y, 62, 42),
+                    "",
+                    MOVE_UP,
+                    (44, 52, 72),
+                    (210, 220, 235),
+                    kind="arrow_up",
+                ),
+                _make_button(
+                    "inventory_down",
+                    pygame.Rect(584, base_y, 62, 42),
+                    "",
+                    MOVE_DOWN,
+                    (44, 52, 72),
+                    (210, 220, 235),
+                    kind="arrow_down",
+                ),
+                _make_button(
+                    "inventory_equip",
+                    pygame.Rect(654, base_y, 92, 42),
+                    "EQUIP",
+                    CONFIRM,
+                    (42, 70, 48),
+                    (120, 220, 160),
+                ),
+                _make_button(
+                    "inventory_unequip",
+                    pygame.Rect(754, base_y, 104, 42),
+                    "UNEQUIP",
+                    INTERACT,
+                    (76, 50, 42),
+                    (255, 170, 120),
+                ),
+                _make_button(
+                    "close_inventory",
+                    pygame.Rect(866, base_y, 106, 42),
+                    "CLOSE",
+                    CANCEL,
+                    (42, 50, 76),
+                    (255, 215, 0),
+                ),
+            ]
         )
         return buttons
 

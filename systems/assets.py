@@ -28,6 +28,7 @@ TITLE_DRAGON_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "ui" / "title
 FLAME_TORNADO_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "flame_tornado")
 FIRE_BLAST_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "fire_blast")
 MAGE_MAGIC_FIREBALL_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "mage_magic_fireball")
+EQUIPMENT_ICON_DIR = str(BASE_DIR / "assets" / "processed" / "equipment")
 
 # BEGINNER NOTE: Active imported hero sprites.
 # The keys must match playable class names exactly: "Warrior", "Mage", "Rogue".
@@ -71,6 +72,13 @@ def load_scaled_sprite(path, size):
 def get_story_sprite_path(sprite_key):
     """Return the PNG path for a story portrait or friendly map NPC."""
     return STORY_SPRITE_PATHS.get(sprite_key)
+
+
+def get_equipment_icon_path(icon_filename):
+    """Return the PNG path for one equipment icon filename."""
+    if not icon_filename:
+        return None
+    return str(Path(EQUIPMENT_ICON_DIR) / icon_filename)
 
 
 def load_sprite_by_height(path, target_height):

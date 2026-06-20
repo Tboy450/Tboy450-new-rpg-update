@@ -106,7 +106,9 @@ Use this when you know the feature name but not the file.
 - Inventory screen:
   `Game.draw_inventory` in `main.py` draws the pause-menu Inventory overlay.
   `Game.build_pause_menu_entries` adds the Inventory button. `systems/android_controls.py`
-  adds the Android `CLOSE BAG` touch button when the inventory overlay is open.
+  adds the Android Inventory touch buttons when the inventory overlay is open.
+  Inventory is now also the equipment menu: left/right changes weapon, armor,
+  or charm slots; up/down chooses owned gear; OK equips; USE unequips.
 - Imported effect art tied to that flow:
   `assets/processed/effects/flame_tornado/` is the SPECIAL travel animation.
   `assets/processed/effects/fire_blast/` is the Mage impact animation.
@@ -140,7 +142,8 @@ beginner-facing control labels.
   `systems/story_ui.py`
 - Inventory overlay:
   `Game.draw_inventory` in `main.py`. It shows consumables, equipped weapon /
-  armor / charm bonuses, and story trophies.
+  armor / charm bonuses, owned gear choices, rarity colors, item icons, and
+  story trophies.
 - Journal control text:
   `Game.draw_journal` in `main.py`
 - Story dialogue box, portrait, and `NEXT` prompt:
@@ -192,10 +195,14 @@ scenery in `game_data/town.py`, not a separate map area.
 
 1. Add the gear record to `EQUIPMENT_ITEMS` in `game_data/equipment.py`.
 2. Choose a `slot`: `weapon`, `armor`, or `accessory`.
-3. Add small `bonuses` such as `{"strength": 2}` or `{"defense": 1}`.
-4. If a story beat should award it, add its key to the reward's `equipment`
+3. Choose a `tier` for progression order and a `rarity` such as `common`,
+   `uncommon`, `rare`, `epic`, or `legendary`.
+4. Add a matching PNG `icon` file under `assets/processed/equipment/`.
+5. Add small `bonuses` such as `{"strength": 2}` or `{"defense": 1}`.
+6. If a story beat should award it, add its key to the reward's `equipment`
    list in `game_data/story.py`.
-5. Save/load already stores `equipment` and `owned_equipment` under player data.
+7. Save/load already stores `equipment` and `owned_equipment` under player data.
+8. Players equip and unequip owned gear from the Inventory screen.
 
 ## How To Add A New Item
 
