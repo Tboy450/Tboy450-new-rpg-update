@@ -12,6 +12,9 @@ Common fields:
     flavor: rotating descriptive lines.
     npc_position: where the room NPC is drawn.
     props: furniture and decorative objects. Each prop has a kind and rect.
+    props[].sprite: optional active PNG drawn instead of the Python shape.
+    props[].sprite_preserve_aspect: optional bool. False stretches the sprite
+        exactly into the prop rectangle.
     inspect_points: invisible/marked rectangles that give one-time flavor rewards.
 """
 
@@ -61,13 +64,33 @@ TOWN_INTERIORS = {
         "npc_position": (720, 350),
         "props": (
             {"kind": "rug", "rect": (325, 430, 350, 78), "color": (52, 124, 154)},
-            {"kind": "shelf", "rect": (135, 245, 150, 210), "color": (74, 50, 92)},
+            {
+                "kind": "shelf",
+                "rect": (135, 245, 150, 210),
+                "color": (74, 50, 92),
+                # BEGINNER NOTE: The shop is the first interior to test
+                # imported scenery sprites. Keeping `kind` as "shelf" means the
+                # same collision behavior still applies.
+                "sprite": "town_shop/potion_shelf.png",
+                "sprite_anchor": "bottom",
+            },
             {"kind": "shelf", "rect": (300, 245, 132, 170), "color": (68, 48, 86)},
-            {"kind": "counter", "rect": (650, 410, 215, 62), "color": (76, 54, 94)},
+            {
+                "kind": "counter",
+                "rect": (650, 410, 215, 62),
+                "color": (76, 54, 94),
+                "sprite": "town_shop/shop_counter.png",
+                "sprite_preserve_aspect": False,
+            },
             {"kind": "crystal", "rect": (500, 315, 75, 98), "color": (110, 220, 255)},
             {"kind": "crate", "rect": (575, 450, 70, 55), "color": (118, 72, 48)},
             {"kind": "cauldron", "rect": (448, 420, 62, 54), "color": (64, 44, 72)},
-            {"kind": "sign", "rect": (720, 305, 84, 45), "color": (110, 220, 255)},
+            {
+                "kind": "desk",
+                "rect": (696, 286, 112, 64),
+                "color": (86, 60, 98),
+                "sprite": "town_shop/scroll_desk.png",
+            },
         ),
         "inspect_points": (
             {"label": "odd jars", "rect": (130, 235, 310, 220), "message": "The jars glow in colors that do not have proper names."},

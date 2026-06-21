@@ -10,6 +10,9 @@ Common fields:
     width/height: size in pixels.
     color: RGB fill color used by the drawing code.
     style: drawing style hint used by `WorldArea.draw_town` in `main.py`.
+    sprite: optional active PNG used instead of Python drawing for this building.
+    sprite_rect: optional draw rectangle for the PNG. This can be larger than
+        width/height when the sprite has a roof, sign, or shadow.
     collision: whether the player should be blocked by the object.
     entry_depth: how far the player can overlap the top/bottom for visual depth.
     door_width: width of the entrance interaction zone.
@@ -47,6 +50,12 @@ TOWN_BUILDINGS = (
         "height": 90,
         "color": (180, 160, 200),
         "style": "magical",
+        # BEGINNER NOTE: This is the first active test of a scenery PNG on the
+        # outdoor town map. The old Python shop drawing remains in `main.py` as
+        # a fallback if this file is missing.
+        "sprite": "town_shop/shop_front.png",
+        "sprite_rect": (46, 384, 168, 136),
+        "sprite_anchor": "bottom",
         "collision": True,
         "entry_depth": 30,
         "door_width": 72,

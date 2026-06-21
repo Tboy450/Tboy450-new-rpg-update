@@ -9,6 +9,7 @@
 - `effects/`: PNG animation frame folders for attacks and magic.
 - `enemies/`: transparent enemy sprites.
 - `npcs/`: transparent friendly/story NPC sprites.
+- `scenery/`: active scenery sprites for town buildings and room props.
 - `ui/`: launcher icon and title-screen art.
 - `music/`: future finished loopable music files.
 - `sounds/`: future finished WAV/OGG sound effects.
@@ -22,4 +23,5 @@ points code at these processed files.
 
 `future_assets/` is the exception: those PNGs are intentionally game-ready but
 inactive. Move or copy a future asset into an active folder before wiring it
-into code or data.
+into code or data. The first example is `scenery/town_shop/`, which contains
+active copies used by the shop exterior and shop interior.

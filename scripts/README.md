@@ -8,6 +8,7 @@ and packaging.
 
 - `build_android.sh`: builds the Android APK with Buildozer. It also exports `PIP_BREAK_SYSTEM_PACKAGES=1` so local Debian/Ubuntu Python installs do not block Buildozer helper installs.
 - `create_android_shortcut.bsh`: BeanShell helper for creating an Android/Pydroid launcher shortcut. This is legacy support and not the preferred APK path.
+- `generate_future_town_assets.py`: creates unused transparent PNG town scenery sprites for `assets/processed/future_assets/scenery/indoor/` and `assets/processed/future_assets/scenery/outdoor/`.
 - `install_android_pydroid.py`: downloads/copies source files into a Pydroid-friendly folder on Android. It is useful only when Pydroid has a working prebuilt `pygame`.
 - `install_packages.py`: general Python package installer helper for desktop setup.
 - `install_packages_strict.py`: stricter installer helper for environments where package versions matter more.

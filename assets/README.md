@@ -32,6 +32,7 @@ game-ready files under `assets/processed/<category>/`.
 - `processed/ui/`: game-ready launcher icon and title-screen art.
 - `source/music/` and `processed/music/`: future music intake and finished loops.
 - `source/sounds/` and `processed/sounds/`: future sound-effect intake and finished WAV/OGG files.
+- `processed/scenery/`: active scenery sprites for town buildings and interior props.
 - `processed/future_assets/`: transparent future concept assets that are not loaded by the game yet.
 
 Active UI asset:
@@ -53,6 +54,13 @@ Active NPC assets:
 
 - `assets/processed/npcs/lion_sage.png`: Lion Sage story NPC and portrait used in the west swamp area.
 - `assets/processed/npcs/town_guard.png`: imported town guard overlay used during the town intro cutscene.
+
+Active scenery assets:
+
+- `assets/processed/scenery/town_shop/shop_front.png`: imported shop exterior test used on the town map.
+- `assets/processed/scenery/town_shop/potion_shelf.png`: imported shop interior shelf prop.
+- `assets/processed/scenery/town_shop/shop_counter.png`: imported shop interior service counter prop.
+- `assets/processed/scenery/town_shop/scroll_desk.png`: imported shop interior order desk/detail prop.
 
 Feature map:
 

@@ -29,6 +29,7 @@ FLAME_TORNADO_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "f
 FIRE_BLAST_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "fire_blast")
 MAGE_MAGIC_FIREBALL_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "mage_magic_fireball")
 EQUIPMENT_ICON_DIR = str(BASE_DIR / "assets" / "processed" / "equipment")
+SCENERY_ASSET_DIR = str(BASE_DIR / "assets" / "processed" / "scenery")
 
 # BEGINNER NOTE: Active imported hero sprites.
 # The keys must match playable class names exactly: "Warrior", "Mage", "Rogue".
@@ -81,6 +82,19 @@ def get_equipment_icon_path(icon_filename):
     return str(Path(EQUIPMENT_ICON_DIR) / icon_filename)
 
 
+def get_scenery_asset_path(asset_filename):
+    """Return the PNG path for one active scenery sprite.
+
+    Beginner note:
+        Active scenery sprites live under `assets/processed/scenery/`.
+        Data files store short relative names such as
+        `town_shop/shop_front.png` so the data stays readable.
+    """
+    if not asset_filename:
+        return None
+    return str(Path(SCENERY_ASSET_DIR) / asset_filename)
+
+
 def load_sprite_by_height(path, target_height):
     """Load a PNG once and resize it by height.
 
@@ -107,6 +121,61 @@ def load_sprite_by_height(path, target_height):
 
     SPRITE_CACHE[cache_key] = sprite
     return sprite
+
+
+def load_sprite_for_rect(path, target_width, target_height, preserve_aspect=True):
+    """Load a sprite and resize it for a target rectangle.
+
+    Beginner note:
+        `preserve_aspect=True` keeps the sprite from looking stretched. Use
+        `False` only for flat UI-like props, such as a counter that needs to
+        fill an exact table/collision rectangle.
+    """
+    target_width = int(target_width)
+    target_height = int(target_height)
+    cache_key = (path, "rect", target_width, target_height, bool(preserve_aspect))
+    if cache_key in SPRITE_CACHE:
+        return SPRITE_CACHE[cache_key]
+
+    try:
+        sprite = pygame.image.load(path).convert_alpha()
+        if preserve_aspect:
+            scale = min(
+                target_width / max(1, sprite.get_width()),
+                target_height / max(1, sprite.get_height()),
+            )
+            width = max(1, int(sprite.get_width() * scale))
+            height = max(1, int(sprite.get_height() * scale))
+        else:
+            width = max(1, target_width)
+            height = max(1, target_height)
+
+        # These are pixel-art props, so nearest-neighbor scaling keeps edges
+        # crisp. Smooth scaling would blur the small outlines.
+        sprite = pygame.transform.scale(sprite, (width, height))
+    except Exception as exc:
+        print(f"[WARN] Could not load scenery sprite {path}: {exc}")
+        sprite = None
+
+    SPRITE_CACHE[cache_key] = sprite
+    return sprite
+
+
+def draw_sprite_in_rect(surface, path, rect, preserve_aspect=True, anchor="center"):
+    """Draw a sprite inside a rectangle and return True when it worked."""
+    sprite = load_sprite_for_rect(path, rect.width, rect.height, preserve_aspect)
+    if not sprite:
+        return False
+
+    if anchor == "bottom":
+        draw_x = rect.centerx - sprite.get_width() // 2
+        draw_y = rect.bottom - sprite.get_height()
+    else:
+        draw_x = rect.centerx - sprite.get_width() // 2
+        draw_y = rect.centery - sprite.get_height() // 2
+
+    surface.blit(sprite, (draw_x, draw_y))
+    return True
 
 
 def load_animation_frames(directory, target_height=None):

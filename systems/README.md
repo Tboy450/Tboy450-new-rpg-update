@@ -90,6 +90,8 @@ Active imported art paths:
 - `GHOST_FACE_SPRITE_PATH`: processed Ghost Face enemy sprite.
 - `LION_SAGE_SPRITE_PATH`: processed Lion Sage story NPC and portrait sprite.
 - `TOWN_GUARD_SPRITE_PATH`: processed imported town guard overlay for the intro cutscene.
+- `SCENERY_ASSET_DIR`: processed active scenery sprite folder used by town
+  buildings and interior props.
 - `TITLE_DRAGON_SPRITE_PATH`: processed imported title-screen dragon.
 - `FLAME_TORNADO_FRAME_DIR`: player SPECIAL travel animation frames.
 - `FIRE_BLAST_FRAME_DIR`: Mage SPECIAL impact animation frames.

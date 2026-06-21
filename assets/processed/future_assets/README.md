@@ -27,7 +27,7 @@ current Dragon's Lair RPG look:
 ## Folders
 
 - `gear/`: unused future weapons, shields, and magic focuses.
-- `scenery/`: unused future map props and tile-like objects.
+- `scenery/`: unused future map props, town props, interiors, and tile-like objects.
 - `enemies/`: unused future enemy sprite ideas.
 - `npcs/`: unused future town or quest NPC sprite ideas.
 - `characters/`: unused future player-class or companion sprite ideas.
@@ -58,6 +58,32 @@ current Dragon's Lair RPG look:
 - `scenery/triage_tent.png`: field-care tent/map prop concept.
 - `scenery/ribbon_waystone.png`: medical-ribbon route marker concept.
 - `scenery/dragon_fire_brazier.png`: dragon-fire brazier/effect prop concept.
+- `scenery/outdoor/tavern_front.png`: exterior tavern building front for future town maps.
+- `scenery/outdoor/shop_front.png`: general goods shop building front for future town maps.
+- `scenery/outdoor/town_hall_front.png`: stone town hall facade with banner and crest.
+- `scenery/outdoor/healer_clinic_front.png`: healer clinic exterior with medical-cross sign.
+- `scenery/outdoor/blacksmith_stall.png`: outdoor forge stall with anvil and fire.
+- `scenery/outdoor/market_canopy.png`: striped market stand with produce/wares.
+- `scenery/outdoor/stone_well.png`: town well prop with water and wooden crank.
+- `scenery/outdoor/notice_board.png`: quest notice board with pinned papers.
+- `scenery/outdoor/lamp_post.png`: double lantern post for roads or town corners.
+- `scenery/outdoor/flower_planter.png`: small flower planter for town decoration.
+- `scenery/outdoor/crate_stack.png`: stacked wooden crates for alleys, shops, or docks.
+- `scenery/outdoor/barrel_stack.png`: stacked barrels for taverns, stores, or market paths.
+- `scenery/outdoor/cobblestone_patch.png`: ground patch that can help dress town paths.
+- `scenery/outdoor/lion_fountain.png`: lion-themed fountain matching the Lion Sage motif.
+- `scenery/indoor/bookshelf_full.png`: full bookshelf for homes, shops, or town hall.
+- `scenery/indoor/potion_shelf.png`: potion shelf for healer, mage, or shop interiors.
+- `scenery/indoor/tavern_bar_counter.png`: long bar counter with bottles and mugs.
+- `scenery/indoor/shop_counter.png`: small shop counter with coins and goods.
+- `scenery/indoor/scroll_desk.png`: writing desk with scroll and quill.
+- `scenery/indoor/town_hall_dais.png`: meeting dais or judge/leader platform.
+- `scenery/indoor/round_tavern_table.png`: tavern table with cup and coin.
+- `scenery/indoor/inn_bed.png`: inn bedroom prop for interior scenes.
+- `scenery/indoor/weapon_rack.png`: weapon rack for blacksmith or guard interiors.
+- `scenery/indoor/armor_stand.png`: armor display stand for halls or equipment shops.
+- `scenery/indoor/hearth_fireplace.png`: lit fireplace for taverns, homes, or town hall.
+- `scenery/indoor/medical_ribbon_rug.png`: ribbon-cross rug for healer or sage interiors.
 - `enemies/bone_mender_specter.png`: healer-symbol ghost enemy concept.
 - `enemies/ashbound_imp.png`: fire/volcano small enemy concept.
 - `enemies/crystal_bat.png`: cave or mountain crystal enemy concept.

@@ -144,7 +144,9 @@ from systems.assets import (
     TOWN_GUARD_SPRITE_PATH,
     draw_character_sprite,
     draw_enemy_sprite,
+    draw_sprite_in_rect,
     get_equipment_icon_path,
+    get_scenery_asset_path,
     get_story_sprite_path,
     load_animation_frames,
     load_scaled_sprite,
@@ -853,8 +855,28 @@ class WorldArea:
         for building in self.buildings:
             color = building["color"]
             x, y, w, h = building["x"], building["y"], building["width"], building["height"]
-            
-            if building["type"] == "town_hall":
+
+            # BEGINNER NOTE: Most town buildings are still drawn with Python
+            # shapes below. A building can opt into an imported sprite by
+            # adding `sprite` and optional `sprite_rect` fields in
+            # `game_data/town.py`. If the PNG fails to load, the old drawing
+            # code below still runs as a safe fallback.
+            drew_building_sprite = False
+            sprite_name = building.get("sprite")
+            if sprite_name:
+                sprite_path = get_scenery_asset_path(sprite_name)
+                sprite_rect = pygame.Rect(building.get("sprite_rect", (x, y, w, h)))
+                drew_building_sprite = draw_sprite_in_rect(
+                    surface,
+                    sprite_path,
+                    sprite_rect,
+                    building.get("sprite_preserve_aspect", True),
+                    building.get("sprite_anchor", "bottom"),
+                )
+
+            if drew_building_sprite:
+                pass
+            elif building["type"] == "town_hall":
                 # Draw town hall with 3D columns and roof
                 # Building shadow
                 pygame.draw.rect(surface, (color[0]-60, color[1]-60, color[2]-60), (x + 4, y + 4, w, h))
@@ -7177,6 +7199,22 @@ class Game:
         shadow = self.shade_color(color, -35)
         dark = self.shade_color(color, -55)
         light = self.shade_color(color, 30)
+
+        # BEGINNER NOTE: Interior props can optionally use imported sprites.
+        # The rectangle still controls collision/inspection placement, while
+        # `sprite` controls the art. If the PNG fails to load, the normal
+        # Python-drawn prop below is used instead.
+        sprite_name = prop.get("sprite")
+        if sprite_name:
+            sprite_path = get_scenery_asset_path(sprite_name)
+            if draw_sprite_in_rect(
+                screen,
+                sprite_path,
+                rect,
+                prop.get("sprite_preserve_aspect", True),
+                prop.get("sprite_anchor", "center"),
+            ):
+                return
 
         if kind == "rug":
             pygame.draw.ellipse(screen, shadow, rect.move(4, 5))

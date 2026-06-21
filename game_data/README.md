@@ -33,6 +33,10 @@ an enemy list changes what can spawn in an area.
 - `color`: an RGB tuple like `(255, 0, 0)`, where each number is 0-255.
 - `type`: a short key string used to connect data across modules.
 - `style`: a drawing hint used by `main.py` to choose a visual style.
+- `sprite`: optional relative PNG filename used when a building or prop should
+  draw imported art instead of only Python shapes.
+- `sprite_rect`: optional rectangle used to draw a building sprite. This can be
+  larger than the collision rectangle when the art includes a roof or sign.
 - `collision`: whether the player should be blocked by an object.
 - `entry_depth`: how far the player can visually step into the front or back of a building.
 - `door_width`: how wide the entrance trigger should be.
@@ -48,6 +52,8 @@ Some strings must match across modules:
 - Item keys like `health` and `mana` should match entries in `ITEM_PROFILES`.
 - Equipment keys like `lion_sage_charm` and `mask_shard_edge` should match entries in `EQUIPMENT_ITEMS`.
 - Equipment `icon` filenames in `equipment.py` should match PNG files in `assets/processed/equipment/`.
+- Scenery `sprite` filenames in `town.py` and `interiors.py` should match PNG
+  files under `assets/processed/scenery/`.
 - Area names like `forest`, `town`, and `volcano` should match entries in `WORLD_LAYOUT`, `AREA_VISUALS`, and `AREA_ENEMY_TYPES`.
 - Story sprite keys like `lion_sage` and `ghost_face` should match `STORY_SPRITE_PATHS` in `systems/assets.py`.
 
