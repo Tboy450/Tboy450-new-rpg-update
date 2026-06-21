@@ -71,10 +71,14 @@ from game_data import (
     DRAGON_BOSS_COLORS,
     ENEMY_NAME_POOLS,
     format_equipment_bonus,
+    format_equipment_delta,
+    get_available_blacksmith_rewards,
     get_default_equipment,
     get_equipment_item,
+    get_equipment_power,
     get_equipment_rarity_color,
     get_equipment_slot_label,
+    get_next_blacksmith_unlock,
     ITEM_PROFILES,
     ITEM_SPAWN_TABLE,
     iter_equipment_for_slot,
@@ -96,7 +100,11 @@ from game_data import (
     get_story_reward_item,
     get_town_errand,
     get_town_errand_count,
+    get_town_resident_errand_count,
+    get_town_resident_quest,
     get_town_service_dialogue,
+    is_town_resident_quest_available,
+    iter_town_residents,
 )
 
 # Runtime helpers split out of `main.py`. These are logic helpers, not pure
@@ -144,6 +152,7 @@ from systems.assets import (
 )
 from systems.save_load import DEFAULT_SAVE_PATH, load_game_state, save_game_state
 from systems.story_ui import draw_pause_menu_overlay, draw_story_dialogue_overlay
+from systems.town_population_ui import draw_town_residents
 
 # Initialize Pygame
 pygame.mixer.pre_init(44100, -16, 2, 512)
@@ -262,8 +271,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.22"
-APP_NUMERIC_VERSION = 23
+APP_VERSION = "0.1.23"
+APP_NUMERIC_VERSION = 24
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -1972,8 +1981,8 @@ class Character:
         self.story_items = {}
         # Equipped gear is its own small system. `equipment` stores what is
         # currently worn, while `owned_equipment` remembers gear the player has
-        # earned. The first version auto-equips story rewards so beginners do
-        # not need to build a full equipment menu yet.
+        # earned. Inventory is where the player can equip and unequip the gear
+        # they want to use.
         self.equipment = get_default_equipment(char_type)
         self.owned_equipment = {
             item_key: 1
@@ -3333,11 +3342,11 @@ class BattleScreen:
         # out of the way and shows/hides the larger action buttons.
         self.combat_buttons_visible = True
         self.combat_toggle_button = Button(
-            SCREEN_WIDTH - 150, 166, 128, 42, "HIDE",
+            SCREEN_WIDTH - 172, 166, 150, 46, "HIDE",
             (135, 95, 35), (255, 220, 120)
         )
         self.battle_continue_button = Button(
-            SCREEN_WIDTH - 150, 218, 128, 42, "NEXT",
+            SCREEN_WIDTH - 172, 222, 150, 46, "NEXT",
             (45, 92, 80), (150, 255, 220)
         )
         self.update_combat_toggle_button_label()
@@ -3410,6 +3419,29 @@ class BattleScreen:
         """Show or hide the large battle action buttons."""
         self.combat_buttons_visible = not self.combat_buttons_visible
         self.update_combat_toggle_button_label()
+
+    def show_combat_buttons(self):
+        """Reveal battle action buttons without toggling them back off."""
+        self.combat_buttons_visible = True
+        self.update_combat_toggle_button_label()
+
+    def get_touch_positions(self, event):
+        """Return possible game-space positions for one tap/click event.
+
+        Beginner note:
+            Android/Pygame builds are inconsistent about whether `event.pos`
+            arrives in real fullscreen pixels or in the virtual 1000x700 game
+            surface. We check both the scaled position and the raw position so
+            battle buttons still work either way.
+        """
+        raw_pos = getattr(event, "pos", None)
+        if raw_pos is None:
+            return []
+        mapped_pos = display_to_game_pos(raw_pos)
+        positions = [mapped_pos]
+        if raw_pos != mapped_pos:
+            positions.append(raw_pos)
+        return positions
 
     def get_special_attack_name(self):
         """Return the class-specific SPECIAL attack name.
@@ -4047,6 +4079,31 @@ class BattleScreen:
             pygame.draw.rect(temp_surface, UI_BG, (180, 458, max(90, condition_text.get_width() + 16), 24), border_radius=4)
             pygame.draw.rect(temp_surface, self.player_condition["color"], (180, 458, max(90, condition_text.get_width() + 16), 24), 2, border_radius=4)
             temp_surface.blit(condition_text, (188, 462))
+
+        # BEGINNER NOTE: This battle strip makes equipment feel mechanical, not
+        # hidden. The numbers are the effective stats after equipped gear
+        # bonuses, so changing gear in Inventory changes what appears here.
+        weapon_profile = get_equipment_item(self.player.equipment.get("weapon"))
+        weapon_label = weapon_profile.get("label", "Unarmed") if weapon_profile else "Unarmed"
+        rarity_color = get_equipment_rarity_color(weapon_profile.get("rarity", "common")) if weapon_profile else (210, 210, 225)
+        gear_strip = pygame.Rect(180, 486, 318, 30)
+        pygame.draw.rect(temp_surface, (18, 20, 34), gear_strip, border_radius=5)
+        pygame.draw.rect(temp_surface, rarity_color, gear_strip, 2, border_radius=5)
+        icon_path = get_equipment_icon_path(weapon_profile.get("icon")) if weapon_profile else None
+        icon = load_scaled_sprite(icon_path, 22) if icon_path else None
+        if icon:
+            temp_surface.blit(icon, (gear_strip.x + 6, gear_strip.y + 4))
+            text_x = gear_strip.x + 34
+        else:
+            pygame.draw.circle(temp_surface, rarity_color, (gear_strip.x + 18, gear_strip.centery), 7)
+            text_x = gear_strip.x + 34
+        gear_text = render_fitted_text(
+            f"{weapon_label} | STR {self.player.effective_strength()} DEF {self.player.effective_defense()} SPD {self.player.effective_speed()}",
+            (232, 236, 245),
+            gear_strip.right - text_x - 8,
+            (font_tiny,),
+        )
+        temp_surface.blit(gear_text, (text_x, gear_strip.y + 8))
         # Only draw enemy health bar and name if not a boss dragon
         if not (hasattr(self.enemy, 'enemy_type') and "boss_dragon" in self.enemy.enemy_type):
             enemy_health_width = 150 * (self.enemy.health / max(1, self.enemy.max_health))
@@ -4621,23 +4678,34 @@ class BattleScreen:
                 # BEGINNER NOTE: Use this event's real touch/click position.
                 # Android can scale the game surface, so relying on
                 # pygame.mouse.get_pos() can read a stale or mismatched point.
-                mouse_pos = display_to_game_pos(event.pos)
+                touch_positions = self.get_touch_positions(event)
                 # BEGINNER NOTE: Check the small toggle before the large action
                 # buttons. That prevents a tap on HIDE/ACTIONS from also
                 # activating a battle command in the same frame.
-                if self.combat_toggle_button.rect.collidepoint(mouse_pos):
-                    self.toggle_combat_buttons()
-                    if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
-                    return
+                for mouse_pos in touch_positions:
+                    if self.combat_toggle_button.rect.inflate(24, 24).collidepoint(mouse_pos):
+                        self.toggle_combat_buttons()
+                        if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
+                        return
 
                 if not self.combat_buttons_visible:
+                    # A hidden action row should be easy to recover on phones.
+                    # Tapping the lower command area reveals it again even if the
+                    # player misses the ACTIONS toggle.
+                    for mouse_pos in touch_positions:
+                        if mouse_pos[1] >= 490:
+                            self.show_combat_buttons()
+                            if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
+                            return
                     return
 
-                for i, button in enumerate(self.buttons):
-                    if button.rect.collidepoint(mouse_pos):
-                        self.selected_option = i
-                        if game and hasattr(game, 'SFX_ENTER') and game.SFX_ENTER: game.SFX_ENTER.play()
-                        self.handle_action(game)
+                for mouse_pos in touch_positions:
+                    for i, button in enumerate(self.buttons):
+                        if button.rect.inflate(18, 18).collidepoint(mouse_pos):
+                            self.selected_option = i
+                            if game and hasattr(game, 'SFX_ENTER') and game.SFX_ENTER: game.SFX_ENTER.play()
+                            self.handle_action(game)
+                            return
     
     def handle_action(self, game=None):
         if self.state != "player_turn" or self.battle_ended or self.action_cooldown > 0:
@@ -5192,7 +5260,7 @@ class OpeningCutscene:
         
         # Draw skip prompt
         if pygame.time.get_ticks() % 1000 < 500:  # Blinking text
-            skip_text = font_tiny.render("Tap / press any key to skip", True, (210, 210, 210))
+            skip_text = font_tiny.render("Tap / press any key to continue", True, (210, 210, 210))
             screen.blit(skip_text, (SCREEN_WIDTH - skip_text.get_width() - 20, SCREEN_HEIGHT - 34))
     
     def draw_intro_scene(self, screen):
@@ -5395,8 +5463,26 @@ class OpeningCutscene:
             screen.blit(prompt, (SCREEN_WIDTH//2 - prompt.get_width()//2, SCREEN_HEIGHT - 92))
     
     def skip(self):
-        # Skip to the end of the cutscene
-        self.scene_index = 3
+        """Advance the opening by one readable stage.
+
+        Beginner note:
+            This used to jump straight to character select. On Android, a
+            single tap could erase the whole opening. Now each tap advances one
+            scene, and the parchment scene advances one page at a time.
+        """
+        if self.scene_index == 2:
+            current_page = min(len(self.story_pages) - 1, self.timer // self.story_page_duration)
+            if current_page < len(self.story_pages) - 1:
+                self.timer = (current_page + 1) * self.story_page_duration
+                self.text_alpha = 255
+                self.transition_alpha = 0
+                return
+
+        self.scene_index += 1
+        self.timer = 0
+        self.text_alpha = 0
+        self.transition_alpha = 0
+        self.transition_state = "in"
 
 # ============================================================================
 # PLATFORM DETECTION - Cross-platform compatibility
@@ -5492,7 +5578,9 @@ class Game:
         # Town progression saved by `systems/save_load.py`.
         self.town_reputation = 0
         self.completed_town_errands = set()
+        self.completed_resident_errands = set()
         self.inspected_town_details = set()
+        self.town_resident_dialogue_index = {}
 
         # Story progression outside town services. These sets keep one-shot
         # area conversations and one-time Lion Sage rewards from repeating.
@@ -6051,6 +6139,7 @@ class Game:
         town_data = data.get("town", {})
         self.town_reputation = town_data.get("reputation", 0)
         self.completed_town_errands = set(town_data.get("completed_errands", []))
+        self.completed_resident_errands = set(town_data.get("completed_resident_errands", []))
         self.inspected_town_details = {
             (detail[0], detail[1])
             for detail in town_data.get("inspected_details", [])
@@ -6079,6 +6168,7 @@ class Game:
         self.show_pause_menu = False
         self.pause_menu_buttons = []
         self.npc_dialogue_index = 0
+        self.town_resident_dialogue_index = {}
         self.world_map = WorldMap()
 
         for area in self.world_map.areas.values():
@@ -6137,6 +6227,17 @@ class Game:
             added = self.player.add_inventory_item(item_type, amount)
             if added:
                 messages.append(f"{item_type} x{added}")
+
+        # BEGINNER NOTE: Town rewards can now grant owned equipment too.
+        # Gear does not auto-equip here because players should choose loadouts
+        # from Inventory. Story rewards can still auto-equip when needed.
+        equipment_keys = list(reward.get("equipment", ()))
+        class_equipment = reward.get("equipment_by_class", {})
+        equipment_keys.extend(class_equipment.get(self.player.type, ()))
+        for equipment_key in equipment_keys:
+            if self.player.add_equipment_item(equipment_key, auto_equip=False):
+                profile = get_equipment_item(equipment_key) or {}
+                messages.append(f"{profile.get('label', equipment_key)} gear")
 
         return ", ".join(messages)
 
@@ -6331,6 +6432,84 @@ class Game:
                 return npc_key, npc
         return None
 
+    def get_nearby_town_resident(self, current_area):
+        """Return the outdoor town resident close enough for interaction."""
+        if not current_area or current_area.area_type != "town" or not self.player:
+            return None
+
+        area_world_x, area_world_y = current_area.get_world_position()
+        player_center = (
+            self.player.x - area_world_x + PLAYER_SIZE // 2,
+            self.player.y - area_world_y + PLAYER_SIZE // 2,
+        )
+        for resident_key, resident in iter_town_residents():
+            resident_x, resident_y = resident["local_position"]
+            distance = math.hypot(player_center[0] - resident_x, player_center[1] - resident_y)
+            if distance <= resident.get("interact_radius", 82):
+                return resident_key, resident
+        return None
+
+    def draw_town_population(self, screen, current_area):
+        """Draw outdoor town residents and their nearby talk prompt."""
+        if not current_area or current_area.area_type != "town":
+            return
+        nearby = self.get_nearby_town_resident(current_area)
+        nearby_key = nearby[0] if nearby else None
+        draw_town_residents(
+            screen,
+            iter_town_residents(),
+            nearby_key,
+            self.completed_resident_errands,
+            self.game_time,
+            font_tiny,
+            UI_BG,
+        )
+
+    def talk_to_town_resident(self, resident_key, resident):
+        """Talk to an outdoor resident and complete their one-time errand.
+
+        Beginner note:
+            Resident dialogue data lives in `game_data/town_population.py`.
+            This method only decides whether to grant a reward, show a locked
+            message, or rotate a normal dialogue line.
+        """
+        quest = get_town_resident_quest(resident)
+        quest_key = resident.get("quest_key")
+        if quest and quest_key not in self.completed_resident_errands:
+            available, reason = is_town_resident_quest_available(
+                quest,
+                self.town_reputation,
+                self.completed_town_errands,
+            )
+            if available:
+                self.completed_resident_errands.add(quest_key)
+                reward_text = self.apply_town_reward(quest.get("reward", {}))
+                message_template = quest.get("complete_message", "{name}: Errand complete. ({reward})")
+                self.set_town_service_message(
+                    message_template.format(name=resident["name"], reward=reward_text or "thanks")
+                )
+                if self.SFX_ITEM:
+                    self.SFX_ITEM.play()
+                return True
+            locked_message = quest.get("locked_message")
+            if locked_message:
+                self.set_town_service_message(locked_message.format(name=resident["name"], reason=reason))
+            else:
+                self.set_town_service_message(f"{resident['name']}: {reason}")
+            return True
+
+        lines = resident.get("completed_lines" if quest_key in self.completed_resident_errands else "lines", ())
+        if not lines:
+            self.set_town_service_message(f"{resident['name']}: Safe roads.")
+            return True
+
+        line_index = self.town_resident_dialogue_index.get(resident_key, 0)
+        self.town_resident_dialogue_index[resident_key] = line_index + 1
+        self.set_town_service_message(lines[line_index % len(lines)])
+        if self.SFX_CLICK:
+            self.SFX_CLICK.play()
+        return True
+
     def draw_story_npcs(self, screen, current_area):
         """Draw friendly story NPCs such as Lion Sage on the overworld map."""
         if not current_area:
@@ -6464,14 +6643,32 @@ class Game:
             else:
                 self.set_town_service_message(f"{npc_name}: Your potion pouch is full.")
         elif service_type == "blacksmith":
-            claim_key = ("blacksmith", self.player.level)
-            if claim_key in self.player.town_service_claims:
-                self.set_town_service_message(f"{npc_name}: Your level {self.player.level} gear is already tuned.")
+            forge_rewards = get_available_blacksmith_rewards(
+                self.player.type,
+                self.player.level,
+                self.player.owned_equipment,
+                limit=2,
+            )
+            if forge_rewards:
+                forged_labels = []
+                for equipment_key in forge_rewards:
+                    if self.player.add_equipment_item(equipment_key, auto_equip=False):
+                        profile = get_equipment_item(equipment_key) or {}
+                        forged_labels.append(profile.get("label", equipment_key))
+                if forged_labels:
+                    self.set_town_service_message(
+                        f"{npc_name}: Forged {', '.join(forged_labels)}. Open Inventory to equip."
+                    )
+                else:
+                    self.set_town_service_message(f"{npc_name}: I could not finish that forge order.")
             else:
-                self.player.town_service_claims.add(claim_key)
-                self.player.strength += 1
-                self.player.defense += 1
-                self.set_town_service_message(f"{npc_name}: Gear tuned. Strength and defense +1.")
+                next_unlock = get_next_blacksmith_unlock(self.player.level)
+                if next_unlock:
+                    self.set_town_service_message(
+                        f"{npc_name}: No new gear yet. {next_unlock['label']} unlocks at level {next_unlock['level']}."
+                    )
+                else:
+                    self.set_town_service_message(f"{npc_name}: You own every forge pattern I can make right now.")
         elif service_type == "library":
             claim_key = ("library", self.player.level)
             if claim_key in self.player.town_service_claims:
@@ -6714,7 +6911,10 @@ class Game:
         line_y = self.draw_journal_line(screen, "TOWN / NPC", right_x + 14, y + 12, (255, 215, 0), font_small)
         completed_count = len(self.completed_town_errands)
         total_count = get_town_errand_count()
-        line_y = self.draw_journal_line(screen, f"Errands: {completed_count}/{total_count}", right_x + 14, line_y)
+        resident_count = len(self.completed_resident_errands)
+        resident_total = get_town_resident_errand_count()
+        line_y = self.draw_journal_line(screen, f"Building errands: {completed_count}/{total_count}", right_x + 14, line_y)
+        line_y = self.draw_journal_line(screen, f"Resident errands: {resident_count}/{resident_total}", right_x + 14, line_y)
         if self.state == "interior" and self.current_interior_service:
             line_y = self.draw_journal_line(screen, f"Inside: {self.current_interior_service['name']}", right_x + 14, line_y)
             line_y = self.draw_journal_line(screen, f"NPC: {self.current_interior_service['npc']}", right_x + 14, line_y)
@@ -6728,7 +6928,13 @@ class Game:
                 line_y = self.draw_journal_line(screen, f"NPC: {service['npc']}", right_x + 14, line_y)
                 self.draw_journal_line(screen, "SPACE/ENTER enters building", right_x + 14, line_y)
             else:
-                self.draw_journal_line(screen, "No town service nearby.", right_x + 14, line_y)
+                resident = self.get_nearby_town_resident(current_area)
+                if resident:
+                    _, resident_profile = resident
+                    line_y = self.draw_journal_line(screen, f"Nearby: {resident_profile['name']}", right_x + 14, line_y)
+                    self.draw_journal_line(screen, resident_profile["role"], right_x + 14, line_y)
+                else:
+                    self.draw_journal_line(screen, "No town service nearby.", right_x + 14, line_y)
 
         y += 178
         controls_panel = pygame.Rect(left_x, y, 722, 92)
@@ -6854,14 +7060,18 @@ class Game:
         else:
             self.inventory_item_index = 0
 
+        selected_item_key = slot_items[self.inventory_item_index] if slot_items else None
+        equipped_item_key = self.player.equipment.get(active_slot)
+
         row_y = gear_panel.y + 48
         if not slot_items:
             self.draw_journal_line(screen, "No owned gear in this slot yet.", gear_panel.x + 14, row_y, (210, 210, 225))
         else:
-            visible_rows = slot_items[:5]
-            if self.inventory_item_index >= 5:
-                start_index = max(0, min(self.inventory_item_index - 4, len(slot_items) - 5))
-                visible_rows = slot_items[start_index:start_index + 5]
+            visible_limit = 4
+            visible_rows = slot_items[:visible_limit]
+            if self.inventory_item_index >= visible_limit:
+                start_index = max(0, min(self.inventory_item_index - (visible_limit - 1), len(slot_items) - visible_limit))
+                visible_rows = slot_items[start_index:start_index + visible_limit]
             else:
                 start_index = 0
             for offset, item_key in enumerate(visible_rows):
@@ -6870,7 +7080,7 @@ class Game:
                 selected = index == self.inventory_item_index
                 equipped = self.player.equipment.get(active_slot) == item_key
                 rarity_color = get_equipment_rarity_color(profile.get("rarity", "common"))
-                row = pygame.Rect(gear_panel.x + 12, row_y, gear_panel.width - 24, 52)
+                row = pygame.Rect(gear_panel.x + 12, row_y, gear_panel.width - 24, 48)
                 if selected:
                     pygame.draw.rect(screen, (48, 42, 76), row, border_radius=6)
                     pygame.draw.rect(screen, (255, 215, 0), row, 2, border_radius=6)
@@ -6895,11 +7105,43 @@ class Game:
                 )
                 screen.blit(label, (row.x + 54, row.y + 8))
                 screen.blit(bonus_text, (row.x + 54, row.y + 29))
-                row_y += 56
+                row_y += 52
 
-            if len(slot_items) > 5:
+            if len(slot_items) > visible_limit:
                 scroll_text = font_tiny.render(f"{self.inventory_item_index + 1}/{len(slot_items)}", True, (210, 210, 225))
-                screen.blit(scroll_text, (gear_panel.right - scroll_text.get_width() - 16, gear_panel.bottom - 26))
+                screen.blit(scroll_text, (gear_panel.right - scroll_text.get_width() - 16, gear_panel.y + 238))
+
+        preview_panel = pygame.Rect(gear_panel.x + 12, gear_panel.bottom - 82, gear_panel.width - 24, 70)
+        pygame.draw.rect(screen, (16, 18, 28), preview_panel, border_radius=8)
+        pygame.draw.rect(screen, (120, 150, 210), preview_panel, 2, border_radius=8)
+        if selected_item_key:
+            selected_profile = get_equipment_item(selected_item_key) or {}
+            rarity = selected_profile.get("rarity", "common")
+            rarity_color = get_equipment_rarity_color(rarity)
+            tier = selected_profile.get("tier", 1)
+            comparison = format_equipment_delta(selected_item_key, equipped_item_key)
+            power_delta = get_equipment_power(selected_item_key) - get_equipment_power(equipped_item_key)
+            change_color = (120, 230, 150) if power_delta > 0 else (255, 185, 110) if power_delta < 0 else (220, 220, 230)
+            preview_title = render_fitted_text(
+                f"{selected_profile.get('label', selected_item_key)}  T{tier} {rarity.upper()}",
+                rarity_color,
+                preview_panel.width - 24,
+                (font_tiny,),
+            )
+            preview_change = render_fitted_text(
+                f"Change: {comparison}",
+                change_color,
+                preview_panel.width - 24,
+                (font_tiny,),
+            )
+            description_lines = wrap_text_to_width(selected_profile.get("description", ""), font_tiny, preview_panel.width - 24)
+            screen.blit(preview_title, (preview_panel.x + 12, preview_panel.y + 8))
+            screen.blit(preview_change, (preview_panel.x + 12, preview_panel.y + 27))
+            if description_lines:
+                desc = render_fitted_text(description_lines[0], (205, 210, 225), preview_panel.width - 24, (font_tiny,))
+                screen.blit(desc, (preview_panel.x + 12, preview_panel.y + 48))
+        else:
+            self.draw_journal_line(screen, "Forge or earn gear to compare it here.", preview_panel.x + 12, preview_panel.y + 18, (210, 210, 225))
 
         trophy_panel = pygame.Rect(right_x, y + 358, 362, 120)
         pygame.draw.rect(screen, (20, 20, 30), trophy_panel, border_radius=8)
@@ -7136,12 +7378,14 @@ class Game:
     def draw_town_errand_board(self, screen):
         completed_count = len(self.completed_town_errands)
         total_count = get_town_errand_count()
+        resident_count = len(self.completed_resident_errands)
+        resident_total = get_town_resident_errand_count()
         panel = pygame.Rect(250, 230, 500, 116)
         pygame.draw.rect(screen, UI_BG, panel, border_radius=8)
         pygame.draw.rect(screen, (255, 215, 92), panel, 3, border_radius=8)
 
         title = font_small.render(
-            f"TOWN ERRANDS {completed_count}/{total_count}  REP {self.town_reputation}",
+            f"TOWN ERRANDS {completed_count + resident_count}/{total_count + resident_total}  REP {self.town_reputation}",
             True,
             (255, 215, 92),
         )
@@ -7841,6 +8085,7 @@ class Game:
             # BEGINNER NOTE: Friendly story NPCs are drawn separately from
             # enemies so they never start battles by touching the player.
             self.draw_story_npcs(screen, current_area)
+            self.draw_town_population(screen, current_area)
             
             # Draw player (convert world coordinates to screen coordinates)
             screen_x, screen_y = self.world_map.world_to_screen(self.player.x, self.player.y)
@@ -7973,6 +8218,12 @@ class Game:
                 if service:
                     service_text = font_tiny.render(service["prompt"], True, (255, 215, 0))
                     screen.blit(service_text, (20, SCREEN_HEIGHT - 210))
+                else:
+                    resident = self.get_nearby_town_resident(current_area)
+                    if resident:
+                        _, resident_profile = resident
+                        resident_text = font_tiny.render(resident_profile["prompt"], True, (255, 230, 150))
+                        screen.blit(resident_text, (20, SCREEN_HEIGHT - 210))
 
                 if self.town_service_message and self.town_service_message_timer > 0:
                     message_text = font_tiny.render(self.town_service_message, True, (255, 235, 160))
@@ -8368,15 +8619,20 @@ class Game:
                             if service:
                                 self.enter_town_interior(service)
                             else:
-                                story_npc = self.get_nearby_story_npc(current_area)
-                                if story_npc:
-                                    _, npc = story_npc
-                                    dialogue_key = npc.get("dialogue_key")
-                                    repeat = dialogue_key in self.seen_story_dialogues
-                                    self.start_story_dialogue(dialogue_key, repeat=repeat)
-                                elif action == CONFIRM:
-                                    self.show_journal = True
-                                    self.show_world_map = False
+                                town_resident = self.get_nearby_town_resident(current_area)
+                                if town_resident:
+                                    resident_key, resident = town_resident
+                                    self.talk_to_town_resident(resident_key, resident)
+                                else:
+                                    story_npc = self.get_nearby_story_npc(current_area)
+                                    if story_npc:
+                                        _, npc = story_npc
+                                        dialogue_key = npc.get("dialogue_key")
+                                        repeat = dialogue_key in self.seen_story_dialogues
+                                        self.start_story_dialogue(dialogue_key, repeat=repeat)
+                                    elif action == CONFIRM:
+                                        self.show_journal = True
+                                        self.show_world_map = False
                         continue
                     
                     # Pass input to battle screen
@@ -8590,7 +8846,9 @@ class Game:
         self.npc_dialogue_index = 0
         self.town_reputation = 0
         self.completed_town_errands = set()
+        self.completed_resident_errands = set()
         self.inspected_town_details = set()
+        self.town_resident_dialogue_index = {}
         self.seen_story_dialogues = set()
         self.claimed_story_rewards = set()
         self.story_enemy_defeats = {}

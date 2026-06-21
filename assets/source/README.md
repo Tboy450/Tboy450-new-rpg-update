@@ -12,6 +12,8 @@ chroma-key images. These files are preserved so assets can be reprocessed later.
 - `ui/`: raw launcher, title, and interface sources.
 - `music/`: future raw music sources.
 - `sounds/`: future raw sound-effect sources.
+- Future generated PNG concepts may live directly under
+  `assets/processed/future_assets/` when there is no separate raw/source file.
 
 ## Beginner Rule
 

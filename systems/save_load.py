@@ -102,6 +102,7 @@ def build_save_data(game):
         "town": {
             "reputation": getattr(game, "town_reputation", 0),
             "completed_errands": sorted(getattr(game, "completed_town_errands", set())),
+            "completed_resident_errands": sorted(getattr(game, "completed_resident_errands", set())),
             "inspected_details": sorted(inspected_details),
         },
         "story": {

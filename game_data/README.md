@@ -14,7 +14,7 @@ an enemy list changes what can spawn in an area.
 - `__init__.py`: re-exports active data so `main.py` can import from one stable place.
 - `characters.py`: playable class starting stats. Edit this to tune Warrior, Mage, or Rogue.
 - `enemies.py`: enemy names, area enemy spawn tables, and dragon boss color palettes.
-- `equipment.py`: weapons, armor, accessories, starting gear, rarity/tier labels, icon filenames, and equipment stat bonuses.
+- `equipment.py`: weapons, armor, accessories, starting gear, blacksmith forge progression, rarity/tier labels, icon filenames, and equipment stat bonuses.
 - `interiors.py`: town building interior layouts, props, inspect points, colors, and room prompts.
 - `mechanics.py`: combat tuning, elemental status effects, pickup item profiles, and item spawn tables.
 - `npcs.py`: town guard template/dialogue, town service NPC metadata, and rotating interior NPC dialogue.
@@ -22,6 +22,7 @@ an enemy list changes what can spawn in an area.
 - `quests.py`: town errand names, summaries, and rewards.
 - `story.py`: opening story text, Lion Sage map placement/dialogue/reward, and Ghost Face area intro dialogue.
 - `town.py`: town overworld buildings, boundaries, decorations, smoke sources, and building collision tuning.
+- `town_population.py`: outdoor town residents, their rotating dialogue, one-time resident errands, and resident rewards.
 - `world.py`: world grid layout, area descriptions, area visuals, area particles, and environmental area effects.
 
 ## Beginner Data Glossary
@@ -55,6 +56,7 @@ Some strings must match across modules:
 - Enemy or boss resource data belongs in `enemies.py` or `progression.py`, not `world.py`.
 - Area visuals or behavior that affect the map belong in `world.py`.
 - Town NPC/service text and dialogue belongs in `npcs.py`; town room layout and inspect text belongs in `interiors.py`.
+- Outdoor town residents who stand on the town map belong in `town_population.py`.
 - Town overworld layout belongs in `town.py`; building room contents belong in `interiors.py`.
 - Town errand/reward data belongs in `quests.py`.
 - Main quest story beats, one-shot area dialogue, and friendly story NPC placement belong in `story.py`.
@@ -68,9 +70,11 @@ Some strings must match across modules:
 - To make volcano enemies more dangerous by variety, add another element key to `AREA_ENEMY_TYPES["volcano"]` in `enemies.py`.
 - To move the shop outdoors, edit the shop record in `TOWN_BUILDINGS` in `town.py`.
 - To add a line of shopkeeper dialogue, edit the `shop` `dialogue` tuple in `npcs.py`.
+- To add an outdoor town resident, edit `TOWN_RESIDENTS` and optional `TOWN_RESIDENT_ERRANDS` in `town_population.py`.
 - To add an inspectable object inside the inn, edit `TOWN_INTERIORS["inn"]["inspect_points"]` in `interiors.py`.
 - To tune critical hits, edit `BATTLE_RULES` in `mechanics.py`.
 - To tune gear, edit the item record in `EQUIPMENT_ITEMS` in `equipment.py`. The most common fields are `tier`, `rarity`, `icon`, `bonuses`, and `description`.
+- To tune blacksmith progression, edit `BLACKSMITH_GEAR_REWARDS` in `equipment.py`.
 - To move the Lion Sage, edit `STORY_NPCS["lion_sage"]["local_position"]` in `story.py`.
 - To change when SPECIAL unlocks, edit the `reward` block in `STORY_AREA_DIALOGUES["lion_sage_swamp"]`.
 
@@ -92,6 +96,20 @@ Current first-story path:
 - The guard warns about the dragon and sends the player toward Lion Sage.
 - Lion Sage gives the first real quest direction, a large EXP training reward, a trophy, the first SPECIAL unlock, and the Lion Sage Charm accessory.
 - Ghost Face uses one-time area-enter dialogue in the forest, can respawn, and gives a larger first-clear reward than repeat clears. The first clear also equips the Mask-Shard Edge weapon.
+
+## Town Population Map
+
+`town_population.py` is for people outside on the town map, not inside
+buildings.
+
+- `TOWN_RESIDENTS`: where each resident stands, how they look, their prompt,
+  and their rotating dialogue.
+- `TOWN_RESIDENT_ERRANDS`: one-time resident errands, lock requirements, reward
+  data, and completion messages.
+- Resident errands can reward score, EXP, reputation, consumable items, class
+  gear, or normal equipment.
+- `systems/town_population_ui.py` draws the residents; the data stays here so
+  the drawing helper does not become a second source of truth.
 
 ## Asset Intake
 

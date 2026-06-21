@@ -8,7 +8,8 @@
 - `assets.py`: centralizes imported art paths, sprite caching, animation frame loading, and reusable sprite drawing.
 - `save_load.py`: serializes and loads JSON save data for the player, score, boss progress, visited areas, and town interaction progress.
 - `story_ui.py`: draws reusable overlays such as the story dialogue box and shared pause menu.
-- `__init__.py`: marks this folder as a Python package so helpers can be imported as `systems.assets`, `systems.input_actions`, `systems.android_controls`, `systems.android_update`, `systems.story_ui`, and `systems.save_load`.
+- `town_population_ui.py`: draws outdoor town residents, quest markers, names, and nearby talk prompts.
+- `__init__.py`: marks this folder as a Python package so helpers can be imported as `systems.assets`, `systems.input_actions`, `systems.android_controls`, `systems.android_update`, `systems.story_ui`, `systems.town_population_ui`, and `systems.save_load`.
 
 Keep this folder for reusable runtime systems. Pure tuning data still belongs in `game_data/`.
 
@@ -52,7 +53,9 @@ Current touch-layout rules:
 - Journal and world map use close buttons instead of the movement pad.
 - Battle action buttons are owned by `BattleScreen` in `main.py`, because
   combat needs to know whether `SPECIAL` is unlocked and which turn is active.
-  The battle screen now has its own small `ACTIONS` / `HIDE` toggle.
+  The battle screen now has its own small `ACTIONS` / `HIDE` toggle. It also
+  checks both raw and scaled Android tap coordinates so the buttons remain
+  usable across APK launch paths.
 - The shared pause menu still runs game actions through `main.py`, but the
   overlay drawing now lives in `systems/story_ui.py`.
 
@@ -121,6 +124,21 @@ This module owns two beginner-visible overlays that used to sit directly inside
 Keep story timing, menu commands, and save/load behavior in `main.py`. Use
 `story_ui.py` when the change is only about how those overlays look.
 
+## `town_population_ui.py`
+
+This module draws outdoor town residents.
+
+- Resident names, positions, colors, dialogue, and errand rewards live in
+  `game_data/town_population.py`.
+- `draw_town_residents(...)` draws the small resident sprite, quest marker,
+  name label, and nearby talk prompt.
+- `Game.draw_town_population` in `main.py` decides when to call this helper and
+  which resident is currently nearby.
+
+Use this module when changing how outdoor town residents look. Use
+`game_data/town_population.py` when changing who they are, where they stand, or
+what rewards they give.
+
 ## `save_load.py`
 
 This module is responsible for turning live game objects into JSON-safe data.
@@ -133,6 +151,8 @@ This module is responsible for turning live game objects into JSON-safe data.
 - Equipped gear lives on `Character.equipment`, owned gear lives on
   `Character.owned_equipment`, and both are saved under player data.
 - Story enemy first-clear/repeat counts live on `Game.story_enemy_defeats` and are saved under story data.
+- Outdoor town resident errands live on `Game.completed_resident_errands` and
+  are saved under town data.
 
 When adding a new saved feature:
 

@@ -44,12 +44,14 @@ responsible for. Read this before editing if you are new to Python or this repo.
 - `OpeningCutscene`: the intro story sequence.
   It owns the timed scene animation, stable star/mountain backgrounds, and
   readable parchment story pages. The short opening lines it displays still
-  come from `game_data/story.py`.
+  come from `game_data/story.py`. Tapping/pressing a key advances one scene or
+  parchment page at a time instead of skipping the full opening.
 
 ## `game_data/` Modules
 
 - `characters.py`: starting stats for playable classes.
 - `enemies.py`: enemy name pools, enemy area spawning, and dragon boss color palettes.
+- `equipment.py`: weapons, armor, accessories, starting gear, forge progression, rarity/tier labels, and gear stat bonuses.
 - `interiors.py`: room layouts for town buildings, including props and inspect points.
 - `mechanics.py`: combat math tuning, item effects, element visuals, and pickup rules.
 - `npcs.py`: town guard data and NPC service dialogue.
@@ -57,6 +59,7 @@ responsible for. Read this before editing if you are new to Python or this repo.
 - `quests.py`: town errands and reward data.
 - `story.py`: opening story lines, Lion Sage placement and reward, Ghost Face area dialogue, and other first-quest story data.
 - `town.py`: outdoor town buildings, walls, decorations, smoke sources, and collision tuning fields.
+- `town_population.py`: outdoor town residents, their rotating dialogue, one-time resident errands, and resident rewards.
 - `world.py`: 3x3 world layout, area descriptions, colors, particles, and environmental effects.
 
 ## `systems/` Modules
@@ -67,6 +70,7 @@ responsible for. Read this before editing if you are new to Python or this repo.
 - `input_actions.py`: translates keyboard or virtual Android button input into action names like `move_up`.
 - `save_load.py`: converts the current `Game` object into JSON and loads saved JSON back later.
 - `story_ui.py`: draws the reusable story dialogue panel and the shared pause-menu overlay.
+- `town_population_ui.py`: draws outdoor town residents, their markers, names, and nearby prompts.
 
 ## Story + Asset Quick Map
 
@@ -109,6 +113,21 @@ Use this when you know the feature name but not the file.
   adds the Android Inventory touch buttons when the inventory overlay is open.
   Inventory is now also the equipment menu: left/right changes weapon, armor,
   or charm slots; up/down chooses owned gear; OK equips; USE unequips.
+  The selected gear preview shows rarity, tier, description, and the stat
+  change versus what is currently equipped.
+- Blacksmith gear progression:
+  `BLACKSMITH_GEAR_REWARDS` in `game_data/equipment.py` controls which standard
+  gear the forge can award at player levels 2, 4, and 6. `Game.apply_town_service`
+  grants that gear without auto-equipping it, so the player makes the choice in
+  Inventory.
+- Outdoor town residents:
+  `game_data/town_population.py` stores resident names, map positions, dialogue,
+  one-time resident errands, and resident rewards. `systems/town_population_ui.py`
+  draws the small resident sprites and quest markers. `Game.talk_to_town_resident`
+  in `main.py` handles interaction and reward flow.
+- Future inactive assets:
+  `assets/processed/future_assets/` stores unused transparent PNG concepts.
+  These are intentionally not referenced by active code until a later import pass.
 - Imported effect art tied to that flow:
   `assets/processed/effects/flame_tornado/` is the SPECIAL travel animation.
   `assets/processed/effects/fire_blast/` is the Mage impact animation.
@@ -135,7 +154,9 @@ beginner-facing control labels.
 - Battle touch actions:
   `BattleScreen` in `main.py` owns these instead of `systems/android_controls.py`.
   Combat has its own `ACTIONS` / `HIDE` toggle because the button list changes
-  when Lion Sage unlocks `SPECIAL`.
+  when Lion Sage unlocks `SPECIAL`. Battle tap handling checks both raw Android
+  touch coordinates and scaled game coordinates, because different APK launch
+  paths report touches differently.
 - Shared pause-menu logic and button commands:
   `Game.build_pause_menu_entries`, `Game.toggle_pause_menu`, and `Game.activate_pause_menu_command` in `main.py`
 - Shared pause-menu drawing:
@@ -165,6 +186,7 @@ beginner-facing control labels.
 - Add or tune character stats in `game_data/characters.py`, not in `main.py`.
 - Add enemy names or area enemy lists in `game_data/enemies.py`.
 - Add town outdoor buildings in `game_data/town.py`.
+- Add outdoor town residents in `game_data/town_population.py`.
 - Add town room furniture or inspect points in `game_data/interiors.py`.
 - Add NPC dialogue in `game_data/npcs.py`.
 - Add boss names or boss hints in `game_data/progression.py`.
@@ -178,6 +200,17 @@ beginner-facing control labels.
 3. Add its NPC/service text to `TOWN_SERVICES` in `game_data/npcs.py`.
 4. Optional: add an errand in `TOWN_ERRANDS` in `game_data/quests.py`.
 5. Make sure the building `type` string is the same in every file.
+
+## How To Add A New Town Resident
+
+1. Add the resident profile to `TOWN_RESIDENTS` in `game_data/town_population.py`.
+2. Pick a `local_position` in town-screen pixels.
+3. Add `lines` for normal rotating dialogue.
+4. Optional: add a matching errand in `TOWN_RESIDENT_ERRANDS`.
+5. Optional: set `quest_key` on the resident so talking to them can complete that errand.
+6. If the errand awards gear, make sure the gear key exists in `game_data/equipment.py`.
+7. `systems/town_population_ui.py` will draw the resident automatically as long
+   as the profile exists in `TOWN_RESIDENTS`.
 
 ## How To Add A New Area Type
 
@@ -203,6 +236,13 @@ scenery in `game_data/town.py`, not a separate map area.
    list in `game_data/story.py`.
 7. Save/load already stores `equipment` and `owned_equipment` under player data.
 8. Players equip and unequip owned gear from the Inventory screen.
+
+## How To Tune Blacksmith Gear
+
+1. Edit `BLACKSMITH_GEAR_REWARDS` in `game_data/equipment.py`.
+2. Set the `level` gate for each forge tier.
+3. Put class-specific equipment keys under `items_by_class`.
+4. Keep rare story rewards in `game_data/story.py` and legendary rewards for boss or later-game systems.
 
 ## How To Add A New Item
 

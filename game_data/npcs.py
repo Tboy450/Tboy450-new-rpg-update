@@ -62,8 +62,8 @@ TOWN_SERVICES = {
         "npc": "Borin the Smith",
         "prompt": "SPACE/ENTER: enter the forge",
         "dialogue": (
-            "Borin the Smith: A tuned edge matters more than a fancy edge.",
-            "Borin the Smith: Every level teaches your hands something new. Let me match the steel.",
+            "Borin the Smith: I can forge better sets as your level rises.",
+            "Borin the Smith: I hand you the gear; you decide what to equip from Inventory.",
             "Borin the Smith: Dragon hide hates clean strikes and loves hesitation.",
         ),
     },

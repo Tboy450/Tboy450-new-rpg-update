@@ -14,12 +14,21 @@ Beginner note:
     - rarity: common, uncommon, rare, epic, or legendary
     - icon: PNG filename inside assets/processed/equipment/
     - bonuses: small STR/DEF/SPD changes used by battle math
+    - BLACKSMITH_GEAR_REWARDS: the level-gated standard forge progression
 """
 
 EQUIPMENT_SLOT_LABELS = {
     "weapon": "Weapon",
     "armor": "Armor",
     "accessory": "Charm",
+}
+
+EQUIPMENT_STAT_ORDER = ("strength", "defense", "speed")
+
+EQUIPMENT_STAT_LABELS = {
+    "strength": "STR",
+    "defense": "DEF",
+    "speed": "SPD",
 }
 
 RARITY_COLORS = {
@@ -238,6 +247,33 @@ EQUIPMENT_ITEMS = {
         "bonuses": {"speed": 3},
         "description": "A movement charm for players who want better dodge and escape odds.",
     },
+    "gate_watch_badge": {
+        "label": "Gate Watch Badge",
+        "slot": "accessory",
+        "tier": 2,
+        "rarity": "uncommon",
+        "icon": "gate_watch_badge.png",
+        "bonuses": {"defense": 1, "speed": 1},
+        "description": "Jessa's patrol badge. It rewards alert movement and steadier guard work.",
+    },
+    "cartographer_compass": {
+        "label": "Cartographer Compass",
+        "slot": "accessory",
+        "tier": 3,
+        "rarity": "uncommon",
+        "icon": "cartographer_compass.png",
+        "bonuses": {"defense": 1, "speed": 2},
+        "description": "Orrin's marked compass. It helps the player read safer routes faster.",
+    },
+    "medic_triage_band": {
+        "label": "Medic Triage Band",
+        "slot": "accessory",
+        "tier": 4,
+        "rarity": "rare",
+        "icon": "medic_triage_band.png",
+        "bonuses": {"defense": 3, "speed": 1},
+        "description": "Vale's field band. It represents preparation, recovery, and staying upright.",
+    },
     "guardian_seal": {
         "label": "Guardian Seal",
         "slot": "accessory",
@@ -286,6 +322,41 @@ DEFAULT_EQUIPMENT_BY_CLASS = {
     },
 }
 
+# BEGINNER NOTE:
+# The blacksmith does not grant every item in the game. This table is the
+# standard progression path: reliable gear that can be earned by leveling and
+# visiting the forge. Rare story gear and legendary gear can still be awarded
+# by quests, bosses, or future loot systems.
+BLACKSMITH_GEAR_REWARDS = (
+    {
+        "level": 2,
+        "label": "Iron Forge Set",
+        "items_by_class": {
+            "Warrior": ("iron_sword", "iron_mail"),
+            "Mage": ("arcane_staff", "iron_mail"),
+            "Rogue": ("ranger_cloak", "swift_charm"),
+        },
+    },
+    {
+        "level": 4,
+        "label": "Veteran Forge Set",
+        "items_by_class": {
+            "Warrior": ("steel_sword", "battle_plate"),
+            "Mage": ("sage_mantle", "guardian_seal"),
+            "Rogue": ("shadow_daggers", "shadow_cloak"),
+        },
+    },
+    {
+        "level": 6,
+        "label": "Advanced Forge Set",
+        "items_by_class": {
+            "Warrior": ("ember_blade", "storm_pike"),
+            "Mage": ("starfall_staff", "guardian_seal"),
+            "Rogue": ("shadow_daggers", "guardian_seal"),
+        },
+    },
+)
+
 
 def get_equipment_item(item_key):
     """Return one equipment record by key, or None if the key is unknown."""
@@ -302,6 +373,24 @@ def get_equipment_rarity_color(rarity):
     return RARITY_COLORS.get(rarity, RARITY_COLORS["common"])
 
 
+def get_equipment_bonuses(item_key):
+    """Return a fresh stat-bonus dictionary for one equipment item."""
+    profile = get_equipment_item(item_key)
+    if not profile:
+        return {}
+    return dict(profile.get("bonuses", {}))
+
+
+def get_equipment_power(item_key):
+    """Return a simple sorting score for comparing gear strength."""
+    bonuses = get_equipment_bonuses(item_key)
+    return (
+        int(bonuses.get("strength", 0)) * 3
+        + int(bonuses.get("defense", 0)) * 2
+        + int(bonuses.get("speed", 0)) * 2
+    )
+
+
 def iter_equipment_for_slot(slot):
     """Yield equipment records for one slot in progression order."""
     matches = [
@@ -311,6 +400,39 @@ def iter_equipment_for_slot(slot):
     ]
     matches.sort(key=lambda item: (item[1].get("tier", 0), item[1].get("label", item[0])))
     return matches
+
+
+def get_available_blacksmith_rewards(char_type, level, owned_equipment, limit=2):
+    """Return forge reward keys the player can claim right now.
+
+    Beginner note:
+        `owned_equipment` is a dictionary of item_key -> count. We use it to
+        avoid granting duplicates. The level gate keeps stronger gear from
+        arriving too early, and `limit` keeps one forge visit readable.
+    """
+    owned_keys = set(owned_equipment or {})
+    rewards = []
+    for reward_tier in BLACKSMITH_GEAR_REWARDS:
+        if level < reward_tier["level"]:
+            continue
+        class_items = reward_tier["items_by_class"].get(
+            char_type,
+            reward_tier["items_by_class"].get("Rogue", ()),
+        )
+        for item_key in class_items:
+            if item_key in EQUIPMENT_ITEMS and item_key not in owned_keys and item_key not in rewards:
+                rewards.append(item_key)
+                if len(rewards) >= limit:
+                    return rewards
+    return rewards
+
+
+def get_next_blacksmith_unlock(level):
+    """Return the next blacksmith reward tier above the current player level."""
+    for reward_tier in BLACKSMITH_GEAR_REWARDS:
+        if level < reward_tier["level"]:
+            return reward_tier
+    return None
 
 
 def get_default_equipment(char_type):
@@ -325,15 +447,23 @@ def format_equipment_bonus(bonuses):
     Example:
         {"strength": 3, "speed": 1} becomes "STR +3, SPD +1".
     """
-    labels = {
-        "strength": "STR",
-        "defense": "DEF",
-        "speed": "SPD",
-    }
     parts = []
-    for stat_key in ("strength", "defense", "speed"):
+    for stat_key in EQUIPMENT_STAT_ORDER:
         amount = int(bonuses.get(stat_key, 0))
         if amount:
             sign = "+" if amount > 0 else ""
-            parts.append(f"{labels[stat_key]} {sign}{amount}")
+            parts.append(f"{EQUIPMENT_STAT_LABELS[stat_key]} {sign}{amount}")
     return ", ".join(parts) if parts else "No stat bonus"
+
+
+def format_equipment_delta(candidate_key, equipped_key):
+    """Return short stat changes if candidate replaces equipped gear."""
+    candidate = get_equipment_bonuses(candidate_key)
+    equipped = get_equipment_bonuses(equipped_key)
+    parts = []
+    for stat_key in EQUIPMENT_STAT_ORDER:
+        delta = int(candidate.get(stat_key, 0)) - int(equipped.get(stat_key, 0))
+        if delta:
+            sign = "+" if delta > 0 else ""
+            parts.append(f"{EQUIPMENT_STAT_LABELS[stat_key]} {sign}{delta}")
+    return ", ".join(parts) if parts else "No stat change"

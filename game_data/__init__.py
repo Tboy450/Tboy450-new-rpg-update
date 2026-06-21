@@ -16,15 +16,23 @@ from .enemies import AREA_ENEMY_TYPES, DRAGON_BOSS_COLORS, ENEMY_NAME_POOLS
 
 # Weapons, armor, accessories, and starting gear.
 from .equipment import (
+    BLACKSMITH_GEAR_REWARDS,
     DEFAULT_EQUIPMENT_BY_CLASS,
     EQUIPMENT_ITEMS,
     EQUIPMENT_SLOT_LABELS,
+    EQUIPMENT_STAT_LABELS,
+    EQUIPMENT_STAT_ORDER,
     RARITY_COLORS,
+    format_equipment_delta,
     format_equipment_bonus,
+    get_available_blacksmith_rewards,
     get_default_equipment,
+    get_equipment_bonuses,
     get_equipment_item,
+    get_equipment_power,
     get_equipment_rarity_color,
     get_equipment_slot_label,
+    get_next_blacksmith_unlock,
     iter_equipment_for_slot,
 )
 
@@ -83,6 +91,17 @@ from .town import (
     clone_town_layout,
 )
 
+# Outdoor town population and resident errands.
+from .town_population import (
+    TOWN_RESIDENTS,
+    TOWN_RESIDENT_ERRANDS,
+    get_town_resident,
+    get_town_resident_errand_count,
+    get_town_resident_quest,
+    is_town_resident_quest_available,
+    iter_town_residents,
+)
+
 # World map layout, area visuals, particles, and environmental effects.
 from .world import (
     AREA_DESCRIPTIONS,
@@ -101,6 +120,7 @@ __all__ = [
     "AREA_VISUALS",
     "BATTLE_RULES",
     "BOSS_PROGRESSION",
+    "BLACKSMITH_GEAR_REWARDS",
     "CHARACTER_CLASS_STATS",
     "DRAGON_BOSS_COLORS",
     "ELEMENT_PROFILES",
@@ -108,6 +128,8 @@ __all__ = [
     "DEFAULT_EQUIPMENT_BY_CLASS",
     "EQUIPMENT_ITEMS",
     "EQUIPMENT_SLOT_LABELS",
+    "EQUIPMENT_STAT_LABELS",
+    "EQUIPMENT_STAT_ORDER",
     "FINAL_BOSS_LEVEL",
     "ITEM_PROFILES",
     "ITEM_SPAWN_TABLE",
@@ -124,12 +146,15 @@ __all__ = [
     "TOWN_BOUNDARIES",
     "TOWN_BUILDINGS",
     "TOWN_DECORATIONS",
+    "TOWN_RESIDENTS",
+    "TOWN_RESIDENT_ERRANDS",
     "TOWN_SERVICES",
     "TOWN_SMOKE_SOURCES",
     "WORLD_LAYOUT",
     "clone_town_layout",
     "create_town_guard",
     "format_equipment_bonus",
+    "format_equipment_delta",
     "get_story_dialogue",
     "get_story_dialogues_for_area",
     "get_story_enemy_reward",
@@ -138,12 +163,21 @@ __all__ = [
     "get_town_service_dialogue",
     "get_boss_profile",
     "get_element_profile",
+    "get_available_blacksmith_rewards",
     "get_default_equipment",
+    "get_equipment_bonuses",
     "get_equipment_item",
+    "get_equipment_power",
     "get_equipment_rarity_color",
     "get_equipment_slot_label",
+    "get_next_blacksmith_unlock",
     "get_progression_status",
     "get_town_errand",
     "get_town_errand_count",
+    "get_town_resident",
+    "get_town_resident_errand_count",
+    "get_town_resident_quest",
+    "is_town_resident_quest_available",
     "iter_equipment_for_slot",
+    "iter_town_residents",
 ]

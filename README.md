@@ -105,7 +105,8 @@ Android touch controls:
 - `OK`: confirm, talk, inspect, or advance story dialogue.
 - Battle uses a small `ACTIONS` / `HIDE` button near the upper-right of the
   battle screen. Tap `ACTIONS` to show attack buttons, tap an attack to choose
-  it, and tap `HIDE` when you want the lower battlefield clear.
+  it, and tap `HIDE` when you want the lower battlefield clear. If the action
+  row is hidden, tapping the lower command area also brings it back.
 - Pause-menu buttons expose `Journal`, `Map`, `Save`, and `Load` without a hardware keyboard.
 - Inventory opens from the pause menu. In Inventory, use `SLOT <` / `SLOT >`
   to switch weapon, armor, and charm slots; arrows to choose owned gear;
@@ -113,14 +114,20 @@ Android touch controls:
 
 The default save file is stored at `~/.dragons_lair_rpg_save.json`. Set `DRAGONS_LAIR_SAVE` to choose a different save path.
 
-Town services now also complete one-time errands for town reputation, score, experience, and occasional potion rewards. Inspecting marked details inside interiors grants a small one-time insight reward.
+Town services now also complete one-time errands for town reputation, score,
+experience, and occasional potion rewards. Inspecting marked details inside
+interiors grants a small one-time insight reward. Outdoor town residents also
+have rotating dialogue and one-time errands; some resident rewards grant gear
+that waits in Inventory until equipped.
 
 Inventory now shows and manages real equipped gear. Starter weapons/armor are
 automatic, Lion Sage awards a charm accessory, and Ghost Face's first clear
-awards a Mask-Shard weapon. Standard progression gear and future rare/special
-gear are stored in `game_data/equipment.py`, with matching icons in
-`assets/processed/equipment/`. The center overworld area is `plains`;
-beach/sand details are visual town scenery rather than a separate map area.
+awards a Mask-Shard weapon. The blacksmith now grants level-gated standard gear
+that stays in Inventory until the player equips it. Standard progression gear
+and future rare/special gear are stored in `game_data/equipment.py`, with
+matching icons in `assets/processed/equipment/`. The center overworld area is
+`plains`; beach/sand details are visual town scenery rather than a separate map
+area.
 
 Repository layout:
 
@@ -129,6 +136,7 @@ Repository layout:
 - `game_data/` holds active modular data. See `game_data/README.md` for where character, enemy, world, NPC, town interior, mechanic, and progression data belongs.
 - `systems/` holds active helper systems such as input mapping, JSON save/load, update-link helpers, and reusable story/pause UI drawing. See `systems/README.md` before changing helper code.
 - `assets/` is the intake area for future art/audio ports. Keep raw downloads in `assets/source/`, game-ready files in `assets/processed/`, and non-CC0 attribution in `assets/credits.md`.
+- `assets/processed/future_assets/` holds inactive future gear, scenery, enemy, and NPC PNG concepts. These are not loaded by the game until moved into an active folder and wired into data/code.
 - `scripts/` holds setup helpers, including `scripts/build_android.sh`.
 - `.github/` holds GitHub Actions automation, including the APK build workflow.
 - `android-signing/` holds the public development signing key for sideload APK updates.

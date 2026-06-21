@@ -81,10 +81,10 @@ TOWN_INTERIORS = {
         "floor_color": (94, 78, 64),
         "trim_color": (38, 30, 26),
         "accent_color": (255, 108, 58),
-        "service_prompt": "SPACE: tune current gear",
+        "service_prompt": "SPACE: forge level gear",
         "flavor": (
-            "Heat ripples over anvils and chained tools.",
-            "The forge grants one level-based gear tune.",
+            "Heat ripples over anvils, racks, and unfinished blades.",
+            "The forge grants level-gated weapons, armor, and charms.",
         ),
         "npc_position": (735, 360),
         "props": (

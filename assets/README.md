@@ -32,6 +32,7 @@ game-ready files under `assets/processed/<category>/`.
 - `processed/ui/`: game-ready launcher icon and title-screen art.
 - `source/music/` and `processed/music/`: future music intake and finished loops.
 - `source/sounds/` and `processed/sounds/`: future sound-effect intake and finished WAV/OGG files.
+- `processed/future_assets/`: transparent future concept assets that are not loaded by the game yet.
 
 Active UI asset:
 
@@ -66,6 +67,15 @@ Active effect assets:
 - `assets/processed/effects/flame_tornado/`: player SPECIAL travel animation.
 - `assets/processed/effects/fire_blast/`: Mage Fire Blast impact animation when the special reaches the enemy.
 - `assets/processed/effects/mage_magic_fireball/`: Mage normal MAGIC projectile overlay. The older procedural glow, beam, and explosion still run with it.
+
+Future inactive asset pack:
+
+- `assets/processed/future_assets/gear/`: unused future gear concepts.
+- `assets/processed/future_assets/scenery/`: unused future scenery/map prop concepts.
+- `assets/processed/future_assets/enemies/`: unused future enemy concepts.
+- `assets/processed/future_assets/npcs/`: unused future NPC concepts.
+- `assets/processed/future_assets/characters/`: unused future class/companion concepts.
+- `assets/processed/future_assets/attacks/`: unused future attack/effect concepts.
 
 Active source files:
 

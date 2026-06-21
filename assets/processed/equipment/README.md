@@ -38,6 +38,9 @@ icons with hand-drawn or imported art later.
 - `lion_sage_charm.png`: Lion Sage accessory reward icon.
 - `mask_shard_edge.png`: Ghost Face first-clear weapon reward icon.
 - `swift_charm.png`: speed accessory icon.
+- `gate_watch_badge.png`: Jessa resident errand accessory icon.
+- `cartographer_compass.png`: Orrin resident errand accessory icon.
+- `medic_triage_band.png`: Vale resident errand accessory icon.
 - `guardian_seal.png`: defense accessory icon.
 - `drakefang_trophy.png`: future boss accessory/trophy icon.
 - `ancient_lion_crown.png`: legendary future Lion Sage relic icon.
