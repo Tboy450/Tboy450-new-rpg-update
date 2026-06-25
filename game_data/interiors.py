@@ -11,6 +11,9 @@ Common fields:
     service_prompt: help text shown for the building's main action.
     flavor: rotating descriptive lines.
     npc_position: where the room NPC is drawn.
+    npc_sprite_rect: optional rectangle for an imported service NPC sprite.
+        When present, the PNG is drawn inside this box instead of the older
+        simple Python NPC body.
     props: furniture and decorative objects. Each prop has a kind and rect.
     props[].sprite: optional active PNG drawn instead of the Python shape.
     props[].sprite_preserve_aspect: optional bool. False stretches the sprite
@@ -28,12 +31,14 @@ TOWN_INTERIORS = {
         "floor_color": (128, 82, 54),
         "trim_color": (58, 34, 24),
         "accent_color": (255, 184, 94),
-        "service_prompt": "SPACE: rest and recover",
+        "service_prompt": "OK/SPACE: rest, recover, and claim level rest bonus",
         "flavor": (
             "The hearth keeps the room bright even after monster raids.",
             "Resting here restores both health and mana.",
         ),
         "npc_position": (720, 350),
+        "npc_sprite_rect": (585, 175, 315, 405),
+        "npc_sprite_anchor": "bottom",
         "props": (
             {"kind": "rug", "rect": (330, 430, 330, 80), "color": (166, 70, 54)},
             {"kind": "bed", "rect": (150, 335, 170, 80), "color": (210, 168, 122)},
@@ -104,12 +109,14 @@ TOWN_INTERIORS = {
         "floor_color": (94, 78, 64),
         "trim_color": (38, 30, 26),
         "accent_color": (255, 108, 58),
-        "service_prompt": "SPACE: forge level gear",
+        "service_prompt": "OK/SPACE: forge unlocked gear into Inventory",
         "flavor": (
             "Heat ripples over anvils, racks, and unfinished blades.",
             "The forge grants level-gated weapons, armor, and charms.",
         ),
         "npc_position": (735, 360),
+        "npc_sprite_rect": (560, 188, 340, 395),
+        "npc_sprite_anchor": "bottom",
         "props": (
             {"kind": "rug", "rect": (338, 442, 300, 70), "color": (118, 58, 44)},
             {"kind": "forge", "rect": (135, 275, 190, 170), "color": (82, 70, 62)},

@@ -31,6 +31,14 @@ MAGE_MAGIC_FIREBALL_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects
 EQUIPMENT_ICON_DIR = str(BASE_DIR / "assets" / "processed" / "equipment")
 SCENERY_ASSET_DIR = str(BASE_DIR / "assets" / "processed" / "scenery")
 
+# BEGINNER NOTE: Active town service NPC sprites.
+# These keys match `TOWN_SERVICES` / `TOWN_INTERIORS` keys. If a town service
+# is missing here, main.py draws the older simple Python NPC as a safe fallback.
+TOWN_SERVICE_NPC_SPRITE_PATHS = {
+    "blacksmith": str(BASE_DIR / "assets" / "processed" / "npcs" / "blacksmith.png"),
+    "inn": str(BASE_DIR / "assets" / "processed" / "npcs" / "innkeeper.png"),
+}
+
 # BEGINNER NOTE: Active imported hero sprites.
 # The keys must match playable class names exactly: "Warrior", "Mage", "Rogue".
 CHARACTER_SPRITE_PATHS = {
@@ -93,6 +101,17 @@ def get_scenery_asset_path(asset_filename):
     if not asset_filename:
         return None
     return str(Path(SCENERY_ASSET_DIR) / asset_filename)
+
+
+def get_town_service_npc_sprite_path(service_type):
+    """Return the imported NPC sprite path for one town service.
+
+    Beginner note:
+        `service_type` is a short data key such as "inn" or "blacksmith".
+        The room data decides where the sprite is drawn; this function only
+        translates that readable key into a real PNG path.
+    """
+    return TOWN_SERVICE_NPC_SPRITE_PATHS.get(service_type)
 
 
 def load_sprite_by_height(path, target_height):

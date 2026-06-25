@@ -28,6 +28,13 @@ APP_UPDATE_APK_URL = (
     "https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/"
     "android-latest/dragons-lair-rpg-android.apk"
 )
+APP_UPDATE_APK_COMPAT_URL = (
+    "https://github.com/Tboy450/Tboy450-new-rpg-update/releases/download/"
+    "android-latest/dragons-lair-rpg-android-debug.apk"
+)
+APP_UPDATE_RELEASE_PAGE_URL = (
+    "https://github.com/Tboy450/Tboy450-new-rpg-update/releases/tag/android-latest"
+)
 APP_VERSION_SPEC_URL = (
     "https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/"
     "buildozer.spec"
@@ -66,6 +73,31 @@ def fetch_latest_android_numeric_version(timeout=4):
     raise ValueError("android.numeric_version not found")
 
 
+def _run_android_view_intent(url, mime_type=None):
+    """Ask Android to open one URL through Activity Manager."""
+    intent_command = [
+        "start",
+        "-a", "android.intent.action.VIEW",
+        "-d", url,
+    ]
+    if mime_type:
+        intent_command.extend(["-t", mime_type])
+    for am_path in ("/system/bin/am", "am"):
+        try:
+            result = subprocess.run(
+                [am_path, *intent_command],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=4,
+                check=False,
+            )
+        except Exception:
+            continue
+        if result.returncode == 0:
+            return True
+    return False
+
+
 def open_external_url(url, mime_type=None):
     """Open a URL from desktop Python or from the Android APK.
 
@@ -73,30 +105,37 @@ def open_external_url(url, mime_type=None):
         Desktop Python can usually rely on `webbrowser.open`.
         Android APK builds are less consistent, so this first tries Android's
         Activity Manager (`am start`) before falling back to the desktop route.
+
+        For APK downloads, a plain URL intent is usually more reliable than a
+        forced APK MIME intent. The plain URL lets Chrome/My Files download the
+        file normally, then Android shows its own installer prompt when the
+        downloaded APK is opened.
     """
     if is_android_runtime():
-        intent_command = [
-            "start",
-            "-a", "android.intent.action.VIEW",
-            "-d", url,
-        ]
-        if mime_type:
-            intent_command.extend(["-t", mime_type])
-        for am_path in ("/system/bin/am", "am"):
-            try:
-                result = subprocess.run(
-                    [am_path, *intent_command],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    timeout=4,
-                    check=False,
-                )
-            except Exception:
-                continue
-            if result.returncode == 0:
-                return True
+        if _run_android_view_intent(url):
+            return True
+        if mime_type and _run_android_view_intent(url, mime_type):
+            return True
 
     try:
         return bool(webbrowser.open(url))
     except Exception:
         return False
+
+
+def open_android_update_download():
+    """Open the best available APK update location.
+
+    Returns:
+        `"apk"` when the direct APK URL was opened,
+        `"compat"` when the older debug filename URL was opened,
+        `"release"` when the release page fallback was opened,
+        or `None` when no external URL opener worked.
+    """
+    if open_external_url(APP_UPDATE_APK_URL):
+        return "apk"
+    if open_external_url(APP_UPDATE_APK_COMPAT_URL):
+        return "compat"
+    if open_external_url(APP_UPDATE_RELEASE_PAGE_URL):
+        return "release"
+    return None

@@ -23,5 +23,7 @@ points code at these processed files.
 
 `future_assets/` is the exception: those PNGs are intentionally game-ready but
 inactive. Move or copy a future asset into an active folder before wiring it
-into code or data. The first example is `scenery/town_shop/`, which contains
-active copies used by the shop exterior and shop interior.
+into code or data. The first examples are `scenery/town_shop/`, which contains
+active copies used by the shop exterior and shop interior, and
+`npcs/blacksmith.png` / `npcs/innkeeper.png`, which are active copies of future
+NPC cutouts now used in town interiors.

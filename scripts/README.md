@@ -14,6 +14,8 @@ and packaging.
 - `install_packages_strict.py`: stricter installer helper for environments where package versions matter more.
 - `install_python_app.py`: desktop/source install helper for the Python version of the game.
 - `install_windows.ps1`: Windows PowerShell setup helper.
+- `process_uploaded_enemy_sheet.py`: splits a user-supplied green-screen enemy sheet into future transparent enemy PNGs.
+- `process_uploaded_npc_sheet.py`: splits a user-supplied green-screen NPC sheet into future transparent NPC PNGs.
 - `run_local_android.py`: Android/Pydroid runtime launcher helper for source installs.
 - `run_windows.ps1`: Windows PowerShell launcher helper.
 

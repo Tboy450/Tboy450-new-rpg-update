@@ -15,8 +15,9 @@ Beginner note:
 
 ## Style Notes
 
-These assets use a simple transparent pixel-art style meant to sit near the
-current Dragon's Lair RPG look:
+These assets are transparent PNGs meant to sit near the current Dragon's Lair
+RPG look. Some are older generated/code-drawn placeholder concepts, while newer
+enemy replacements are imported cutouts from user-supplied green-screen sheets:
 
 - dark outlines
 - high-contrast fantasy colors
@@ -86,14 +87,13 @@ current Dragon's Lair RPG look:
 - `scenery/indoor/medical_ribbon_rug.png`: ribbon-cross rug for healer or sage interiors.
 - `enemies/bone_mender_specter.png`: healer-symbol ghost enemy concept.
 - `enemies/ashbound_imp.png`: fire/volcano small enemy concept.
-- `enemies/crystal_bat.png`: cave or mountain crystal enemy concept.
-- `enemies/plague_knight.png`: corrupted knight enemy concept.
+- `enemies/crystal_bat.png`: imported crystal bat enemy cutout.
+- `enemies/plague_knight.png`: imported plague knight enemy cutout.
 - `enemies/masked_stalker.png`: Ghost Face-inspired stalker enemy concept.
 - `enemies/rune_golem.png`: crystal/rune tank enemy concept.
-- `enemies/ember_drake_hatchling.png`: small dragon hatchling enemy concept.
+- `enemies/ember_drake_hatchling.png`: imported ember drake hatchling cutout.
 - `npcs/ribbon_sentinel.png`: guard/medical-ribbon NPC concept.
 - `npcs/forest_apothecary.png`: healer/herbalist NPC concept.
-- `npcs/ember_blacksmith.png`: forge NPC concept.
 - `npcs/star_cartographer.png`: map keeper / sky-route NPC concept.
 - `npcs/lantern_guard.png`: patrol guard NPC concept.
 - `npcs/plains_ranger.png`: plains scout NPC concept.

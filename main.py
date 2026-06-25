@@ -72,13 +72,11 @@ from game_data import (
     ENEMY_NAME_POOLS,
     format_equipment_bonus,
     format_equipment_delta,
-    get_available_blacksmith_rewards,
     get_default_equipment,
     get_equipment_item,
     get_equipment_power,
     get_equipment_rarity_color,
     get_equipment_slot_label,
-    get_next_blacksmith_unlock,
     ITEM_PROFILES,
     ITEM_SPAWN_TABLE,
     iter_equipment_for_slot,
@@ -131,9 +129,8 @@ from systems.android_controls import (
     find_android_touch_button,
 )
 from systems.android_update import (
-    APP_UPDATE_APK_URL,
     fetch_latest_android_numeric_version,
-    open_external_url,
+    open_android_update_download,
 )
 from systems.assets import (
     FIRE_BLAST_FRAME_DIR,
@@ -152,9 +149,18 @@ from systems.assets import (
     load_scaled_sprite,
     load_sprite_by_height,
 )
+from systems.interior_ui import (
+    draw_interior_message_panel,
+    draw_interior_npc,
+    draw_interior_service_card,
+)
 from systems.save_load import DEFAULT_SAVE_PATH, load_game_state, save_game_state
 from systems.story_ui import draw_pause_menu_overlay, draw_story_dialogue_overlay
 from systems.town_population_ui import draw_town_residents
+from systems.town_services import (
+    apply_blacksmith_forge_service,
+    apply_inn_rest_service,
+)
 
 # Initialize Pygame
 pygame.mixer.pre_init(44100, -16, 2, 512)
@@ -273,8 +279,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.23"
-APP_NUMERIC_VERSION = 24
+APP_VERSION = "0.1.25"
+APP_NUMERIC_VERSION = 26
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -5855,10 +5861,13 @@ class Game:
 
     def open_update_link(self):
         """Open the APK download link from the title screen."""
-        if open_external_url(APP_UPDATE_APK_URL, "application/vnd.android.package-archive"):
-            self.update_status = "Opened APK update. If it only downloads, open it from Downloads."
+        opened_target = open_android_update_download()
+        if opened_target in ("apk", "compat"):
+            self.update_status = "Opened APK download. Tap the downloaded APK to install."
+        elif opened_target == "release":
+            self.update_status = "Opened release page. Tap the APK asset to download."
         else:
-            self.update_status = "Could not open APK link. Use the README link."
+            self.update_status = "Could not open browser. Search GitHub release android-latest."
 
     def activate_character_menu_selection(self):
         if self.character_menu_index == 0:
@@ -6649,14 +6658,7 @@ class Game:
         npc_name = service["npc"]
 
         if service_type == "inn":
-            restored_health = self.player.max_health - self.player.health
-            restored_mana = self.player.max_mana - self.player.mana
-            self.player.health = self.player.max_health
-            self.player.mana = self.player.max_mana
-            if restored_health or restored_mana:
-                self.set_town_service_message(f"{npc_name}: Restored {restored_health} HP and {restored_mana} MP.")
-            else:
-                self.set_town_service_message(f"{npc_name}: You already look rested.")
+            self.set_town_service_message(apply_inn_rest_service(self.player, npc_name))
         elif service_type == "shop":
             health_added = self.player.add_inventory_item("health")
             mana_added = self.player.add_inventory_item("mana")
@@ -6665,32 +6667,7 @@ class Game:
             else:
                 self.set_town_service_message(f"{npc_name}: Your potion pouch is full.")
         elif service_type == "blacksmith":
-            forge_rewards = get_available_blacksmith_rewards(
-                self.player.type,
-                self.player.level,
-                self.player.owned_equipment,
-                limit=2,
-            )
-            if forge_rewards:
-                forged_labels = []
-                for equipment_key in forge_rewards:
-                    if self.player.add_equipment_item(equipment_key, auto_equip=False):
-                        profile = get_equipment_item(equipment_key) or {}
-                        forged_labels.append(profile.get("label", equipment_key))
-                if forged_labels:
-                    self.set_town_service_message(
-                        f"{npc_name}: Forged {', '.join(forged_labels)}. Open Inventory to equip."
-                    )
-                else:
-                    self.set_town_service_message(f"{npc_name}: I could not finish that forge order.")
-            else:
-                next_unlock = get_next_blacksmith_unlock(self.player.level)
-                if next_unlock:
-                    self.set_town_service_message(
-                        f"{npc_name}: No new gear yet. {next_unlock['label']} unlocks at level {next_unlock['level']}."
-                    )
-                else:
-                    self.set_town_service_message(f"{npc_name}: You own every forge pattern I can make right now.")
+            self.set_town_service_message(apply_blacksmith_forge_service(self.player, npc_name))
         elif service_type == "library":
             claim_key = ("library", self.player.level)
             if claim_key in self.player.town_service_claims:
@@ -7484,6 +7461,16 @@ class Game:
         for y in range(floor_top + 45, room_rect.bottom, 45):
             pygame.draw.line(screen, self.shade_color(floor_color, -18), (room_rect.x - 30, y), (room_rect.right + 30, y), 1)
 
+        draw_interior_service_card(
+            screen,
+            room,
+            self.current_interior_service,
+            self.player,
+            font_tiny,
+            UI_BG,
+            render_fitted_text,
+        )
+
         exit_rect = INTERIOR_EXIT_ZONE
         pygame.draw.rect(screen, self.shade_color(floor_color, -25), exit_rect, border_radius=6)
         pygame.draw.rect(screen, trim_color, exit_rect, 2, border_radius=6)
@@ -7493,22 +7480,14 @@ class Game:
         for prop in room["props"]:
             self.draw_interior_prop(screen, prop, room)
 
+        draw_interior_npc(screen, room, self.current_interior_service, font_tiny, UI_BG)
+
         nearby_inspect = self.get_nearby_interior_inspect()
         for point in room.get("inspect_points", ()):
             rect = pygame.Rect(point["rect"])
             marker_color = (255, 245, 160) if point is nearby_inspect else self.shade_color(accent_color, 15)
             pygame.draw.circle(screen, marker_color, (rect.centerx, rect.y - 8), 7)
             pygame.draw.circle(screen, UI_BG, (rect.centerx, rect.y - 8), 3)
-
-        npc_x, npc_y = room["npc_position"]
-        pygame.draw.ellipse(screen, (20, 18, 18), (npc_x - 22, npc_y + 42, 54, 16))
-        pygame.draw.rect(screen, self.shade_color(accent_color, -35), (npc_x - 18, npc_y + 8, 36, 48), border_radius=8)
-        pygame.draw.circle(screen, (224, 174, 126), (npc_x, npc_y), 18)
-        pygame.draw.circle(screen, self.shade_color(accent_color, 25), (npc_x - 6, npc_y - 5), 4)
-        pygame.draw.circle(screen, self.shade_color(accent_color, 25), (npc_x + 6, npc_y - 5), 4)
-        npc_name = self.current_interior_service["npc"] if self.current_interior_service else "Townsperson"
-        npc_text = font_tiny.render(npc_name, True, accent_color)
-        screen.blit(npc_text, (npc_x - npc_text.get_width() // 2, npc_y + 68))
 
         if self.player:
             original_x, original_y = self.player.x, self.player.y
@@ -7538,9 +7517,6 @@ class Game:
             pygame.draw.rect(screen, UI_BORDER, indoor_hud, 3, border_radius=8)
             self.player.draw_stats(screen, indoor_hud.x + 10, indoor_hud.y + 10, indoor_hud.width - 20)
 
-        message_panel = pygame.Rect(145, SCREEN_HEIGHT - 84, 710, 56)
-        pygame.draw.rect(screen, UI_BG, message_panel, border_radius=8)
-        pygame.draw.rect(screen, accent_color, message_panel, 2, border_radius=8)
         if self.town_service_message and self.town_service_message_timer > 0:
             message = self.town_service_message
             message_color = (255, 235, 160)
@@ -7548,27 +7524,20 @@ class Game:
             flavor = room["flavor"]
             message = flavor[(self.game_time // 240) % len(flavor)]
             message_color = (210, 210, 200)
-        message_text = font_tiny.render(message, True, message_color)
-        screen.blit(message_text, (message_panel.centerx - message_text.get_width() // 2, message_panel.y + 10))
-
-        prompt_text = font_tiny.render(room["service_prompt"], True, accent_color)
-        if is_android():
-            if self.interior_player_near_npc():
-                exit_label = "OK: talk   MENU: journal/save/load   exit mat: leave"
-            elif nearby_inspect:
-                exit_label = f"OK: inspect {nearby_inspect['label']}"
-            else:
-                exit_label = "OK or exit mat: leave to town"
-        else:
-            if self.interior_player_near_npc():
-                exit_label = "ENTER: talk   ESC/exit mat: leave"
-            elif nearby_inspect:
-                exit_label = f"ENTER: inspect {nearby_inspect['label']}"
-            else:
-                exit_label = "ENTER/ESC: exit to town"
-        exit_text = font_tiny.render(exit_label, True, (200, 200, 210))
-        screen.blit(prompt_text, (message_panel.x + 22, message_panel.y + 34))
-        screen.blit(exit_text, (message_panel.right - exit_text.get_width() - 22, message_panel.y + 34))
+        draw_interior_message_panel(
+            screen,
+            room,
+            message,
+            message_color,
+            nearby_inspect,
+            self.interior_player_near_npc(),
+            is_android(),
+            font_tiny,
+            UI_BG,
+            SCREEN_HEIGHT,
+            wrap_text_to_width,
+            render_fitted_text,
+        )
 
     def emit_area_particles(self, current_area):
         area_world_x, area_world_y = current_area.get_world_position()
@@ -7991,7 +7960,7 @@ class Game:
                 screen.blit(text, (SCREEN_WIDTH//2 - text.get_width()//2, 320 + i*24))
 
             update_color = (255, 215, 0) if self.update_available else (180, 180, 200)
-            update_text = font_tiny.render(self.update_status, True, update_color)
+            update_text = render_fitted_text(self.update_status, update_color, 760, (font_tiny,))
 
             # BEGINNER NOTE: This is only status text. The button click itself
             # is handled in activate_start_menu_selection() -> open_update_link().

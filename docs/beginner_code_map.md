@@ -67,9 +67,11 @@ responsible for. Read this before editing if you are new to Python or this repo.
 - `assets.py`: imported-art paths, sprite caches, animation frame loading, and reusable sprite drawing.
 - `android_controls.py`: state-aware Android touch button layout, drawing, and tap hit-testing.
 - `android_update.py`: APK update URL constants, GitHub version-check helper, and Android/desktop link opening helper.
+- `interior_ui.py`: draws reusable town-interior service NPCs, service note cards, and bottom prompt panels.
 - `input_actions.py`: translates keyboard or virtual Android button input into action names like `move_up`.
 - `save_load.py`: converts the current `Game` object into JSON and loads saved JSON back later.
 - `story_ui.py`: draws the reusable story dialogue panel and the shared pause-menu overlay.
+- `town_services.py`: applies Inn rest bonuses, Blacksmith forge rewards, and short service hint-card text.
 - `town_population_ui.py`: draws outdoor town residents, their markers, names, and nearby prompts.
 
 ## Story + Asset Quick Map
@@ -117,9 +119,13 @@ Use this when you know the feature name but not the file.
   change versus what is currently equipped.
 - Blacksmith gear progression:
   `BLACKSMITH_GEAR_REWARDS` in `game_data/equipment.py` controls which standard
-  gear the forge can award at player levels 2, 4, and 6. `Game.apply_town_service`
-  grants that gear without auto-equipping it, so the player makes the choice in
-  Inventory.
+  gear the forge can award at player levels 2, 4, and 6.
+  `systems/town_services.py` grants that gear without auto-equipping it, so the
+  player makes the choice in Inventory.
+- Warm Hearth Inn service:
+  `systems/town_services.py` restores HP/MP and grants a small once-per-level
+  rest bonus using the saved `town_service_claims` set. A future inn mini-game
+  is noted in `docs/future_design_notes.md`.
 - Outdoor town residents:
   `game_data/town_population.py` stores resident names, map positions, dialogue,
   one-time resident errands, and resident rewards. `systems/town_population_ui.py`
@@ -334,10 +340,15 @@ The active imported character art lives in `assets/processed/characters/`.
 1. `APP_NUMERIC_VERSION` in `main.py` is the installed app's current version code.
 2. `android.numeric_version` in `buildozer.spec` is the version code Android uses when installing the APK.
 3. Both numbers must increase before publishing a new APK.
-4. `systems/android_update.py` stores the stable APK URL and the GitHub `buildozer.spec` URL.
+4. `systems/android_update.py` stores the stable APK URL, compatibility APK URL,
+   release-page fallback URL, and the GitHub `buildozer.spec` URL.
 5. `fetch_latest_android_numeric_version` in that module reads `buildozer.spec` from GitHub.
 6. `check_for_updates` in `main.py` compares the GitHub version code with the installed version code.
-7. `open_update_link` in `main.py` calls `open_external_url` from `systems/android_update.py`. Android still requires the player to approve the install/update prompt.
+7. `open_update_link` in `main.py` calls `open_android_update_download` from
+   `systems/android_update.py`. It tries the direct APK download first, then
+   the compatibility APK filename, then the release page.
+8. Android still requires the player to approve the install/update prompt after
+   the APK downloads.
 
 ## How To Add Imported Art Or Sound Later
 

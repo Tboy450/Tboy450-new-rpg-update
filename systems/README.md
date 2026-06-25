@@ -6,10 +6,12 @@
 - `android_controls.py`: builds and draws the state-aware Android touch layout, including dialogue-safe button placement.
 - `android_update.py`: owns the GitHub APK link, remote version check, and Android/desktop URL opening helpers.
 - `assets.py`: centralizes imported art paths, sprite caching, animation frame loading, and reusable sprite drawing.
+- `interior_ui.py`: draws reusable town-interior UI pieces such as service NPCs, service note cards, and the bottom prompt panel.
 - `save_load.py`: serializes and loads JSON save data for the player, score, boss progress, visited areas, and town interaction progress.
 - `story_ui.py`: draws reusable overlays such as the story dialogue box and shared pause menu.
+- `town_services.py`: applies reusable Inn and Blacksmith service mechanics such as rest bonuses and forge rewards.
 - `town_population_ui.py`: draws outdoor town residents, quest markers, names, and nearby talk prompts.
-- `__init__.py`: marks this folder as a Python package so helpers can be imported as `systems.assets`, `systems.input_actions`, `systems.android_controls`, `systems.android_update`, `systems.story_ui`, `systems.town_population_ui`, and `systems.save_load`.
+- `__init__.py`: marks this folder as a Python package so helpers can be imported as `systems.assets`, `systems.input_actions`, `systems.android_controls`, `systems.android_update`, `systems.interior_ui`, `systems.story_ui`, `systems.town_services`, `systems.town_population_ui`, and `systems.save_load`.
 
 Keep this folder for reusable runtime systems. Pure tuning data still belongs in `game_data/`.
 
@@ -64,9 +66,15 @@ Current touch-layout rules:
 This module owns the APK update plumbing.
 
 - `APP_UPDATE_APK_URL` is the stable GitHub release asset URL.
+- `APP_UPDATE_APK_COMPAT_URL` is the older debug filename kept as a fallback.
+- `APP_UPDATE_RELEASE_PAGE_URL` is the release page fallback if direct APK
+  opening fails.
 - `APP_VERSION_SPEC_URL` points at the live `buildozer.spec` file on GitHub.
 - `fetch_latest_android_numeric_version()` reads the remote version code.
-- `open_external_url()` asks Android's Activity Manager to open the APK link when possible, then falls back to Python's browser support.
+- `open_android_update_download()` opens the direct APK first, then the
+  compatibility APK URL, then the release page.
+- `open_external_url()` asks Android's Activity Manager to open links as normal
+  browser/download URLs first, then falls back to Python's browser support.
 
 Use this module when changing update links, version-check behavior, or Android
 intent opening. Keep gameplay menu logic in `main.py`, but keep APK-link logic
@@ -84,6 +92,8 @@ This module keeps imported-art plumbing out of `main.py`.
 - `draw_enemy_sprite` draws enemies that have an imported sprite path.
 - `get_story_sprite_path` maps story keys such as `lion_sage` and `ghost_face` to the active PNG files.
 - `get_equipment_icon_path` maps equipment icon filenames to the processed equipment icon folder.
+- `get_town_service_npc_sprite_path` maps town service keys such as `inn` and
+  `blacksmith` to active imported service NPC sprites.
 
 Active imported art paths:
 
@@ -97,11 +107,16 @@ Active imported art paths:
 - `FIRE_BLAST_FRAME_DIR`: Mage SPECIAL impact animation frames.
 - `MAGE_MAGIC_FIREBALL_FRAME_DIR`: Mage normal MAGIC projectile overlay frames.
 - `EQUIPMENT_ICON_DIR`: processed Inventory equipment icons.
+- `TOWN_SERVICE_NPC_SPRITE_PATHS`: active imported NPC sprites used by town
+  service interiors such as Warm Hearth Inn and Ironroot Forge.
 
 Beginner feature map:
 
 - Lion Sage portrait and overworld sprite use `LION_SAGE_SPRITE_PATH`.
 - The town intro imported knight uses `TOWN_GUARD_SPRITE_PATH`.
+- Innkeeper and Blacksmith interior sprites use
+  `TOWN_SERVICE_NPC_SPRITE_PATHS`; their screen placement lives in
+  `game_data/interiors.py`.
 - The start-menu dragon loads `TITLE_DRAGON_SPRITE_PATH` first and then draws
   an animated fire extension from the imported dragon's mouth. The older
   procedural dragon remains as fallback/archive code in `Dragon.draw`.
@@ -125,6 +140,37 @@ This module owns two beginner-visible overlays that used to sit directly inside
 
 Keep story timing, menu commands, and save/load behavior in `main.py`. Use
 `story_ui.py` when the change is only about how those overlays look.
+
+## `interior_ui.py`
+
+This module draws reusable town-interior UI pieces that were split out of
+`main.py`.
+
+- `draw_interior_npc(...)` draws imported service NPC sprites for rooms like the
+  Inn and Blacksmith, with the older simple Python NPC as fallback.
+- `draw_interior_service_card(...)` draws the small service note card on the
+  room wall.
+- `draw_interior_message_panel(...)` wraps room messages and draws the
+  Android/keyboard prompt line.
+
+Keep movement, collision, inspecting objects, and activating services in
+`main.py`. Use `interior_ui.py` when the change is only about how an interior UI
+piece looks.
+
+## `town_services.py`
+
+This module owns town service effects that should not keep growing inside
+`main.py`.
+
+- `apply_inn_rest_service(...)` restores HP/MP and grants a small once-per-level
+  rest bonus using the already-saved `town_service_claims` set.
+- `apply_blacksmith_forge_service(...)` grants level-gated forge gear and sends
+  it to Inventory without auto-equipping it.
+- `get_service_hint_lines(...)` gives the interior wall card short preview text
+  for richer rooms.
+
+Future inn mini-games should start here or in a nearby module, then connect to
+the Inn room through `Game.use_current_town_service` or a new interior action.
 
 ## `town_population_ui.py`
 

@@ -54,6 +54,8 @@ Active NPC assets:
 
 - `assets/processed/npcs/lion_sage.png`: Lion Sage story NPC and portrait used in the west swamp area.
 - `assets/processed/npcs/town_guard.png`: imported town guard overlay used during the town intro cutscene.
+- `assets/processed/npcs/blacksmith.png`: imported Blacksmith interior sprite used in Ironroot Forge.
+- `assets/processed/npcs/innkeeper.png`: imported Innkeeper interior sprite used in Warm Hearth Inn.
 
 Active scenery assets:
 
@@ -67,6 +69,7 @@ Feature map:
 - Lion Sage story logic lives in `game_data/story.py`, but his source and processed art live under `assets/source/npcs/` and `assets/processed/npcs/`.
 - The start-menu dragon is currently procedural code in `main.py`. The previous generated title dragon was archived under `archive/assets/ui/` because it did not fit the active fire animation.
 - The guard is a story-facing NPC visually, so his files live under `assets/source/npcs/` and `assets/processed/npcs/`, even though he appears in the town intro cutscene.
+- The Blacksmith and Innkeeper are town-service NPCs, so their active gameplay copies live under `assets/processed/npcs/`, while their future-shelf copies remain under `assets/processed/future_assets/npcs/`.
 - The first SPECIAL unlock uses both story data and effect assets:
   `game_data/story.py` grants it, while `assets/processed/effects/flame_tornado/` and `assets/processed/effects/fire_blast/` provide the related imported battle visuals.
 
@@ -93,6 +96,8 @@ Active source files:
 - `assets/source/effects/flame_tornado_attack.gif`: raw Fire Tornado special animation source.
 - `assets/source/effects/fire_blast_impact.gif`: raw Mage Fire Blast impact source.
 - `assets/source/effects/mage_magic_fireball.gif`: raw Mage normal magic projectile source.
+- `assets/source/enemies/plague_bat_drake_sheet.png`: user-supplied future enemy sheet for Plague Knight, Crystal Bat, and Ember Drake Hatchling cutouts.
+- `assets/source/npcs/blacksmith_innkeeper_sheet.png`: user-supplied future NPC sheet for Blacksmith and Innkeeper cutouts.
 - `assets/source/npcs/lion_sage_generated_chroma.png`: generated Lion Sage source on chroma background.
 - `assets/source/npcs/town_guard_generated_chroma.png`: generated town guard source on chroma background.
 

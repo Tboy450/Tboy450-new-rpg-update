@@ -10,6 +10,8 @@ Modules:
     android_controls: state-aware Android touch button layout and drawing.
     android_update: GitHub APK update URLs, version checks, and external link opening.
     input_actions: keyboard/touch input mapping.
+    interior_ui: shared indoor room drawing helpers for NPCs and message panels.
     save_load: JSON save/load helpers.
     story_ui: reusable dialogue and pause-menu overlay drawing.
+    town_services: inn and blacksmith reward/service logic.
 """

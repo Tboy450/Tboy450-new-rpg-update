@@ -59,3 +59,19 @@ License: User-provided asset
 Attribution text: User-supplied Mage magic fireball animation
 Used for: Mage normal MAGIC projectile overlay in battle
 ```
+
+```text
+Asset: Blacksmith and Innkeeper green-screen sheet
+Source URL: User-supplied upload in Codex chat
+License: User-provided asset
+Attribution text: User-supplied future NPC sheet
+Used for: Future inactive Blacksmith and Innkeeper NPC cutouts
+```
+
+```text
+Asset: Plague Knight, Crystal Bat, and Ember Drake Hatchling green-screen sheet
+Source URL: User-supplied upload in Codex chat
+License: User-provided asset
+Attribution text: User-supplied future enemy sheet
+Used for: Future inactive Plague Knight, Crystal Bat, and Ember Drake Hatchling cutouts
+```

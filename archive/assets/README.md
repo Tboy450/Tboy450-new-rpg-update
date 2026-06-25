@@ -10,4 +10,6 @@ Files here are reference material. The active game should load art from
 
 ## Folders
 
+- `future_assets/`: older inactive concept sprites kept after newer imported
+  versions replaced them.
 - `ui/`: archived UI/title-screen images that were tested but removed from the active runtime.

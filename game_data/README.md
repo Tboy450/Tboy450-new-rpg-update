@@ -37,6 +37,8 @@ an enemy list changes what can spawn in an area.
   draw imported art instead of only Python shapes.
 - `sprite_rect`: optional rectangle used to draw a building sprite. This can be
   larger than the collision rectangle when the art includes a roof or sign.
+- `npc_sprite_rect`: optional interior-room rectangle used to draw an imported
+  service NPC sprite instead of the older simple Python-drawn NPC body.
 - `collision`: whether the player should be blocked by an object.
 - `entry_depth`: how far the player can visually step into the front or back of a building.
 - `door_width`: how wide the entrance trigger should be.
@@ -54,6 +56,8 @@ Some strings must match across modules:
 - Equipment `icon` filenames in `equipment.py` should match PNG files in `assets/processed/equipment/`.
 - Scenery `sprite` filenames in `town.py` and `interiors.py` should match PNG
   files under `assets/processed/scenery/`.
+- Interior `npc_sprite_rect` entries in `interiors.py` depend on service keys
+  in `systems/assets.py` `TOWN_SERVICE_NPC_SPRITE_PATHS`.
 - Area names like `forest`, `town`, and `volcano` should match entries in `WORLD_LAYOUT`, `AREA_VISUALS`, and `AREA_ENEMY_TYPES`.
 - Story sprite keys like `lion_sage` and `ghost_face` should match `STORY_SPRITE_PATHS` in `systems/assets.py`.
 
