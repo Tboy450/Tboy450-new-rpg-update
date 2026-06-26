@@ -6,6 +6,9 @@
 - `android_controls.py`: builds and draws the state-aware Android touch layout, including dialogue-safe button placement.
 - `android_update.py`: owns the GitHub APK link, remote version check, and Android/desktop URL opening helpers.
 - `assets.py`: centralizes imported art paths, sprite caching, animation frame loading, and reusable sprite drawing.
+- `battle_input.py`: routes battle keyboard/touch events into the active action row or item row.
+- `battle_rewards.py`: calculates scaled normal-enemy and boss rewards.
+- `battle_ui.py`: draws reusable battle HUD pieces such as gear status, battle log, action buttons, and summary panels.
 - `interior_ui.py`: draws reusable town-interior UI pieces such as service NPCs, service note cards, and the bottom prompt panel.
 - `save_load.py`: serializes and loads JSON save data for the player, score, boss progress, visited areas, and town interaction progress.
 - `story_ui.py`: draws reusable overlays such as the story dialogue box and shared pause menu.
@@ -53,11 +56,13 @@ Current touch-layout rules:
 - Normal overworld/interior play uses a d-pad, `USE`, `OK`, and `MENU`.
 - Story dialogue and the town-guard cutscene swap that layout for `NEXT` + `MENU`.
 - Journal and world map use close buttons instead of the movement pad.
-- Battle action buttons are owned by `BattleScreen` in `main.py`, because
-  combat needs to know whether `SPECIAL` is unlocked and which turn is active.
-  The battle screen now has its own small `ACTIONS` / `HIDE` toggle. It also
-  checks both raw and scaled Android tap coordinates so the buttons remain
-  usable across APK launch paths.
+- Battle action buttons are owned by `BattleScreen` in `main.py`, but input
+  routing now lives in `systems/battle_input.py`. Combat still needs to know
+  whether `SPECIAL` is unlocked and which turn is active, so the buttons are not
+  part of the generic overworld Android d-pad system.
+- The battle screen has its own small `ACTIONS` / `HIDE` toggle and a separate
+  item row for Health/Mana/BACK. `battle_input.py` checks both raw and scaled
+  Android tap coordinates so the buttons remain usable across APK launch paths.
 - The shared pause menu still runs game actions through `main.py`, but the
   overlay drawing now lives in `systems/story_ui.py`.
 
@@ -129,6 +134,46 @@ When adding a new imported effect:
 - Save transparent game-ready PNG frames under `assets/processed/<category>/<effect_name>/`.
 - Add the processed path constant to `assets.py`.
 - Call `load_animation_frames` from the gameplay code that owns the timing.
+
+## `battle_input.py`
+
+This module owns battle-specific input routing.
+
+- `handle_battle_input(...)` handles battle pauses, NEXT/ENTER continuation,
+  action row navigation, the ACTIONS/HIDE toggle, item-row taps, and Android
+  coordinate fallback checks.
+- `get_touch_positions(...)` checks both raw and scaled coordinates because APK
+  launch paths can report touch positions differently.
+- `play_game_sound(...)` safely plays optional sound effects from `Game`.
+
+Keep turn rules and action math in `BattleScreen`; use this module when a
+keyboard/touch battle input path needs to change.
+
+## `battle_ui.py`
+
+This module draws reusable battle panels.
+
+- `draw_battle_gear_strip(...)` draws the equipped weapon and effective stats.
+- `draw_battle_log_panel(...)` draws the top battle log and fitted long lines.
+- `draw_battle_action_buttons(...)` draws the action row, item row, potion
+  counts, special MP cost, and escape chance.
+- `draw_battle_summary(...)` draws the victory/defeat/escape overlay.
+- `set_button_text(...)` updates button labels such as `HEALTH x2`.
+
+Keep character sprites, projectiles, and attack effects in `BattleScreen` until
+those animation systems are split out separately.
+
+## `battle_rewards.py`
+
+This module keeps reward formulas out of the game loop.
+
+- `get_regular_enemy_reward(...)` scales normal enemy EXP/score from enemy
+  health, strength, and speed instead of using a flat value for every fight.
+- `get_boss_reward(...)` reads boss reward fields and provides safe fallback
+  numbers if a future boss forgets to define them.
+
+Story enemy first-clear/repeat rewards still live in `game_data/story.py`
+because they are quest-specific reward tables.
 
 ## `story_ui.py`
 

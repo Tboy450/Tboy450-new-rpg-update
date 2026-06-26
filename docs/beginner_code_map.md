@@ -67,6 +67,9 @@ responsible for. Read this before editing if you are new to Python or this repo.
 - `assets.py`: imported-art paths, sprite caches, animation frame loading, and reusable sprite drawing.
 - `android_controls.py`: state-aware Android touch button layout, drawing, and tap hit-testing.
 - `android_update.py`: APK update URL constants, GitHub version-check helper, and Android/desktop link opening helper.
+- `battle_input.py`: battle-only keyboard/touch routing for action buttons, item buttons, and NEXT prompts.
+- `battle_rewards.py`: scaled normal-enemy and boss reward formulas.
+- `battle_ui.py`: reusable battle HUD pieces such as the gear strip, log panel, action buttons, and result summary.
 - `interior_ui.py`: draws reusable town-interior service NPCs, service note cards, and bottom prompt panels.
 - `input_actions.py`: translates keyboard or virtual Android button input into action names like `move_up`.
 - `save_load.py`: converts the current `Game` object into JSON and loads saved JSON back later.
@@ -109,6 +112,15 @@ Use this when you know the feature name but not the file.
   keepsakes separately from potion inventory. `Game.apply_story_enemy_reward`
   gives Ghost Face a stronger first-clear reward and smaller repeat rewards
   while still allowing the enemy to respawn.
+- General battle rewards:
+  `systems/battle_rewards.py` scales normal monster EXP/score from enemy stats
+  and centralizes boss reward fallback math. `Game.run` applies those rewards
+  after the battle summary is dismissed.
+- Battle menu and battle HUD:
+  `BattleScreen` still owns turn state, attack effects, and damage math.
+  `systems/battle_input.py` owns battle keyboard/touch routing, including the
+  Health/Mana/BACK item row. `systems/battle_ui.py` owns the reusable battle log,
+  gear strip, action buttons, and victory/defeat summary panels.
 - Inventory screen:
   `Game.draw_inventory` in `main.py` draws the pause-menu Inventory overlay.
   `Game.build_pause_menu_entries` adds the Inventory button. `systems/android_controls.py`
@@ -158,11 +170,12 @@ beginner-facing control labels.
   platform values or Android system paths, and can be forced with
   `DRAGONS_LAIR_FORCE_TOUCH=1` for testing.
 - Battle touch actions:
-  `BattleScreen` in `main.py` owns these instead of `systems/android_controls.py`.
-  Combat has its own `ACTIONS` / `HIDE` toggle because the button list changes
-  when Lion Sage unlocks `SPECIAL`. Battle tap handling checks both raw Android
-  touch coordinates and scaled game coordinates, because different APK launch
-  paths report touches differently.
+  `BattleScreen` in `main.py` owns the turn state, but
+  `systems/battle_input.py` routes the actual battle key/touch events.
+  Combat has its own `ACTIONS` / `HIDE` toggle and item row because the button
+  list changes when Lion Sage unlocks `SPECIAL`. Battle tap handling checks
+  both raw Android touch coordinates and scaled game coordinates, because
+  different APK launch paths report touches differently.
 - Shared pause-menu logic and button commands:
   `Game.build_pause_menu_entries`, `Game.toggle_pause_menu`, and `Game.activate_pause_menu_command` in `main.py`
 - Shared pause-menu drawing:

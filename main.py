@@ -132,6 +132,15 @@ from systems.android_update import (
     fetch_latest_android_numeric_version,
     open_android_update_download,
 )
+from systems.battle_input import handle_battle_input
+from systems.battle_rewards import get_boss_reward, get_regular_enemy_reward
+from systems.battle_ui import (
+    draw_battle_action_buttons,
+    draw_battle_gear_strip,
+    draw_battle_log_panel,
+    draw_battle_summary,
+    set_button_text,
+)
 from systems.assets import (
     FIRE_BLAST_FRAME_DIR,
     FLAME_TORNADO_FRAME_DIR,
@@ -279,8 +288,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.25"
-APP_NUMERIC_VERSION = 26
+APP_VERSION = "0.1.26"
+APP_NUMERIC_VERSION = 27
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -3348,20 +3357,32 @@ class BattleScreen:
         # BEGINNER NOTE: Battle menu button order matters.
         # Before Lion Sage unlocks the special technique, the SPECIAL button is
         # not present at all. That means RUN shifts left by one slot.
-        self.buttons = [
+        self.action_buttons = [
             Button(30, 525, 170, 50, "ATTACK"),
             Button(220, 525, 170, 50, "MAGIC"),
             Button(410, 525, 170, 50, "ITEM"),
         ]
         self.special_button_index = None
         if getattr(self.player, "special_unlocked", False):
-            self.special_button_index = len(self.buttons)
-            self.buttons.append(Button(600, 525, 170, 50, "SPECIAL"))
+            self.special_button_index = len(self.action_buttons)
+            self.action_buttons.append(Button(600, 525, 170, 50, "SPECIAL"))
             run_x = 790
         else:
             run_x = 600
-        self.run_button_index = len(self.buttons)
-        self.buttons.append(Button(run_x, 525, 170, 50, "RUN"))
+        self.run_button_index = len(self.action_buttons)
+        self.action_buttons.append(Button(run_x, 525, 170, 50, "RUN"))
+
+        # BEGINNER NOTE: The battle item menu is separate from the main action
+        # row. Pressing ITEM switches into these buttons so Android players can
+        # choose Health or Mana directly instead of the game guessing for them.
+        self.item_buttons = [
+            Button(110, 525, 210, 50, "HEALTH"),
+            Button(340, 525, 210, 50, "MANA"),
+            Button(570, 525, 170, 50, "BACK"),
+        ]
+        self.item_back_button_index = 2
+        self.menu_mode = "actions"
+        self.buttons = self.action_buttons
         self.selected_option = 0
 
         # BEGINNER NOTE: Android battle controls are different from the
@@ -3424,6 +3445,9 @@ class BattleScreen:
                 f"{self.enemy.name} descends!",
                 getattr(self.enemy, "boss_hint", "A dragon boss blocks your path."),
             ]
+        gear_line = self.get_battle_gear_line()
+        if gear_line:
+            self.battle_log.append(gear_line)
 
     def update_combat_toggle_button_label(self):
         """Refresh the small battle touch toggle label.
@@ -3453,23 +3477,36 @@ class BattleScreen:
         self.combat_buttons_visible = True
         self.update_combat_toggle_button_label()
 
-    def get_touch_positions(self, event):
-        """Return possible game-space positions for one tap/click event.
+    def set_battle_menu_mode(self, mode):
+        """Switch between the main battle command row and the item row.
 
         Beginner note:
-            Android/Pygame builds are inconsistent about whether `event.pos`
-            arrives in real fullscreen pixels or in the virtual 1000x700 game
-            surface. We check both the scaled position and the raw position so
-            battle buttons still work either way.
+            `self.buttons` always points at whichever row is currently active.
+            The input helper only needs to move through `self.buttons`, so it
+            does not care whether the player is choosing ATTACK or HEALTH.
         """
-        raw_pos = getattr(event, "pos", None)
-        if raw_pos is None:
-            return []
-        mapped_pos = display_to_game_pos(raw_pos)
-        positions = [mapped_pos]
-        if raw_pos != mapped_pos:
-            positions.append(raw_pos)
-        return positions
+        self.menu_mode = mode
+        if mode == "items":
+            self.refresh_item_button_labels()
+            self.buttons = self.item_buttons
+        else:
+            self.buttons = self.action_buttons
+        self.selected_option = 0
+
+    def refresh_item_button_labels(self):
+        """Update battle item button text with current potion counts."""
+        set_button_text(
+            self.item_buttons[0],
+            f"HEALTH x{self.player.get_inventory_count('health')}",
+            font_medium,
+            TEXT_COLOR,
+        )
+        set_button_text(
+            self.item_buttons[1],
+            f"MANA x{self.player.get_inventory_count('mana')}",
+            font_medium,
+            TEXT_COLOR,
+        )
 
     def get_special_attack_name(self):
         """Return the class-specific SPECIAL attack name.
@@ -3482,6 +3519,36 @@ class BattleScreen:
         if self.player.type == "Mage":
             return MAGE_SPECIAL_ATTACK_NAME
         return SPECIAL_ATTACK_NAME
+
+    def get_equipped_item_note(self, slot):
+        """Return a short battle note for one equipped gear slot."""
+        item_key = self.player.equipment.get(slot)
+        profile = get_equipment_item(item_key) if item_key else None
+        if not profile:
+            return ""
+        bonus_text = format_equipment_bonus(profile.get("bonuses", {}))
+        return f"{profile.get('label', item_key)} ({bonus_text})"
+
+    def get_battle_gear_line(self):
+        """Build the non-blocking gear summary shown at battle start."""
+        weapon_note = self.get_equipped_item_note("weapon")
+        armor_note = self.get_equipped_item_note("armor")
+        if weapon_note and armor_note:
+            return f"Gear ready: {weapon_note}; {armor_note}."
+        if weapon_note:
+            return f"Gear ready: {weapon_note}."
+        if armor_note:
+            return f"Gear ready: {armor_note}."
+        return ""
+
+    def get_attack_gear_note(self, mode="attack"):
+        """Return a small damage-log suffix explaining equipped gear impact."""
+        weapon_note = self.get_equipped_item_note("weapon")
+        if not weapon_note:
+            return ""
+        if mode == "magic":
+            return f" Focus: {weapon_note}."
+        return f" Weapon: {weapon_note}."
         
     def start_transition(self):
         self.transition_state = "in"
@@ -4108,30 +4175,17 @@ class BattleScreen:
             pygame.draw.rect(temp_surface, self.player_condition["color"], (180, 458, max(90, condition_text.get_width() + 16), 24), 2, border_radius=4)
             temp_surface.blit(condition_text, (188, 462))
 
-        # BEGINNER NOTE: This battle strip makes equipment feel mechanical, not
-        # hidden. The numbers are the effective stats after equipped gear
-        # bonuses, so changing gear in Inventory changes what appears here.
-        weapon_profile = get_equipment_item(self.player.equipment.get("weapon"))
-        weapon_label = weapon_profile.get("label", "Unarmed") if weapon_profile else "Unarmed"
-        rarity_color = get_equipment_rarity_color(weapon_profile.get("rarity", "common")) if weapon_profile else (210, 210, 225)
-        gear_strip = pygame.Rect(180, 486, 318, 30)
-        pygame.draw.rect(temp_surface, (18, 20, 34), gear_strip, border_radius=5)
-        pygame.draw.rect(temp_surface, rarity_color, gear_strip, 2, border_radius=5)
-        icon_path = get_equipment_icon_path(weapon_profile.get("icon")) if weapon_profile else None
-        icon = load_scaled_sprite(icon_path, 22) if icon_path else None
-        if icon:
-            temp_surface.blit(icon, (gear_strip.x + 6, gear_strip.y + 4))
-            text_x = gear_strip.x + 34
-        else:
-            pygame.draw.circle(temp_surface, rarity_color, (gear_strip.x + 18, gear_strip.centery), 7)
-            text_x = gear_strip.x + 34
-        gear_text = render_fitted_text(
-            f"{weapon_label} | STR {self.player.effective_strength()} DEF {self.player.effective_defense()} SPD {self.player.effective_speed()}",
-            (232, 236, 245),
-            gear_strip.right - text_x - 8,
-            (font_tiny,),
+        # BEGINNER NOTE: The gear/status strip drawing lives in
+        # systems/battle_ui.py so future combat HUD work does not keep bloating
+        # this already-large battle class.
+        draw_battle_gear_strip(
+            temp_surface,
+            self.player,
+            pygame.Rect(180, 486, 318, 30),
+            render_fitted_text,
+            font_tiny,
+            (18, 20, 34),
         )
-        temp_surface.blit(gear_text, (text_x, gear_strip.y + 8))
         # Only draw enemy health bar and name if not a boss dragon
         if not (hasattr(self.enemy, 'enemy_type') and "boss_dragon" in self.enemy.enemy_type):
             enemy_health_width = 150 * (self.enemy.health / max(1, self.enemy.max_health))
@@ -4157,51 +4211,25 @@ class BattleScreen:
             title_rect = title_text.get_rect(midtop=(enemy_x + 120, enemy_y + 182))
             temp_surface.blit(title_text, title_rect)
         
-        # Draw battle log
-        pygame.draw.rect(temp_surface, UI_BG, (100, 50, 800, 100), border_radius=8)
-        pygame.draw.rect(temp_surface, UI_BORDER, (100, 50, 800, 100), 3, border_radius=8)
-        
-        start_idx = max(0, len(self.battle_log) - self.log_lines_per_page)
-        end_idx = min(len(self.battle_log), start_idx + self.log_lines_per_page)
-        
-        for i, log in enumerate(self.battle_log[start_idx:end_idx]):
-            log_text = font_small.render(log, True, TEXT_COLOR)
-            temp_surface.blit(log_text, (120, 70 + i * 30))
-        
-        if self.waiting_for_continue:
-            continue_text = font_small.render("(Tap NEXT or press ENTER...)", True, (255, 215, 0))
-            temp_surface.blit(continue_text, (120, 70 + self.log_lines_per_page * 30))
-            self.battle_continue_button.selected = True
-            self.battle_continue_button.draw(temp_surface)
-        
-        # Draw buttons
-        if self.state == "player_turn" and not self.waiting_for_continue and not self.battle_ended:
-            # BEGINNER NOTE: This compact toggle is always available on the
-            # player's turn. Android players can tap ACTIONS to reveal the big
-            # choices, then tap HIDE to clear the lower battlefield view.
-            self.update_combat_toggle_button_label()
-            self.combat_toggle_button.selected = False
-            self.combat_toggle_button.draw(temp_surface)
+        draw_battle_log_panel(
+            temp_surface,
+            self.battle_log,
+            self.waiting_for_continue,
+            self.battle_continue_button,
+            font_small,
+            TEXT_COLOR,
+            UI_BG,
+            UI_BORDER,
+            self.log_lines_per_page,
+        )
 
-            if self.combat_buttons_visible:
-                for i, button in enumerate(self.buttons):
-                    button.selected = (i == self.selected_option)
-                    button.draw(temp_surface)
-                bag_text = font_tiny.render(
-                    f"HP x{self.player.get_inventory_count('health')}  MP x{self.player.get_inventory_count('mana')}",
-                    True, (220, 220, 180)
-                )
-                bag_rect = bag_text.get_rect(center=(self.buttons[2].rect.centerx, self.buttons[2].rect.bottom + 14))
-                temp_surface.blit(bag_text, bag_rect)
-
-                if self.special_button_index is not None:
-                    special_text = font_tiny.render(f"MP {SPECIAL_ATTACK_MANA_COST}", True, (255, 190, 90))
-                    special_rect = special_text.get_rect(center=(self.buttons[self.special_button_index].rect.centerx, self.buttons[self.special_button_index].rect.bottom + 14))
-                    temp_surface.blit(special_text, special_rect)
-
-                escape_text = font_tiny.render(f"ESC {int(self.get_escape_chance() * 100)}%", True, (220, 220, 180))
-                escape_rect = escape_text.get_rect(center=(self.buttons[self.run_button_index].rect.centerx, self.buttons[self.run_button_index].rect.bottom + 14))
-                temp_surface.blit(escape_text, escape_rect)
+        draw_battle_action_buttons(
+            temp_surface,
+            self,
+            font_tiny,
+            TEXT_COLOR,
+            SPECIAL_ATTACK_MANA_COST,
+        )
         
         # Draw damage effect
         if self.damage_effect_timer > 0:
@@ -4229,35 +4257,17 @@ class BattleScreen:
             overlay.fill((0, 0, 0, self.transition_alpha))
             temp_surface.blit(overlay, (0, 0))
             
-        # Show summary after battle
         if self.battle_ended and self.show_summary:
-            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 180))
-            temp_surface.blit(overlay, (0, 0))
-            
-            if self.result == "win":
-                summary = [
-                    "VICTORY!",
-                    "Rewards apply after continue.",
-                    f"KILLS: {self.player.kills}",
-                    "Tap NEXT or press ENTER..."
-                ]
-            elif self.result == "lose":
-                summary = [
-                    "DEFEAT...",
-                    "Tap NEXT or press ENTER..."
-                ]
-            elif self.result == "escape":
-                summary = [
-                    "You Escaped!",
-                    "Tap NEXT or press ENTER..."
-                ]
-                
-            for i, line in enumerate(summary):
-                text = font_large.render(line, True, TEXT_COLOR)
-                temp_surface.blit(text, (SCREEN_WIDTH//2 - text.get_width()//2, 250 + i*60))
-            self.battle_continue_button.selected = True
-            self.battle_continue_button.draw(temp_surface)
+            draw_battle_summary(
+                temp_surface,
+                self.result,
+                self.player,
+                self.battle_continue_button,
+                font_large,
+                TEXT_COLOR,
+                SCREEN_WIDTH,
+                SCREEN_HEIGHT,
+            )
         
         # Draw the temporary surface to the screen
         surface.blit(temp_surface, (0, 0))
@@ -4446,7 +4456,11 @@ class BattleScreen:
         # Handle enemy turn if no actions are queued
         if self.state == "enemy_turn" and not self.battle_ended and not self.waiting_for_continue:
             if self.roll_player_dodge():
-                self.add_log(f"You dodge {self.enemy.name}'s attack!")
+                speed_bonus = self.player.get_equipment_bonus("speed")
+                if speed_bonus:
+                    self.add_log(f"You dodge {self.enemy.name}'s attack! Speed gear helped.")
+                else:
+                    self.add_log(f"You dodge {self.enemy.name}'s attack!")
                 self.state = "player_turn"
                 self.combat_buttons_visible = True
                 self.update_combat_toggle_button_label()
@@ -4454,10 +4468,10 @@ class BattleScreen:
                 self.action_cooldown = self.action_delay
                 return False
 
-            damage = max(1, self.enemy.strength - self.player.effective_defense() // 3)
+            incoming_strength = self.enemy.strength
             phase = self.get_boss_phase()
             if phase:
-                damage += phase.get("strength_bonus", 0)
+                incoming_strength += phase.get("strength_bonus", 0)
                 self.add_log(phase["attack_message"])
 
             # BEGINNER NOTE: Ghost Face has custom attacks.
@@ -4470,7 +4484,10 @@ class BattleScreen:
             ghostface_attack = None
             if getattr(self.enemy, "enemy_type", None) == "ghost_face":
                 ghostface_attack = self.choose_ghostface_attack()
-                damage += ghostface_attack["damage_bonus"]
+                incoming_strength += ghostface_attack["damage_bonus"]
+            damage = max(1, incoming_strength - self.player.effective_defense() // 3)
+            base_damage_without_gear = max(1, incoming_strength - self.player.defense // 3)
+            gear_guard = max(0, base_damage_without_gear - damage)
             self.player.health = max(0, self.player.health - damage)
             if ghostface_attack:
                 self.add_log(ghostface_attack["message"].format(name=self.enemy.name, damage=damage))
@@ -4483,6 +4500,8 @@ class BattleScreen:
             else:
                 self.add_log(f"{self.enemy.name} attacks for {damage} damage!")
                 self.add_screen_shake(3, 5)
+            if gear_guard:
+                self.add_log(f"Equipped armor blocked {gear_guard} damage.")
             self.damage_target = "player"
             self.damage_amount = damage
             self.damage_effect_timer = 20
@@ -4619,18 +4638,16 @@ class BattleScreen:
             min(BATTLE_RULES["max_escape_chance"], chance)
         )
 
-    def choose_battle_item(self):
-        if (
-            self.player.get_inventory_count("health") > 0 and
-            self.player.health < self.player.max_health
-        ):
-            return "health"
-        if (
-            self.player.get_inventory_count("mana") > 0 and
-            self.player.mana < self.player.max_mana
-        ):
-            return "mana"
-        return None
+    def can_use_battle_item(self, item_type):
+        """Return whether a selected battle potion can be used right now."""
+        profile = ITEM_PROFILES[item_type]
+        if self.player.get_inventory_count(item_type) <= 0:
+            return False, f"No {profile['label'].lower()} potions left."
+        if profile["effect"] == "restore_health" and self.player.health >= self.player.max_health:
+            return False, "HP is already full."
+        if profile["effect"] == "restore_mana" and self.player.mana >= self.player.max_mana:
+            return False, "MP is already full."
+        return True, ""
 
     def get_boss_phase(self):
         if not self.is_boss or not hasattr(self.enemy, "phase_thresholds"):
@@ -4657,87 +4674,17 @@ class BattleScreen:
         )
     
     def handle_input(self, event, game=None):
-        if self.battle_ended and self.show_summary:
-            if event.type == pygame.KEYDOWN and (event.key == pygame.K_RETURN or event.key == pygame.K_SPACE):
-                self.waiting_for_continue = False
-                self.show_summary = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                self.waiting_for_continue = False
-                self.show_summary = False
-            return
-
-        if self.waiting_for_continue:
-            if event.type == pygame.KEYDOWN and (event.key == pygame.K_RETURN or event.key == pygame.K_SPACE):
-                self.waiting_for_continue = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                self.waiting_for_continue = False
-            return
-
-        if self.state == "player_turn" and not self.battle_ended and self.action_cooldown == 0:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_TAB or event.key == pygame.K_h:
-                    self.toggle_combat_buttons()
-                    if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
-                    return
-
-                if not self.combat_buttons_visible:
-                    return
-
-                # BEGINNER NOTE: Use len(self.buttons) instead of hardcoding 5.
-                # That way the left/right selection still works if another
-                # battle button is added later.
-                option_count = len(self.buttons)
-                if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
-                    self.selected_option = (self.selected_option + 1) % option_count
-                    if game and hasattr(game, 'SFX_ARROW') and game.SFX_ARROW: game.SFX_ARROW.play()
-                elif event.key == pygame.K_LEFT or event.key == pygame.K_a:
-                    self.selected_option = (self.selected_option - 1) % option_count
-                    if game and hasattr(game, 'SFX_ARROW') and game.SFX_ARROW: game.SFX_ARROW.play()
-                elif event.key == pygame.K_UP or event.key == pygame.K_w:
-                    self.selected_option = (self.selected_option - 1) % option_count
-                    if game and hasattr(game, 'SFX_ARROW') and game.SFX_ARROW: game.SFX_ARROW.play()
-                elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
-                    self.selected_option = (self.selected_option + 1) % option_count
-                    if game and hasattr(game, 'SFX_ARROW') and game.SFX_ARROW: game.SFX_ARROW.play()
-                elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
-                    if game and hasattr(game, 'SFX_ENTER') and game.SFX_ENTER: game.SFX_ENTER.play()
-                    self.handle_action(game)
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                # BEGINNER NOTE: Use this event's real touch/click position.
-                # Android can scale the game surface, so relying on
-                # pygame.mouse.get_pos() can read a stale or mismatched point.
-                touch_positions = self.get_touch_positions(event)
-                # BEGINNER NOTE: Check the small toggle before the large action
-                # buttons. That prevents a tap on HIDE/ACTIONS from also
-                # activating a battle command in the same frame.
-                for mouse_pos in touch_positions:
-                    if self.combat_toggle_button.rect.inflate(24, 24).collidepoint(mouse_pos):
-                        self.toggle_combat_buttons()
-                        if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
-                        return
-
-                if not self.combat_buttons_visible:
-                    # A hidden action row should be easy to recover on phones.
-                    # Tapping the lower command area reveals it again even if the
-                    # player misses the ACTIONS toggle.
-                    for mouse_pos in touch_positions:
-                        if mouse_pos[1] >= 490:
-                            self.show_combat_buttons()
-                            if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
-                            return
-                    return
-
-                for mouse_pos in touch_positions:
-                    for i, button in enumerate(self.buttons):
-                        if button.rect.inflate(18, 18).collidepoint(mouse_pos):
-                            self.selected_option = i
-                            if game and hasattr(game, 'SFX_ENTER') and game.SFX_ENTER: game.SFX_ENTER.play()
-                            self.handle_action(game)
-                            return
+        """Delegate battle keyboard/touch routing to systems/battle_input.py."""
+        handle_battle_input(self, event, game, pygame, display_to_game_pos)
     
     def handle_action(self, game=None):
         if self.state != "player_turn" or self.battle_ended or self.action_cooldown > 0:
             return
+
+        if self.menu_mode == "items":
+            self.handle_item_action(game)
+            return
+
         # BEGINNER NOTE: This method turns the selected button index into an
         # action. The first three slots are always ATTACK, MAGIC, ITEM.
         # SPECIAL only exists after Lion Sage unlocks it. RUN is always the
@@ -4761,18 +4708,12 @@ class BattleScreen:
                 if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
                 self.add_log("Not enough mana!")
         elif self.selected_option == 2:  # Item
-            item_type = self.choose_battle_item()
-            if not item_type:
-                if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
-                self.add_log("No useful potion available right now.")
-                return
-
-            if game and hasattr(game, 'SFX_ITEM') and game.SFX_ITEM: game.SFX_ITEM.play()
-            item_label = ITEM_PROFILES[item_type]["label"].lower()
-            self.action_steps = [
-                lambda item_label=item_label: self.add_log(f"You used a {item_label} potion!"),
-                lambda item_type=item_type: self.execute_item(item_type)
-            ]
+            if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
+            self.set_battle_menu_mode("items")
+            self.show_combat_buttons()
+            if not self.battle_log or self.battle_log[-1] != "Choose a battle item.":
+                self.battle_log.append("Choose a battle item.")
+            return
         elif self.special_button_index is not None and self.selected_option == self.special_button_index:
             # The class special is a stronger player move, so it costs MP.
             # The constant at the top of the file is the only number to change
@@ -4805,6 +4746,31 @@ class BattleScreen:
             # toggle remains available when control returns to the player.
             self.combat_buttons_visible = False
             self.update_combat_toggle_button_label()
+
+    def handle_item_action(self, game=None):
+        """Run the selected item menu command."""
+        item_keys = ("health", "mana")
+        if self.selected_option == self.item_back_button_index:
+            if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
+            self.set_battle_menu_mode("actions")
+            return
+
+        item_type = item_keys[self.selected_option]
+        can_use, reason = self.can_use_battle_item(item_type)
+        if not can_use:
+            if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
+            self.add_log(reason)
+            return
+
+        if game and hasattr(game, 'SFX_ITEM') and game.SFX_ITEM: game.SFX_ITEM.play()
+        item_label = ITEM_PROFILES[item_type]["label"].lower()
+        self.action_steps = [
+            lambda item_label=item_label: self.add_log(f"You used a {item_label} potion!"),
+            lambda item_type=item_type: self.execute_item(item_type)
+        ]
+        self.set_battle_menu_mode("actions")
+        self.combat_buttons_visible = False
+        self.update_combat_toggle_button_label()
     
 
     
@@ -5009,15 +4975,16 @@ class BattleScreen:
         self.enemy.health = max(0, self.enemy.health - damage)
         
         # Character-specific attack messages and effects
+        gear_note = self.get_attack_gear_note("magic" if self.player.type == "Mage" else "attack")
         if self.player.type == "Mage":
-            self.add_log(f"Fireball dealt {damage} damage to {self.enemy.name}!")
+            self.add_log(f"Fireball dealt {damage} damage to {self.enemy.name}!{gear_note}")
             # Fireball explosion happens when projectile hits in update method
         elif self.player.type == "Rogue":
-            self.add_log(f"Knife throw dealt {damage} damage to {self.enemy.name}!")
+            self.add_log(f"Knife throw dealt {damage} damage to {self.enemy.name}!{gear_note}")
             # Knife explosion happens when projectile hits in update method
         else:
             # Warrior/Paladin attack
-            self.add_log(f"You dealt {damage} damage to {self.enemy.name}!")
+            self.add_log(f"You dealt {damage} damage to {self.enemy.name}!{gear_note}")
             profile = get_element_profile(self.enemy.enemy_type)
             self.particle_system.add_explosion(
                 700 + 30, 250 + 30, random.choice(profile["particle_colors"]),
@@ -5038,7 +5005,7 @@ class BattleScreen:
         damage = self.roll_player_damage(self.player.effective_strength() * 2)
         self.enemy.health = max(0, self.enemy.health - damage)
         self.player.mana -= 20
-        self.add_log(f"Fireball dealt {damage} damage to {self.enemy.name}!")
+        self.add_log(f"Fireball dealt {damage} damage to {self.enemy.name}!{self.get_attack_gear_note('magic')}")
         self.damage_target = "enemy"
         self.damage_amount = damage
         self.damage_effect_timer = 20
@@ -5088,10 +5055,11 @@ class BattleScreen:
             base_damage = int(self.player.effective_strength() * 2.4 + self.player.effective_speed() * 0.8 + self.player.level * 3)
         damage = self.roll_player_damage(base_damage)
         self.enemy.health = max(0, self.enemy.health - damage)
+        gear_note = self.get_attack_gear_note("magic" if self.player.type == "Mage" else "attack")
         if self.player.type == "Mage":
-            self.add_log(f"{special_name} erupted on {self.enemy.name} for {damage} damage!")
+            self.add_log(f"{special_name} erupted on {self.enemy.name} for {damage} damage!{gear_note}")
         else:
-            self.add_log(f"{special_name} tore across {self.enemy.name} for {damage} damage!")
+            self.add_log(f"{special_name} tore across {self.enemy.name} for {damage} damage!{gear_note}")
         self.damage_target = "enemy"
         self.damage_amount = damage
         self.damage_effect_timer = 34
@@ -5119,6 +5087,10 @@ class BattleScreen:
     
     def execute_item(self, item_type):
         profile = ITEM_PROFILES[item_type]
+        can_use, reason = self.can_use_battle_item(item_type)
+        if not can_use:
+            self.add_log(reason)
+            return
         if not self.player.use_inventory_item(item_type):
             self.add_log(f"No {profile['label'].lower()} potions left!")
             return
@@ -8719,13 +8691,14 @@ class Game:
                             self.player.just_leveled_up = False
                             self.player.kills += 1
                             defeated_boss_level = getattr(self.battle_screen.enemy, "boss_level", self.player.level)
-                            exp_reward = getattr(self.battle_screen.enemy, "exp_reward", 45)
-                            score_reward = getattr(self.battle_screen.enemy, "score_reward", 25)
+                            reward = get_boss_reward(self.battle_screen.enemy)
+                            exp_reward = reward["exp"]
+                            score_reward = reward["score"]
                             self.player.gain_exp(exp_reward)
                             self.score += score_reward
                             self.player.add_inventory_item("health")
                             self.player.add_inventory_item("mana")
-                            self.set_town_service_message(f"Boss reward: {exp_reward} EXP, {score_reward} score, potions restocked.")
+                            self.set_town_service_message(reward["message"])
                             self.player.boss_cooldown = True  # Set cooldown after boss battle
                             self.player.last_boss_level = max(self.player.last_boss_level, defeated_boss_level)
                             if self.battle_screen.enemy.enemy_type == "boss_dragon":
@@ -8759,8 +8732,10 @@ class Game:
                             defeated_enemy = self.battle_screen.enemy
                             self.player.kills += 1
                             if not self.apply_story_enemy_reward(defeated_enemy):
-                                self.player.gain_exp(25)
-                                self.score += 10
+                                reward = get_regular_enemy_reward(defeated_enemy)
+                                self.player.gain_exp(reward["exp"])
+                                self.score += reward["score"]
+                                self.set_town_service_message(reward["message"])
                             self.start_transition()
                             print(f"Battle ended - transitioning to overworld")
                             self.state = "overworld"
@@ -9279,8 +9254,11 @@ class DragonBoss(Enemy):
         self.fire_breathing = False
         self.fire_breath_timer = 0
         self.boss_level = boss_level
-        self.exp_reward = 45 + boss_level * 15
-        self.score_reward = 25 + boss_level * 10
+        # BEGINNER NOTE: Bosses are quest milestones, not ordinary random
+        # fights. Their EXP is intentionally high enough to push leveling
+        # forward so the next dragon objective does not feel like a grind wall.
+        self.exp_reward = 105 + boss_level * 35
+        self.score_reward = 40 + boss_level * 15
         self.phase_thresholds = (
             {
                 "name": "Wounded",
