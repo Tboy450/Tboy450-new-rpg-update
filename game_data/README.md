@@ -42,6 +42,8 @@ an enemy list changes what can spawn in an area.
 - `collision`: whether the player should be blocked by an object.
 - `entry_depth`: how far the player can visually step into the front or back of a building.
 - `door_width`: how wide the entrance trigger should be.
+- `interaction_depth`: optional doorway trigger height. Lower this when two
+  nearby buildings need separated entrance/action zones.
 - `reward`: score, experience, reputation, or item prizes granted by a quest or errand.
 - `message`: text shown to the player.
 

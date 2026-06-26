@@ -46,7 +46,12 @@ This module owns the Android touch-button layout.
 
 - `build_android_touch_buttons(game, screen_width, screen_height)` decides which touch buttons should exist for the current UI state.
 - `draw_android_touch_buttons(...)` draws those buttons.
-- `find_android_touch_button(...)` hit-tests the buttons with a slightly larger tap target.
+- `find_android_touch_button(...)` hit-tests the buttons with a small extra tap
+  target. Keep this padding modest because stacked Android buttons can overlap
+  mechanically if the hitboxes are too large.
+- `find_android_touch_button_at_positions(...)` checks more than one coordinate
+  guess. The APK sometimes reports real phone-display coordinates and
+  sometimes reports the 1000x700 virtual game coordinates.
 - `main.py` decides whether this module is active through `is_touch_ui_runtime`.
   That detector is broader than `sys.platform == "android"` because some APK
   launch paths do not report the same platform string.

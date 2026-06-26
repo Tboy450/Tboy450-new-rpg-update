@@ -1,7 +1,7 @@
 # Active Town Shop Scenery
 
 These PNGs are active copies of selected future assets. They are used only by
-the Mooncap Market shop test.
+the Potion Shop building test.
 
 Beginner note:
 

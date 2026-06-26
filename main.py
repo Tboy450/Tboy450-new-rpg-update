@@ -126,7 +126,7 @@ from systems.input_actions import (
 from systems.android_controls import (
     build_android_touch_buttons,
     draw_android_touch_buttons,
-    find_android_touch_button,
+    find_android_touch_button_at_positions,
 )
 from systems.android_update import (
     fetch_latest_android_numeric_version,
@@ -288,8 +288,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.26"
-APP_NUMERIC_VERSION = 27
+APP_VERSION = "0.1.27"
+APP_NUMERIC_VERSION = 28
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -1246,11 +1246,12 @@ class WorldArea:
 
     def get_building_entry_rect(self, building, depth=95):
         door_width = min(building.get("door_width", building["width"]), building["width"] + 40)
+        interaction_depth = building.get("interaction_depth", depth)
         return pygame.Rect(
             building["x"] + building["width"] // 2 - door_width // 2,
             building["y"] + building["height"] - 18,
             door_width,
-            depth,
+            interaction_depth,
         )
 
     def check_building_collision(self, player_x, player_y):
@@ -1287,11 +1288,15 @@ class WorldArea:
 
             door_rect = self.get_building_entry_rect(building)
 
-            # Keep interaction doorway-focused so side walls still behave like walls.
-            service_rect = door_rect.inflate(70, 70)
+            # Keep interaction doorway-focused so side walls still behave like
+            # walls. The smaller inflate avoids town hall / stall and shop /
+            # blacksmith overlap while still being usable on Android.
+            service_rect = door_rect.inflate(44, 24)
             if player_rect.colliderect(door_rect) or player_rect.colliderect(service_rect):
                 service = dict(TOWN_SERVICES[service_type])
                 service["type"] = service_type
+                service["entry_rect"] = door_rect
+                service["service_rect"] = service_rect
                 return service
 
         return None
@@ -6468,6 +6473,71 @@ class Game:
             UI_BG,
         )
 
+    def draw_town_service_marker(self, screen, current_area):
+        """Show which town doorway is currently usable.
+
+        Beginner note:
+            The town has buildings close together, so this marker is the visual
+            promise that pressing OK/USE will enter that exact building. The
+            rectangle comes from `WorldArea.get_nearby_town_service`, which is
+            also the method used by the actual interaction code.
+        """
+        if (
+            not current_area
+            or current_area.area_type != "town"
+            or not self.player
+            or self.active_story_dialogue
+            or self.show_world_map
+            or self.show_journal
+            or self.show_inventory
+            or self.show_pause_menu
+        ):
+            return
+        if (
+            current_area.cutscene_active
+            and current_area.cutscene_phase < 2
+            and current_area.guard
+        ):
+            return
+
+        service = current_area.get_nearby_town_service(self.player.x, self.player.y)
+        if not service:
+            return
+
+        entry_rect = service.get("entry_rect")
+        if not entry_rect:
+            return
+
+        pulse = int(math.sin(self.game_time * 0.12) * 3)
+        marker_x = entry_rect.centerx
+        marker_y = max(34, entry_rect.y - 22)
+        marker_color = (255, 224, 104)
+        prompt_color = (255, 246, 174)
+
+        # Outline the exact doorway instead of the larger tap zone. This keeps
+        # the town readable and avoids making neighboring buildings look active.
+        pygame.draw.rect(screen, marker_color, entry_rect, 2, border_radius=6)
+        pygame.draw.circle(screen, marker_color, (marker_x, marker_y), 12 + pulse)
+        pygame.draw.circle(screen, UI_BG, (marker_x, marker_y), 6)
+        pygame.draw.polygon(
+            screen,
+            marker_color,
+            [
+                (marker_x, marker_y + 18 + pulse),
+                (marker_x - 8, marker_y + 7 + pulse),
+                (marker_x + 8, marker_y + 7 + pulse),
+            ],
+        )
+
+        label = render_fitted_text(f"OK/USE: {service['name']}", prompt_color, 245, (font_tiny,))
+        panel_w = label.get_width() + 24
+        panel_x = max(12, min(SCREEN_WIDTH - panel_w - 12, marker_x - panel_w // 2))
+        panel_y = max(12, marker_y - 46)
+        panel = pygame.Rect(panel_x, panel_y, panel_w, 30)
+        pygame.draw.rect(screen, UI_BG, panel, border_radius=6)
+        pygame.draw.rect(screen, marker_color, panel, 2, border_radius=6)
+        screen.blit(label, (panel.x + 12, panel.y + 7))
+
     def talk_to_town_resident(self, resident_key, resident):
         """Talk to an outdoor resident and complete their one-time errand.
 
@@ -8065,6 +8135,7 @@ class Game:
             # enemies so they never start battles by touching the player.
             self.draw_story_npcs(screen, current_area)
             self.draw_town_population(screen, current_area)
+            self.draw_town_service_marker(screen, current_area)
             
             # Draw player (convert world coordinates to screen coordinates)
             screen_x, screen_y = self.world_map.world_to_screen(self.player.x, self.player.y)
@@ -8381,9 +8452,18 @@ class Game:
                     # Button class. We detect them here and then translate the
                     # touch into the same action system used by the keyboard.
                     if self.android_touch_enabled:
-                        mx, my = display_to_game_pos(event.pos)
+                        raw_touch_pos = event.pos
+                        mapped_touch_pos = display_to_game_pos(raw_touch_pos)
+                        if (
+                            display_surface is not screen
+                            and 0 <= raw_touch_pos[0] <= SCREEN_WIDTH
+                            and 0 <= raw_touch_pos[1] <= SCREEN_HEIGHT
+                        ):
+                            touch_positions = (raw_touch_pos, mapped_touch_pos)
+                        else:
+                            touch_positions = (mapped_touch_pos, raw_touch_pos)
                         touch_buttons = build_android_touch_buttons(self, SCREEN_WIDTH, SCREEN_HEIGHT)
-                        touched_button = find_android_touch_button(touch_buttons, (mx, my))
+                        touched_button = find_android_touch_button_at_positions(touch_buttons, touch_positions)
                         if touched_button and self.handle_android_touch_command(touched_button["action"]):
                             mouse_click = False
                             continue
@@ -8609,9 +8689,6 @@ class Game:
                                         dialogue_key = npc.get("dialogue_key")
                                         repeat = dialogue_key in self.seen_story_dialogues
                                         self.start_story_dialogue(dialogue_key, repeat=repeat)
-                                    elif action == CONFIRM:
-                                        self.show_journal = True
-                                        self.show_world_map = False
                         continue
                     
                     # Pass input to battle screen

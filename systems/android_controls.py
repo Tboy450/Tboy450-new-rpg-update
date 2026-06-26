@@ -277,11 +277,32 @@ def build_android_touch_buttons(game, screen_width, screen_height):
     return buttons
 
 
-def find_android_touch_button(buttons, pos, extra_padding=18):
+def find_android_touch_button(buttons, pos, extra_padding=8):
     """Return the touched button dictionary, or None if nothing was hit."""
     for button in reversed(buttons):
         if button["rect"].inflate(extra_padding, extra_padding).collidepoint(pos):
             return button
+    return None
+
+
+def find_android_touch_button_at_positions(buttons, positions, extra_padding=8):
+    """Return the first touch button found from one or more coordinate guesses.
+
+    Beginner note:
+        Android launchers are not always consistent about mouse/touch
+        coordinates. Some report the real phone display position; others report
+        the game's 1000x700 virtual screen position. `main.py` sends both
+        guesses here so the visual button and the clickable hitbox stay lined
+        up on more devices.
+    """
+    checked_positions = []
+    for pos in positions:
+        if pos is None or pos in checked_positions:
+            continue
+        checked_positions.append(pos)
+        touched_button = find_android_touch_button(buttons, pos, extra_padding)
+        if touched_button:
+            return touched_button
     return None
 
 

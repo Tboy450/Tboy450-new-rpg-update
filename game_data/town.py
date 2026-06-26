@@ -16,6 +16,8 @@ Common fields:
     collision: whether the player should be blocked by the object.
     entry_depth: how far the player can overlap the top/bottom for visual depth.
     door_width: width of the entrance interaction zone.
+    interaction_depth: optional doorway interaction depth. Use this when nearby
+        buildings need tighter separated action spaces.
 """
 
 # Walls, gate, and towers near the top edge of the town screen.
@@ -41,6 +43,7 @@ TOWN_BUILDINGS = (
         "collision": True,
         "entry_depth": 42,
         "door_width": 96,
+        "interaction_depth": 36,
     },
     {
         "type": "shop",
@@ -59,6 +62,7 @@ TOWN_BUILDINGS = (
         "collision": True,
         "entry_depth": 30,
         "door_width": 72,
+        "interaction_depth": 72,
     },
     {
         "type": "inn",
@@ -71,6 +75,7 @@ TOWN_BUILDINGS = (
         "collision": True,
         "entry_depth": 30,
         "door_width": 72,
+        "interaction_depth": 72,
     },
     {
         "type": "blacksmith",
@@ -83,6 +88,7 @@ TOWN_BUILDINGS = (
         "collision": True,
         "entry_depth": 24,
         "door_width": 68,
+        "interaction_depth": 62,
     },
     {
         "type": "library",
@@ -95,6 +101,7 @@ TOWN_BUILDINGS = (
         "collision": True,
         "entry_depth": 24,
         "door_width": 64,
+        "interaction_depth": 62,
     },
     {
         "type": "house",
@@ -107,6 +114,7 @@ TOWN_BUILDINGS = (
         "collision": True,
         "entry_depth": 18,
         "door_width": 46,
+        "interaction_depth": 54,
     },
     {
         "type": "stall",
@@ -119,6 +127,7 @@ TOWN_BUILDINGS = (
         "collision": True,
         "entry_depth": 16,
         "door_width": 88,
+        "interaction_depth": 52,
     },
 )
 

@@ -55,7 +55,7 @@ TOWN_INTERIORS = {
         ),
     },
     "shop": {
-        "title": "Mooncap Market",
+        "title": "Potion Shop",
         "subtitle": "Potion bottles, travel rations, and odd glowing jars.",
         "wall_color": (62, 58, 98),
         "floor_color": (96, 76, 118),
@@ -216,7 +216,7 @@ TOWN_INTERIORS = {
         ),
     },
     "stall": {
-        "title": "Sunstripe Stall",
+        "title": "Food Stall",
         "subtitle": "A bright food counter wedged between roads and rumors.",
         "wall_color": (86, 62, 42),
         "floor_color": (126, 92, 58),

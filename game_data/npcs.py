@@ -48,9 +48,9 @@ TOWN_SERVICES = {
         ),
     },
     "shop": {
-        "name": "Mooncap Market",
+        "name": "Potion Shop",
         "npc": "Peddler Nix",
-        "prompt": "SPACE/ENTER: enter the market",
+        "prompt": "SPACE/ENTER: enter the potion shop",
         "dialogue": (
             "Peddler Nix: Red corks heal wounds, blue corks wake the spellwork.",
             "Peddler Nix: I only sell what fits in a battle pouch. No barrels.",
@@ -98,7 +98,7 @@ TOWN_SERVICES = {
         ),
     },
     "stall": {
-        "name": "Sunstripe Stall",
+        "name": "Food Stall",
         "npc": "Meri the Cook",
         "prompt": "SPACE/ENTER: visit the food stall",
         "dialogue": (

@@ -20,7 +20,7 @@ TOWN_ERRANDS = {
     },
     "shop": {
         "title": "Potion Pouch Stocked",
-        "summary": "Visit Mooncap Market and restock the travel pouch.",
+        "summary": "Visit the Potion Shop and restock the travel pouch.",
         "reward": {"score": 5, "exp": 10, "reputation": 1, "items": {"health": 1}},
     },
     "blacksmith": {
