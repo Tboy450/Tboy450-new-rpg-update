@@ -13,10 +13,14 @@ Beginner note:
 
 - `town_shop/`: first active test set for replacing one Python-drawn town
   building with imported sprite assets.
+- `town_hall/`: active Dragonwatch Hall exterior and interior command-room props.
+- `town_stall/`: active Food Stall exterior canopy.
+- `town_inn/`: active Warm Hearth Inn exterior and interior props.
+- `town_blacksmith/`: active Ironroot Forge exterior and interior gear props.
 
 ## Code Path
 
-- `game_data/town.py` chooses the outdoor shop sprite.
-- `game_data/interiors.py` chooses the indoor shop prop sprites.
+- `game_data/town.py` chooses the outdoor building sprites.
+- `game_data/interiors.py` chooses the indoor prop sprites.
 - `systems/assets.py` loads and scales the PNGs.
 - `main.py` decides when to draw outdoor buildings and indoor props.

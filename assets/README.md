@@ -63,6 +63,18 @@ Active scenery assets:
 - `assets/processed/scenery/town_shop/potion_shelf.png`: imported shop interior shelf prop.
 - `assets/processed/scenery/town_shop/shop_counter.png`: imported shop interior service counter prop.
 - `assets/processed/scenery/town_shop/scroll_desk.png`: imported shop interior order desk/detail prop.
+- `assets/processed/scenery/town_hall/town_hall_front.png`: imported Dragonwatch Hall exterior used on the town map.
+- `assets/processed/scenery/town_hall/town_hall_dais.png`: imported Dragonwatch Hall interior command platform.
+- `assets/processed/scenery/town_hall/notice_board.png`: imported Dragonwatch Hall interior notice board.
+- `assets/processed/scenery/town_stall/food_stall_canopy.png`: imported Food Stall exterior canopy used on the town map.
+- `assets/processed/scenery/town_inn/tavern_front.png`: imported Warm Hearth Inn exterior used on the town map.
+- `assets/processed/scenery/town_inn/tavern_bar_counter.png`: imported Warm Hearth Inn counter prop.
+- `assets/processed/scenery/town_inn/inn_bed.png`: imported Warm Hearth Inn bed prop.
+- `assets/processed/scenery/town_inn/hearth_fireplace.png`: imported Warm Hearth Inn fireplace prop.
+- `assets/processed/scenery/town_inn/round_tavern_table.png`: imported Warm Hearth Inn table prop.
+- `assets/processed/scenery/town_blacksmith/blacksmith_stall.png`: imported Ironroot Forge exterior used on the town map.
+- `assets/processed/scenery/town_blacksmith/weapon_rack.png`: imported Ironroot Forge weapon rack prop.
+- `assets/processed/scenery/town_blacksmith/armor_stand.png`: imported Ironroot Forge armor stand prop.
 
 Feature map:
 
