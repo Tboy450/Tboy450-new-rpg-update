@@ -30,6 +30,11 @@ def draw_town_residents(
     `residents` is an iterable of `(resident_key, resident_profile)` pairs.
     Coordinates are local town-screen pixels. The town screen itself is already
     drawn in local coordinates, so this helper does not need camera math.
+
+    Beginner note:
+        `nearby_key` is the one resident the player can currently talk to.
+        `completed_errands` changes quest marker color after that resident's
+        errand is finished.
     """
     completed_errands = set(completed_errands or ())
     for index, (resident_key, resident) in enumerate(residents):
@@ -37,6 +42,9 @@ def draw_town_residents(
         bob = math.sin(game_time * 0.08 + index * 1.7) * 2
         body_color = resident.get("color", (120, 120, 160))
         accent = resident.get("accent_color", (255, 230, 150))
+        # Completed controls marker color. Nearby controls the larger talk
+        # prompt. Keeping these separate lets a completed resident still be
+        # talkable without pretending they have a new quest.
         completed = resident.get("quest_key") in completed_errands
         nearby = resident_key == nearby_key
 
@@ -50,6 +58,8 @@ def draw_town_residents(
         pygame.draw.circle(surface, (24, 24, 30), (x - 4, foot_y - 10), 2)
         pygame.draw.circle(surface, (24, 24, 30), (x + 4, foot_y - 10), 2)
 
+        # Green means this resident's errand is done; gold means there may be
+        # something new or unfinished.
         marker_color = (120, 230, 150) if completed else (255, 215, 92)
         if nearby:
             pygame.draw.circle(surface, marker_color, (x, foot_y - 44), 11)

@@ -181,7 +181,13 @@ def load_sprite_for_rect(path, target_width, target_height, preserve_aspect=True
 
 
 def draw_sprite_in_rect(surface, path, rect, preserve_aspect=True, anchor="center"):
-    """Draw a sprite inside a rectangle and return True when it worked."""
+    """Draw a sprite inside a rectangle and return True when it worked.
+
+    Beginner note:
+        `rect` is the box from data files such as `game_data/town.py`.
+        `anchor="bottom"` is useful for buildings and furniture because the
+        bottom edge should stay on the ground even if the PNG is tall.
+    """
     sprite = load_sprite_for_rect(path, rect.width, rect.height, preserve_aspect)
     if not sprite:
         return False

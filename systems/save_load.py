@@ -25,13 +25,24 @@ DEFAULT_SAVE_PATH = Path(
 )
 
 def _claim_to_list(claim):
-    """Convert a town service claim tuple into a JSON-safe list."""
+    """Convert a town service claim tuple into a JSON-safe list.
+
+    Beginner note:
+        The Inn saves claim keys like ("inn_rest_level", 3). JSON can write
+        lists but not Python tuples, so this turns that tuple into
+        ["inn_rest_level", 3].
+    """
     if isinstance(claim, (list, tuple)) and len(claim) == 2:
         return [str(claim[0]), int(claim[1])]
     return None
 
 def _pair_to_list(pair):
-    """Convert a two-value identifier into a JSON-safe string pair list."""
+    """Convert a two-value identifier into a JSON-safe string pair list.
+
+    Beginner note:
+        Several systems save pairs such as (building_type, inspect_label).
+        Turning both values into strings keeps the save file simple and stable.
+    """
     if isinstance(pair, (list, tuple)) and len(pair) == 2:
         return [str(pair[0]), str(pair[1])]
     return None
@@ -70,6 +81,9 @@ def build_save_data(game):
         "score": game.score,
         "game_time": game.game_time,
         "boss_defeated": game.boss_defeated,
+        # Player data is everything attached directly to the chosen hero.
+        # This includes stats, inventory, equipment, story trophies, and the
+        # Lion Sage SPECIAL unlock flag.
         "player": {
             "type": game.player.type,
             "level": game.player.level,
@@ -95,16 +109,22 @@ def build_save_data(game):
             "special_unlocked": getattr(game.player, "special_unlocked", False),
             "town_service_claims": claims,
         },
+        # World data is the map location/progress, not every object in the map.
+        # The actual areas are rebuilt by normal game startup code.
         "world": {
             "current_area": [game.world_map.current_area_x, game.world_map.current_area_y],
             "visited_areas": visited,
         },
+        # Town data tracks social/service progress separate from the player
+        # stats. That keeps errands and inspect rewards from repeating forever.
         "town": {
             "reputation": getattr(game, "town_reputation", 0),
             "completed_errands": sorted(getattr(game, "completed_town_errands", set())),
             "completed_resident_errands": sorted(getattr(game, "completed_resident_errands", set())),
             "inspected_details": sorted(inspected_details),
         },
+        # Story data tracks one-shot dialogue/reward flow and story enemy
+        # defeat counts, such as Ghost Face first-clear versus repeat rewards.
         "story": {
             "seen_dialogues": sorted(getattr(game, "seen_story_dialogues", set())),
             "claimed_rewards": sorted(getattr(game, "claimed_story_rewards", set())),

@@ -61,6 +61,10 @@ ANDROID_BUTTON_KEYS = {
 
 # Preferred keyboard key for each action. Touch buttons can use this to post a
 # synthetic KEYDOWN event so the rest of the game can reuse its keyboard logic.
+# BEGINNER NOTE:
+#     This table goes in the opposite direction from KEY_ACTIONS. KEY_ACTIONS
+#     turns a real key into an action; ACTION_PRIMARY_KEYS turns an action back
+#     into the one keyboard key we prefer to imitate.
 ACTION_PRIMARY_KEYS = {
     MOVE_UP: pygame.K_UP,
     MOVE_DOWN: pygame.K_DOWN,
@@ -90,12 +94,14 @@ def action_for_key(key):
     """
     return KEY_ACTIONS.get(key)
 
+
 def key_for_android_button(name):
     """Return the pygame key used by a virtual Android button.
 
     Returns None when the virtual button name is unknown.
     """
     return ANDROID_BUTTON_KEYS.get(name)
+
 
 def key_for_action(action):
     """Return the preferred pygame key constant for an action string."""

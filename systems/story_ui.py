@@ -39,7 +39,12 @@ def draw_story_dialogue_overlay(
     load_sprite_by_height,
     wrap_text_to_width,
 ):
-    """Draw the active story dialogue box with portrait, title, and prompt."""
+    """Draw the active story dialogue box with portrait, title, and prompt.
+
+    Beginner note:
+        `dialogue` is already selected by `main.py`. This helper only draws the
+        current line and the page count. It does not advance the story.
+    """
     accent = dialogue.get("color", text_color)
 
     _draw_dim_overlay(screen, screen_width, screen_height, 135)
@@ -52,6 +57,8 @@ def draw_story_dialogue_overlay(
     pygame.draw.rect(screen, (12, 12, 24), portrait_box, border_radius=8)
     pygame.draw.rect(screen, accent, portrait_box, 2, border_radius=8)
 
+    # Portraits use short data keys such as "lion_sage". The asset helper turns
+    # that readable key into a real PNG path.
     sprite_path = get_story_sprite_path(dialogue.get("portrait"))
     portrait = load_sprite_by_height(sprite_path, 142) if sprite_path else None
     if portrait:
@@ -70,6 +77,8 @@ def draw_story_dialogue_overlay(
         screen.blit(rendered, (text_x, text_y))
         text_y += 31
 
+    # Show "current/total" so players know whether NEXT advances one more line
+    # or closes the current conversation.
     step_text = f"{line_index + 1}/{total_lines}"
     if android_mode:
         prompt_label = f"NEXT button or ENTER/SPACE   {step_text}"
@@ -90,7 +99,12 @@ def draw_pause_menu_overlay(
     ui_bg,
     android_mode,
 ):
-    """Draw the shared pause menu and any already-built button objects."""
+    """Draw the shared pause menu and any already-built button objects.
+
+    Beginner note:
+        `main.py` builds the button list and decides what each button does.
+        This helper only draws the panel and calls `button.draw(screen)`.
+    """
     _draw_dim_overlay(screen, screen_width, screen_height, 170)
 
     # The menu now includes Inventory in addition to Journal/Map/Save/Load.
