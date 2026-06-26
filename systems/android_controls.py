@@ -278,7 +278,13 @@ def build_android_touch_buttons(game, screen_width, screen_height):
 
 
 def find_android_touch_button(buttons, pos, extra_padding=8):
-    """Return the touched button dictionary, or None if nothing was hit."""
+    """Return the touched button dictionary, or None if nothing was hit.
+
+    Beginner note:
+        `extra_padding` makes taps slightly forgiving. Keep it small because
+        stacked phone buttons can overlap mechanically if the invisible hitbox
+        grows too far beyond the visible rectangle.
+    """
     for button in reversed(buttons):
         if button["rect"].inflate(extra_padding, extra_padding).collidepoint(pos):
             return button

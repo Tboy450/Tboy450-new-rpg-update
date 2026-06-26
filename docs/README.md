@@ -6,6 +6,7 @@ project. These files are not loaded by the game at runtime.
 ## Files
 
 - `beginner_code_map.md`: the main beginner guide. Start here to learn what each active module owns and where to edit common features.
+- `recent_commit_walkthrough.md`: beginner explanation of the latest large commits, including town scenery, Android touch routing, battle helpers, town services, and update-link plumbing.
 - `android_app.md`: Android install, APK update, Pydroid status, and build notes for normal users/editors.
 - `android_apk_agent_notes.md`: detailed packaging history and guardrails for Codex or other AI agents working on Android builds.
 - `ios_app.md`: current iPhone/iPad packaging status and what would be needed for a real iOS install.

@@ -3,6 +3,9 @@
 This guide explains where the active game code lives and what each module is
 responsible for. Read this before editing if you are new to Python or this repo.
 
+For a beginner-friendly explanation of the most recent larger commits, read
+`docs/recent_commit_walkthrough.md` after this file.
+
 ## Active Source Vs Archive
 
 - `main.py`: the active game program. Run this file to start the game.
@@ -146,6 +149,15 @@ Use this when you know the feature name but not the file.
 - Future inactive assets:
   `assets/processed/future_assets/` stores unused transparent PNG concepts.
   These are intentionally not referenced by active code until a later import pass.
+- Active town scenery:
+  `game_data/town.py` points outdoor buildings at imported PNGs under
+  `assets/processed/scenery/`. `sprite_rect` controls how large the art looks;
+  `x/y/width/height`, `door_width`, and `interaction_depth` still control
+  collision and entering buildings.
+- Active interior scenery:
+  `game_data/interiors.py` points room props at imported PNGs with `props[].sprite`.
+  `npc_sprite_rect` sizes imported service NPCs such as the Innkeeper and
+  Blacksmith without changing the source PNGs.
 - Imported effect art tied to that flow:
   `assets/processed/effects/flame_tornado/` is the SPECIAL travel animation.
   `assets/processed/effects/fire_blast/` is the Mage impact animation.
@@ -219,6 +231,18 @@ beginner-facing control labels.
 3. Add its NPC/service text to `TOWN_SERVICES` in `game_data/npcs.py`.
 4. Optional: add an errand in `TOWN_ERRANDS` in `game_data/quests.py`.
 5. Make sure the building `type` string is the same in every file.
+
+## How To Resize Or Reposition Town Building Art
+
+1. Find the building record in `TOWN_BUILDINGS` in `game_data/town.py`.
+2. Edit `sprite_rect` when the imported PNG looks too large, too small, or
+   visually off-center.
+3. Edit `x`, `y`, `width`, and `height` only when the gameplay footprint should
+   move or resize.
+4. Edit `door_width` and `interaction_depth` when the building entry prompt
+   appears too early, too late, or overlaps a nearby building.
+5. Keep `sprite_anchor` as `bottom` for most buildings so roofs can be tall
+   while doors stay aligned to the ground.
 
 ## How To Add A New Town Resident
 

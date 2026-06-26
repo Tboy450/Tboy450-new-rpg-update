@@ -46,6 +46,9 @@ def apply_inn_rest_service(player, npc_name):
     else:
         message = f"{npc_name}: You already look rested."
 
+    # This tuple is saved in `player.town_service_claims`. Using the level in
+    # the key means the Inn can give one bonus at level 2, another at level 3,
+    # and so on, while still allowing normal HP/MP rest every visit.
     claim_key = (INN_REST_CLAIM_PREFIX, player.level)
     if claim_key in player.town_service_claims:
         return f"{message} Rest bonus for level {player.level} is already claimed."
@@ -67,6 +70,8 @@ def apply_inn_rest_service(player, npc_name):
 
 def apply_blacksmith_forge_service(player, npc_name, limit=3):
     """Grant level-gated forge gear and return one readable result message."""
+    # The equipment table decides which patterns are unlocked for the player's
+    # class and level. This service only grants the next missing items.
     forge_rewards = get_available_blacksmith_rewards(
         player.type,
         player.level,
@@ -76,6 +81,8 @@ def apply_blacksmith_forge_service(player, npc_name, limit=3):
     if forge_rewards:
         forged_parts = []
         for equipment_key in forge_rewards:
+            # Do not auto-equip forge rewards. Sending them to Inventory keeps
+            # player choice clear and avoids replacing a favorite rare item.
             if not player.add_equipment_item(equipment_key, auto_equip=False):
                 continue
             profile = get_equipment_item(equipment_key) or {}

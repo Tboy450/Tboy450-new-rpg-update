@@ -13,6 +13,8 @@ Common fields:
     sprite: optional active PNG used instead of Python drawing for this building.
     sprite_rect: optional draw rectangle for the PNG. This can be larger than
         width/height when the sprite has a roof, sign, or shadow.
+    sprite_anchor: optional alignment hint for the PNG inside sprite_rect.
+        `bottom` keeps the base/door planted even when the image is tall.
     collision: whether the player should be blocked by the object.
     entry_depth: how far the player can overlap the top/bottom for visual depth.
     door_width: width of the entrance interaction zone.
@@ -78,6 +80,9 @@ TOWN_BUILDINGS = (
         "height": 90,
         "color": (200, 160, 140),
         "style": "cozy",
+        # BEGINNER NOTE: The Inn's PNG art is wider and taller than its
+        # gameplay rectangle. That lets the roof/sign look rich while the
+        # collision and doorway stay simple.
         "sprite": "town_inn/tavern_front.png",
         "sprite_rect": (776, 360, 190, 160),
         "sprite_anchor": "bottom",
@@ -94,6 +99,9 @@ TOWN_BUILDINGS = (
         "height": 80,
         "color": (140, 120, 100),
         "style": "industrial",
+        # BEGINNER NOTE: The Blacksmith uses imported stall art outdoors. The
+        # smaller `width`/`height` still control blocking and entering; the
+        # larger `sprite_rect` only controls how the picture is drawn.
         "sprite": "town_blacksmith/blacksmith_stall.png",
         "sprite_rect": (78, 520, 164, 130),
         "sprite_anchor": "bottom",
@@ -136,6 +144,9 @@ TOWN_BUILDINGS = (
         "height": 50,
         "color": (170, 150, 130),
         "style": "market",
+        # BEGINNER NOTE: The stall sprite is intentionally just scenery for
+        # now. Its action space is tuned with `door_width` and
+        # `interaction_depth` so it does not steal input from nearby buildings.
         "sprite": "town_stall/food_stall_canopy.png",
         "sprite_rect": (420, 480, 160, 100),
         "sprite_anchor": "bottom",

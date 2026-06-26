@@ -29,6 +29,10 @@ def get_regular_enemy_reward(enemy):
 
 def get_boss_reward(enemy):
     """Return boss rewards with a safe fallback if older boss fields are absent."""
+    # `getattr(object, "field", fallback)` means:
+    # "use object.field if it exists; otherwise use this default value."
+    # That keeps older or experimental boss classes from crashing the reward
+    # screen when they do not define every newer reward field.
     boss_level = int(getattr(enemy, "boss_level", 1))
     exp = int(getattr(enemy, "exp_reward", 105 + boss_level * 35))
     score = int(getattr(enemy, "score_reward", 40 + boss_level * 15))

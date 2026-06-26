@@ -67,6 +67,12 @@ def _continue_if_needed(battle, event, pygame_module):
 def handle_battle_input(battle, event, game, pygame_module, display_to_game_pos):
     """Route one keyboard/touch event into the active battle menu.
 
+    Beginner step order:
+        1. Let NEXT/summary screens consume input before attacks can happen.
+        2. Ignore attacks when it is not the player's turn.
+        3. Handle keyboard navigation and confirmation.
+        4. Handle touch taps, including Android's raw/scaled coordinate issue.
+
     Returns:
         True when the event was handled by battle code.
         False when the event was ignored.

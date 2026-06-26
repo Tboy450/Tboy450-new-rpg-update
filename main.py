@@ -1245,6 +1245,14 @@ class WorldArea:
         )
 
     def get_building_entry_rect(self, building, depth=95):
+        """Return the doorway/action rectangle for one town building.
+
+        Beginner note:
+            This is not the same as building collision. Collision blocks walls.
+            This smaller rectangle says where OK/USE can enter the building.
+            `door_width` changes the horizontal size; `interaction_depth`
+            changes how far down from the door the player can stand.
+        """
         door_width = min(building.get("door_width", building["width"]), building["width"] + 40)
         interaction_depth = building.get("interaction_depth", depth)
         return pygame.Rect(
@@ -1273,6 +1281,14 @@ class WorldArea:
         return False
 
     def get_nearby_town_service(self, player_x, player_y):
+        """Return the town service/building the player can currently use.
+
+        Beginner note:
+            The returned dictionary includes `entry_rect` and `service_rect` so
+            drawing code and interaction code use the same doorway location.
+            That keeps the yellow marker honest: if the marker shows, OK/USE
+            should target that same building.
+        """
         if self.area_type != "town":
             return None
 
@@ -8452,6 +8468,11 @@ class Game:
                     # Button class. We detect them here and then translate the
                     # touch into the same action system used by the keyboard.
                     if self.android_touch_enabled:
+                        # BEGINNER NOTE:
+                        # Android can report touch coordinates in two different
+                        # spaces: real device pixels or this game's fixed
+                        # 1000x700 screen. We test both positions so visible
+                        # buttons and clickable areas stay lined up.
                         raw_touch_pos = event.pos
                         mapped_touch_pos = display_to_game_pos(raw_touch_pos)
                         if (

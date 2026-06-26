@@ -16,6 +16,8 @@ Common fields:
         simple Python NPC body.
     props: furniture and decorative objects. Each prop has a kind and rect.
     props[].sprite: optional active PNG drawn instead of the Python shape.
+    props[].sprite_anchor: optional alignment hint for furniture PNGs. Use
+        `bottom` when the prop should sit on the floor.
     props[].sprite_preserve_aspect: optional bool. False stretches the sprite
         exactly into the prop rectangle.
     inspect_points: invisible/marked rectangles that give one-time flavor rewards.
@@ -44,6 +46,9 @@ TOWN_INTERIORS = {
         "npc_sprite_anchor": "bottom",
         "props": (
             {"kind": "rug", "rect": (330, 430, 330, 80), "color": (166, 70, 54)},
+            # BEGINNER NOTE: These bed/table/counter sprites replace simple
+            # Python shapes visually. The `kind` field still tells the room
+            # logic what object type this is.
             {"kind": "bed", "rect": (150, 335, 170, 80), "color": (210, 168, 122), "sprite": "town_inn/inn_bed.png", "sprite_anchor": "bottom"},
             {"kind": "bed", "rect": (160, 455, 150, 72), "color": (190, 144, 104), "sprite": "town_inn/inn_bed.png", "sprite_anchor": "bottom"},
             {"kind": "table", "rect": (438, 342, 118, 78), "color": (112, 66, 38), "sprite": "town_inn/round_tavern_table.png"},
@@ -127,6 +132,9 @@ TOWN_INTERIORS = {
             {"kind": "forge", "rect": (135, 275, 190, 170), "color": (82, 70, 62)},
             {"kind": "anvil", "rect": (405, 385, 125, 78), "color": (84, 88, 92)},
             {"kind": "counter", "rect": (660, 425, 205, 58), "color": (92, 62, 42)},
+            # BEGINNER NOTE: The active Blacksmith props are imported art, but
+            # they remain data records here so future coders can move or resize
+            # the room layout without opening an image editor.
             {"kind": "rack", "rect": (545, 252, 150, 150), "color": (92, 68, 52), "sprite": "town_blacksmith/weapon_rack.png"},
             {"kind": "rack", "rect": (458, 252, 70, 112), "color": (92, 68, 52), "sprite": "town_blacksmith/armor_stand.png", "sprite_anchor": "bottom"},
             {"kind": "crate", "rect": (330, 470, 72, 48), "color": (104, 68, 40)},

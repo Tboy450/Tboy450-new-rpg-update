@@ -107,6 +107,8 @@ def draw_battle_action_buttons(
     if battle.state != "player_turn" or battle.waiting_for_continue or battle.battle_ended:
         return
 
+    # The toggle is always drawn on the player's turn. This gives Android users
+    # a small fixed target to reveal commands if the larger row is hidden.
     battle.update_combat_toggle_button_label()
     battle.combat_toggle_button.selected = False
     battle.combat_toggle_button.draw(surface)
@@ -114,11 +116,15 @@ def draw_battle_action_buttons(
     if not battle.combat_buttons_visible:
         return
 
+    # `battle.buttons` can mean either the normal action row or the item row.
+    # `battle.menu_mode` below tells us which hint text belongs under it.
     for index, button in enumerate(battle.buttons):
         button.selected = index == battle.selected_option
         button.draw(surface)
 
     if getattr(battle, "menu_mode", "actions") == "items":
+        # Item mode shows Health/Mana/BACK buttons, so it gets one direct hint
+        # instead of the normal potion count, MP cost, and escape chance hints.
         item_hint = font_tiny.render("Choose a potion or BACK", True, (220, 220, 180))
         surface.blit(item_hint, (battle.buttons[0].rect.x, battle.buttons[0].rect.bottom + 12))
         return
