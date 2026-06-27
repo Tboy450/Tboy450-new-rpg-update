@@ -6,6 +6,11 @@ Open this file from a Python app such as Pydroid 3, or run it from a terminal:
     python scripts/run_local_android.py
 
 It uses the game files already on the phone instead of downloading from GitHub.
+
+Beginner note:
+    This is a shortcut wrapper around `install_python_app.py --local`. It is
+    useful when the phone already has the repo files and only needs to run the
+    installer/launcher path again.
 """
 
 from __future__ import annotations

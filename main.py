@@ -178,6 +178,13 @@ pygame.font.init()
 
 
 def initialize_audio():
+    """Try to initialize pygame audio with driver fallbacks.
+
+    Beginner note:
+        Different platforms expose different SDL audio drivers. This helper
+        tries the best known options, then lets the game continue silently if
+        no driver works.
+    """
     if pygame.mixer.get_init():
         pygame.mixer.music.set_volume(0.8)
         return True
@@ -403,6 +410,7 @@ def display_to_game_pos(pos):
 
 
 def get_game_mouse_pos():
+    """Return the mouse position in the game's 1000x700 coordinate system."""
     return display_to_game_pos(pygame.mouse.get_pos())
 
 
@@ -1882,6 +1890,10 @@ class WorldMap:
 class Particle:
     """
     Individual particle for visual effects like explosions, magic, and environmental effects.
+
+    Beginner note:
+        A particle is a tiny temporary drawing object. It moves each frame,
+        fades as it ages, then deletes itself when its lifetime is over.
     """
     def __init__(self, x, y, color, velocity, size, lifetime):
         self.x = x
@@ -1910,6 +1922,10 @@ class ParticleSystem:
     """
     Manages all particles in the game, including explosions, magic effects, and environmental particles.
     Provides methods for creating various types of particle effects.
+
+    Beginner note:
+        Other systems ask this object to create particles. This object owns the
+        list and removes old particles after they finish animating.
     """
     def __init__(self):
         self.particles = []
@@ -1963,6 +1979,11 @@ class Button:
     """
     Interactive button for menus and UI elements.
     Handles hover effects and click detection.
+
+    Beginner note:
+        This is the desktop/menu button class. Android virtual controls are
+        drawn separately in `systems/android_controls.py`, while battle action
+        buttons reuse this class inside `BattleScreen`.
     """
     def __init__(self, x, y, width, height, text, color=UI_BORDER, hover_color=(255, 215, 0)):
         self.rect = pygame.Rect(x, y, width, height)
@@ -2011,6 +2032,10 @@ class Character:
     """
     Player character with RPG stats, abilities, and progression system.
     Supports multiple character classes: Warrior, Mage, Rogue
+
+    Beginner note:
+        This object stores the hero's live state: health, mana, level,
+        inventory, equipment, position, and battle animation timers.
     """
     def __init__(self, char_type="Warrior"):
         self.type = char_type
@@ -2947,6 +2972,11 @@ class Enemy:
     """
     Base enemy class with AI behavior, combat abilities, and progression scaling.
     Different enemy types have unique abilities and visual appearances.
+
+    Beginner note:
+        Normal enemies use an element key such as `fiery`, `ice`, or
+        `ghost_face`. That key chooses colors, names, status effects, and
+        optional imported sprites.
     """
     def __init__(self, player_level):
         self.size = ENEMY_SIZE
@@ -3104,6 +3134,10 @@ class Item:
     """
     Collectible items that provide healing, mana restoration, or other benefits.
     Items spawn randomly in the world and can be collected by the player.
+
+    Beginner note:
+        This is for overworld pickups, not Inventory gear. Consumable item
+        effects come from `game_data/mechanics.py`.
     """
     def __init__(self):
         self.size = ITEM_SIZE
@@ -3368,6 +3402,11 @@ class BattleScreen:
     """
     Turn-based combat system with attack, magic, special, item, and run options.
     Handles battle animations, damage calculations, and victory/defeat conditions.
+
+    Beginner note:
+        This class still owns combat state and attack math. Reusable drawing,
+        input routing, and reward formulas were split into `systems/battle_ui.py`,
+        `systems/battle_input.py`, and `systems/battle_rewards.py`.
     """
     def __init__(self, player, enemy):
         self.player = player
@@ -5159,6 +5198,11 @@ class OpeningCutscene:
     """
     Story introduction sequence with multiple scenes and text progression.
     Sets up the game's narrative and world background.
+
+    Beginner note:
+        This is only the opening movie-style sequence. Regular story dialogue
+        after gameplay starts is handled by `Game.start_story_dialogue` and
+        drawn through `systems/story_ui.py`.
     """
     def __init__(self):
         self.state = "intro"
@@ -8971,6 +9015,11 @@ class MusicSystem:
     - Boss Battle: Epic boss theme
     - Victory: Triumphant victory theme
     - Game Over: Somber ending theme
+
+    Beginner note:
+        The music is generated from note names and simple wave math instead of
+        loaded from MP3/OGG files. `generate_chiptune_song` converts note
+        patterns into WAV bytes that pygame can play.
     """
     def __init__(self):
         self.current_track = None
@@ -9325,6 +9374,10 @@ class DragonBoss(Enemy):
     """
     Special boss enemy with enhanced abilities and unique visual effects.
     More powerful than regular enemies with special attack patterns.
+
+    Beginner note:
+        This is the repeatable/progression dragon boss class. Boss tuning data
+        such as name, title, and hint comes from `game_data/progression.py`.
     """
     def __init__(self, boss_level):
         super().__init__(player_level=5 + boss_level * 2)
@@ -9491,6 +9544,10 @@ class BossDragon(Enemy):
     """
     Final boss enemy with the most powerful abilities and unique visual design.
     Represents the ultimate challenge in the game.
+
+    Beginner note:
+        This is the final dragon, separate from `DragonBoss` so the last fight
+        can have fixed stats and final-boss phase names.
     """
     def __init__(self):
         super().__init__(player_level=10)

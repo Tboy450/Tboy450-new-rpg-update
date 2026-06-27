@@ -10,6 +10,11 @@ class PygameCERecipe(CompiledComponentsPythonRecipe):
     pygame-ce is a maintained fork that still builds with the Cython 0.29.x
     toolchain python-for-android expects. The package installs as `pygame`, so
     the existing game code does not need import changes.
+
+    Beginner note:
+        This recipe is only used during APK packaging. It teaches
+        python-for-android how to compile pygame-ce and its SDL dependencies for
+        Android. Normal desktop/Pydroid Python runs do not import this file.
     """
 
     version = "2.5.2"

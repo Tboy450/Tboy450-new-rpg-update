@@ -4,6 +4,11 @@
 This is the no-APK path. It can either use game files that are already on this
 device or download the latest repo files from GitHub. Then it installs the
 Python packages, writes a launcher, and starts `main.py`.
+
+Beginner note:
+    This script is for running the game as a Python project, especially from
+    Pydroid. It is separate from the APK build path. APK packaging uses
+    Buildozer/GitHub Actions; this file copies/downloads files and runs Python.
 """
 
 from __future__ import annotations
@@ -104,7 +109,13 @@ def script_repo_root() -> Path:
 
 
 def copy_active_paths(source_dir: Path, install_dir: Path) -> None:
-    """Copy only active game paths from one local folder to another."""
+    """Copy only active game paths from one local folder to another.
+
+    Beginner note:
+        This intentionally skips `.git`, build folders, caches, and archive
+        snapshots. The phone install only needs the files required to play or
+        update the current Python version of the game.
+    """
     source_dir = source_dir.resolve()
     install_dir = install_dir.resolve()
 
@@ -132,6 +143,7 @@ def copy_active_paths(source_dir: Path, install_dir: Path) -> None:
 
 
 def download_repo(branch: str, install_dir: Path) -> None:
+    """Download a GitHub branch ZIP and copy its active files into place."""
     url = REPO_ZIP_URL.format(branch=branch)
     install_dir.mkdir(parents=True, exist_ok=True)
 
@@ -159,6 +171,7 @@ def venv_python(install_dir: Path) -> Path:
 
 
 def ensure_python_environment(install_dir: Path, skip_packages: bool) -> Path:
+    """Return the Python executable that should run the installed game."""
     if is_android_python():
         # Android Python apps such as Pydroid already run inside their own
         # interpreter environment. Creating venvs there is unreliable.
@@ -203,6 +216,13 @@ def write_launcher(install_dir: Path, python_exe: Path) -> Path:
 
 
 def launch_game(install_dir: Path, python_exe: Path) -> None:
+    """Start the game after install/update has finished.
+
+    Beginner note:
+        Desktop can start a child Python process safely. Pydroid cannot,
+        because pygame's Android display context belongs to the current
+        process. That is why the Android branch executes `main.py` directly.
+    """
     print("\nStarting Dragon's Lair RPG...")
     if is_android_python():
         # Pydroid initializes SDL/Pygame for the Python process it launches.

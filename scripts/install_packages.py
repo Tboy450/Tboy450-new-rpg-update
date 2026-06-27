@@ -1,3 +1,11 @@
+"""Install a broad desktop Python game-development package set.
+
+Beginner note:
+    This is an older convenience script for setting up a developer machine.
+    The active game itself only needs the packages in `requirements.txt`.
+    Do not use this as the Android APK dependency list.
+"""
+
 import sys
 import subprocess
 import os

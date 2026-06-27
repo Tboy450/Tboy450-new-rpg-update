@@ -4,7 +4,7 @@ This script creates transparent PNG files for the future asset library. The
 game does not load these images yet; they are a labeled shelf of sprites that
 can be moved into active gameplay later.
 
-Beginner coder notes:
+Beginner note:
 
 - A "sprite" is a small image that the game can draw on the screen.
 - These sprites use transparent backgrounds, so only the object appears.

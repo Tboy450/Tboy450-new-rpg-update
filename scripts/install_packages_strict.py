@@ -1,3 +1,11 @@
+"""Install desktop game-development packages with stricter pip flags.
+
+Beginner note:
+    This is a desktop setup helper, not the game runtime and not the Android
+    APK build list. It tries binary wheels or prerelease builds for packages
+    that can be difficult to compile on newer Python versions.
+"""
+
 import sys
 import subprocess
 import os

@@ -4,6 +4,11 @@
 Use this after `run_android.py` has installed the packages once. This file is
 meant to be opened directly by Pydroid or by the Android home-screen shortcut.
 It avoids re-running pip each time you want to play.
+
+Beginner note:
+    This file launches `main.py` in the same Python process Pydroid opened.
+    That matters because Android/Pydroid gives pygame its display access through
+    the original process.
 """
 
 from __future__ import annotations

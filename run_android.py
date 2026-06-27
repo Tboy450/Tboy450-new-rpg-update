@@ -3,6 +3,11 @@
 
 Open this file in Pydroid 3 and press Run. Do not type the filename into the
 Python editor; Python treats text like `scripts/run_local_android.py` as code.
+
+Beginner note:
+    This file does not contain the game. It finds the game folder, imports the
+    real installer script from `scripts/install_python_app.py`, and tells that
+    installer to use the local files already on the phone.
 """
 
 from __future__ import annotations
