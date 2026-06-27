@@ -127,6 +127,9 @@ buildings.
   data, and completion messages.
 - Resident errands can reward score, EXP, reputation, consumable items, class
   gear, or normal equipment.
+- `get_next_town_resident_errand_status(...)`: chooses the next unfinished
+  resident errand for the pause-menu Log and reports whether it is ready or
+  still locked by reputation/building errands.
 - `systems/town_population_ui.py` draws the residents; the data stays here so
   the drawing helper does not become a second source of truth.
 

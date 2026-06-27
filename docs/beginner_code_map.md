@@ -146,6 +146,8 @@ Use this when you know the feature name but not the file.
   one-time resident errands, and resident rewards. `systems/town_population_ui.py`
   draws the small resident sprites and quest markers. `Game.talk_to_town_resident`
   in `main.py` handles interaction and reward flow.
+  `get_next_town_resident_errand_status` chooses the next resident errand shown
+  in the pause-menu Log and uses the same lock checks as talking to the resident.
 - Town building hub markers:
   `game_data/npcs.py` stores each building's `map_label`, `role`, `purpose`,
   `first_reward`, and `repeat_use` fields. `systems/town_services.py` formats

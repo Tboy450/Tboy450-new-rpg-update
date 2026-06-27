@@ -235,6 +235,8 @@ This module draws outdoor town residents.
   name label, and nearby talk prompt.
 - `Game.draw_town_population` in `main.py` decides when to call this helper and
   which resident is currently nearby.
+- Resident Log guidance is calculated in `game_data/town_population.py` so the
+  same ready/locked rules are used by both the Log and the actual talk action.
 
 Use this module when changing how outdoor town residents look. Use
 `game_data/town_population.py` when changing who they are, where they stand, or

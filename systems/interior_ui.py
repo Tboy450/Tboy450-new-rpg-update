@@ -65,7 +65,16 @@ def draw_interior_npc(surface, room, service, font_tiny, ui_bg):
     surface.blit(npc_text, (npc_x - npc_text.get_width() // 2, npc_y + 68))
 
 
-def draw_interior_service_card(surface, room, service, player, font_tiny, ui_bg, render_fitted_text):
+def draw_interior_service_card(
+    surface,
+    room,
+    service,
+    player,
+    font_tiny,
+    ui_bg,
+    render_fitted_text,
+    wrap_text_to_width=None,
+):
     """Draw a compact wall note for the active building service.
 
     Beginner note:
@@ -84,7 +93,7 @@ def draw_interior_service_card(surface, room, service, player, font_tiny, ui_bg,
         return
 
     accent_color = room["accent_color"]
-    panel = pygame.Rect(82, 112, 308, 132)
+    panel = pygame.Rect(82, 104, 330, 152)
     pygame.draw.rect(surface, (18, 18, 26), panel, border_radius=7)
     pygame.draw.rect(surface, accent_color, panel, 2, border_radius=7)
 
@@ -92,8 +101,19 @@ def draw_interior_service_card(surface, room, service, player, font_tiny, ui_bg,
     surface.blit(title, (panel.x + 12, panel.y + 9))
 
     line_y = panel.y + 31
-    card_lines = list(overview_lines[:3]) + list(hint_lines[:2])
-    for index, line in enumerate(card_lines[:5]):
+    card_lines = []
+    if overview_lines:
+        card_lines.append(overview_lines[0])
+    if len(overview_lines) > 1:
+        if wrap_text_to_width:
+            card_lines.extend(wrap_text_to_width(overview_lines[1], font_tiny, panel.width - 24)[:2])
+        else:
+            card_lines.append(overview_lines[1])
+    if len(overview_lines) > 2:
+        card_lines.append(overview_lines[2])
+    card_lines.extend(hint_lines[:2])
+
+    for index, line in enumerate(card_lines[:6]):
         color = accent_color if index == 0 else (222, 222, 214)
         text = render_fitted_text(line, color, panel.width - 24, (font_tiny,))
         surface.blit(text, (panel.x + 12, line_y))

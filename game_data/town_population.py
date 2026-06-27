@@ -193,6 +193,44 @@ def is_town_resident_quest_available(quest, reputation, completed_errands):
     return True, "Ready."
 
 
+def get_next_town_resident_errand_status(reputation, completed_errands, completed_resident_errands):
+    """Return the next unfinished resident errand and whether it is ready.
+
+    Beginner note:
+        The Log needs a short "what should I do next?" line for town residents.
+        This helper keeps that decision beside the resident data and reuses the
+        same lock rules as talking to the resident in `main.py`.
+    """
+    completed_errands = set(completed_errands or ())
+    completed_resident_errands = set(completed_resident_errands or ())
+
+    for resident_key, resident in TOWN_RESIDENTS.items():
+        quest_key = resident.get("quest_key")
+        if not quest_key or quest_key in completed_resident_errands:
+            continue
+        quest = TOWN_RESIDENT_ERRANDS.get(quest_key)
+        if not quest:
+            continue
+
+        available, reason = is_town_resident_quest_available(
+            quest,
+            reputation,
+            completed_errands,
+        )
+        return {
+            "resident_key": resident_key,
+            "resident": resident["name"],
+            "role": resident["role"],
+            "quest_key": quest_key,
+            "title": quest["title"],
+            "summary": quest.get("summary", ""),
+            "status": "READY" if available else reason,
+            "available": available,
+        }
+
+    return None
+
+
 def get_town_resident_errand_count():
     """Return the number of outdoor resident errands."""
     return len(TOWN_RESIDENT_ERRANDS)

@@ -99,6 +99,7 @@ from game_data import (
     get_story_reward_item,
     get_town_errand,
     get_town_errand_count,
+    get_next_town_resident_errand_status,
     get_town_resident_errand_count,
     get_town_resident_quest,
     get_town_service_dialogue,
@@ -300,8 +301,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.29"
-APP_NUMERIC_VERSION = 30
+APP_VERSION = "0.1.30"
+APP_NUMERIC_VERSION = 31
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -6627,6 +6628,7 @@ class Game:
         service_type = service["type"]
         status = get_service_completion_label(service_type, self.completed_town_errands)
         role = service.get("role", "Town Service")
+        purpose = service.get("purpose", "Town service.")
 
         # Outline the exact doorway instead of the larger tap zone. This keeps
         # the town readable and avoids making neighboring buildings look active.
@@ -6643,16 +6645,18 @@ class Game:
             ],
         )
 
-        title = render_fitted_text(f"{service['name']} [{status}]", prompt_color, 260, (font_tiny,))
-        subtitle = render_fitted_text(f"{role} - OK/USE to enter", (220, 225, 220), 260, (font_tiny,))
-        panel_w = max(title.get_width(), subtitle.get_width()) + 24
+        title = render_fitted_text(f"{service['name']} [{status}]", prompt_color, 292, (font_tiny,))
+        detail = render_fitted_text(purpose, (220, 225, 220), 292, (font_tiny,))
+        subtitle = render_fitted_text(f"{role} - OK/USE to enter", (196, 220, 235), 292, (font_tiny,))
+        panel_w = max(title.get_width(), detail.get_width(), subtitle.get_width()) + 24
         panel_x = max(12, min(SCREEN_WIDTH - panel_w - 12, marker_x - panel_w // 2))
-        panel_y = max(12, marker_y - 46)
-        panel = pygame.Rect(panel_x, panel_y, panel_w, 48)
+        panel_y = max(12, marker_y - 64)
+        panel = pygame.Rect(panel_x, panel_y, panel_w, 66)
         pygame.draw.rect(screen, UI_BG, panel, border_radius=6)
         pygame.draw.rect(screen, marker_color, panel, 2, border_radius=6)
         screen.blit(title, (panel.x + 12, panel.y + 7))
-        screen.blit(subtitle, (panel.x + 12, panel.y + 27))
+        screen.blit(detail, (panel.x + 12, panel.y + 27))
+        screen.blit(subtitle, (panel.x + 12, panel.y + 47))
 
     def talk_to_town_resident(self, resident_key, resident):
         """Talk to an outdoor resident and complete their one-time errand.
@@ -7118,13 +7122,37 @@ class Game:
                 line_y = self.draw_journal_line(screen, f"+{len(open_errands) - 2} more buildings marked in town.", right_x + 22, line_y, (200, 210, 220), max_width=service_line_width - 8)
         else:
             line_y = self.draw_journal_line(screen, "All building errands complete.", right_x + 14, line_y, (120, 230, 150), max_width=service_line_width)
-        if self.state == "interior" and self.current_interior_service:
+
+        resident_hint = get_next_town_resident_errand_status(
+            self.town_reputation,
+            self.completed_town_errands,
+            self.completed_resident_errands,
+        )
+        if resident_hint and line_y < service_panel.bottom - 64:
+            status_color = (130, 235, 150) if resident_hint["available"] else (255, 195, 110)
+            line_y = self.draw_journal_line(
+                screen,
+                f"Resident: {resident_hint['resident']} [{resident_hint['status']}]",
+                right_x + 14,
+                line_y,
+                status_color,
+                max_width=service_line_width,
+            )
+            line_y = self.draw_journal_line(
+                screen,
+                resident_hint["title"],
+                right_x + 22,
+                line_y,
+                (225, 225, 215),
+                max_width=service_line_width - 8,
+            )
+        if line_y < service_panel.bottom - 48 and self.state == "interior" and self.current_interior_service:
             service_type = self.current_interior_service["type"]
             errand_status = "done" if service_type in self.completed_town_errands else "open"
             line_y = self.draw_journal_line(screen, f"Inside: {self.current_interior_service['name']} ({errand_status})", right_x + 14, line_y, max_width=service_line_width)
             for detail in get_service_overview_lines(service_type)[:1]:
                 line_y = self.draw_journal_line(screen, detail, right_x + 14, line_y, (210, 220, 230), max_width=service_line_width)
-        elif current_area:
+        elif line_y < service_panel.bottom - 48 and current_area:
             service = current_area.get_nearby_town_service(self.player.x, self.player.y)
             if service:
                 status = get_service_completion_label(service["type"], self.completed_town_errands)
@@ -7136,8 +7164,23 @@ class Game:
                 resident = self.get_nearby_town_resident(current_area)
                 if resident:
                     _, resident_profile = resident
+                    quest = get_town_resident_quest(resident_profile)
+                    quest_key = resident_profile.get("quest_key")
+                    if quest_key in self.completed_resident_errands:
+                        resident_status = "DONE"
+                    elif quest:
+                        available, reason = is_town_resident_quest_available(
+                            quest,
+                            self.town_reputation,
+                            self.completed_town_errands,
+                        )
+                        resident_status = "READY" if available else reason
+                    else:
+                        resident_status = "TALK"
                     line_y = self.draw_journal_line(screen, f"Nearby: {resident_profile['name']}", right_x + 14, line_y, max_width=service_line_width)
-                    self.draw_journal_line(screen, resident_profile["role"], right_x + 14, line_y, max_width=service_line_width)
+                    line_y = self.draw_journal_line(screen, f"{resident_profile['role']} [{resident_status}]", right_x + 14, line_y, max_width=service_line_width)
+                    if quest:
+                        self.draw_journal_line(screen, quest["title"], right_x + 14, line_y, (210, 220, 230), max_width=service_line_width)
                 else:
                     self.draw_journal_line(screen, "Walk to a labeled doorway marker.", right_x + 14, line_y, max_width=service_line_width)
 
@@ -7675,6 +7718,7 @@ class Game:
             font_tiny,
             UI_BG,
             render_fitted_text,
+            wrap_text_to_width,
         )
 
         exit_rect = INTERIOR_EXIT_ZONE

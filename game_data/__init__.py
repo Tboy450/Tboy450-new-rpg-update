@@ -95,6 +95,7 @@ from .town import (
 from .town_population import (
     TOWN_RESIDENTS,
     TOWN_RESIDENT_ERRANDS,
+    get_next_town_resident_errand_status,
     get_town_resident,
     get_town_resident_errand_count,
     get_town_resident_quest,
@@ -174,6 +175,7 @@ __all__ = [
     "get_progression_status",
     "get_town_errand",
     "get_town_errand_count",
+    "get_next_town_resident_errand_status",
     "get_town_resident",
     "get_town_resident_errand_count",
     "get_town_resident_quest",

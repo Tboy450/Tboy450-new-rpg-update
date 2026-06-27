@@ -120,10 +120,11 @@ hint, one-time errand, reputation, experience, potions, gear, and town keepsake.
 If two doorway action spaces ever overlap, the game chooses the closest doorway
 instead of whichever building appears first in code. The pause-menu Log tracks
 town progress, open building errands, and nearby service purpose without
-opening a separate board from the OK button. Inspecting marked details inside
-interiors grants a small one-time insight reward. Outdoor town residents also
-have rotating dialogue and one-time errands; some resident rewards grant gear
-that waits in Inventory until equipped.
+opening a separate board from the OK button. It also shows the next unfinished
+resident errand and whether that errand is ready or still locked. Inspecting
+marked details inside interiors grants a small one-time insight reward. Outdoor
+town residents also have rotating dialogue and one-time errands; some resident
+rewards grant gear that waits in Inventory until equipped.
 
 Inventory now shows and manages real equipped gear. Starter weapons/armor are
 automatic, Lion Sage awards a charm accessory, and Ghost Face's first clear
