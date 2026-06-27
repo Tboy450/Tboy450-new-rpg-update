@@ -78,7 +78,7 @@ def build_android_touch_buttons(game, screen_width, screen_height):
 
     - Normal overworld/interior play: d-pad + USE/OK + MENU
     - Story dialogue or guard cutscene: NEXT + MENU
-    - Journal: CLOSE button only
+    - Log/Journal overlay: CLOSE button only
     - Inventory: slot/selection/equip/unequip/close buttons
     - World map: CLOSE MAP button only
     - Pause menu: pause-menu buttons are drawn by `main.py`, so this helper

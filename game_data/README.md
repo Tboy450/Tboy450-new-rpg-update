@@ -46,6 +46,11 @@ an enemy list changes what can spawn in an area.
   nearby buildings need separated entrance/action zones.
 - `reward`: score, experience, reputation, or item prizes granted by a quest or errand.
 - `message`: text shown to the player.
+- `map_label`: short doorway label used on the outdoor town map.
+- `role`: one- or two-word service category, such as Recovery, Gear, or Lore.
+- `purpose`: player-facing reason to visit a town service.
+- `first_reward`: what the first one-time building errand can give.
+- `repeat_use`: why the service still matters after the first errand is done.
 
 ## Cross-File Keys
 
@@ -82,6 +87,8 @@ Some strings must match across modules:
 - To make volcano enemies more dangerous by variety, add another element key to `AREA_ENEMY_TYPES["volcano"]` in `enemies.py`.
 - To move the shop outdoors, edit the shop record in `TOWN_BUILDINGS` in `town.py`.
 - To add a line of shopkeeper dialogue, edit the `shop` `dialogue` tuple in `npcs.py`.
+- To make a building clearer on the town map, edit its `map_label`, `role`,
+  `purpose`, `first_reward`, or `repeat_use` fields in `TOWN_SERVICES`.
 - To add an outdoor town resident, edit `TOWN_RESIDENTS` and optional `TOWN_RESIDENT_ERRANDS` in `town_population.py`.
 - To add an inspectable object inside the inn, edit `TOWN_INTERIORS["inn"]["inspect_points"]` in `interiors.py`.
 - To tune critical hits, edit `BATTLE_RULES` in `mechanics.py`.

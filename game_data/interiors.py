@@ -64,15 +64,15 @@ TOWN_INTERIORS = {
     },
     "shop": {
         "title": "Potion Shop",
-        "subtitle": "Potion bottles, travel rations, and odd glowing jars.",
+        "subtitle": "Clear shelves for health potions, mana tonics, and travel supplies.",
         "wall_color": (62, 58, 98),
         "floor_color": (96, 76, 118),
         "trim_color": (38, 34, 64),
         "accent_color": (110, 220, 255),
-        "service_prompt": "SPACE: restock potions",
+        "service_prompt": "OK/SPACE: restock health and mana potions",
         "flavor": (
-            "Shelves are sorted by color, not by safety.",
-            "The market refills combat-ready health and mana potions.",
+            "Shelves are sorted by color and cork shape so new heroes can read them quickly.",
+            "The shop refills combat-ready health and mana potions.",
         ),
         "npc_position": (720, 350),
         "props": (
@@ -111,8 +111,8 @@ TOWN_INTERIORS = {
         ),
     },
     "blacksmith": {
-        "title": "Ironroot Forge",
-        "subtitle": "A compact forge for tuning weapons between dragon hunts.",
+        "title": "Blacksmith",
+        "subtitle": "Borin's forge turns level progress into usable gear.",
         "wall_color": (70, 58, 50),
         "floor_color": (94, 78, 64),
         "trim_color": (38, 30, 26),
@@ -120,7 +120,7 @@ TOWN_INTERIORS = {
         "service_prompt": "OK/SPACE: forge unlocked gear into Inventory",
         "flavor": (
             "Heat ripples over anvils, racks, and unfinished blades.",
-            "The forge grants level-gated weapons, armor, and charms.",
+            "The forge grants level-gated weapons, armor, and charms for each class.",
         ),
         "npc_position": (735, 360),
         # BEGINNER NOTE: Keep the imported Blacksmith closer to room scale.
@@ -147,16 +147,16 @@ TOWN_INTERIORS = {
         ),
     },
     "library": {
-        "title": "Starwell Library",
-        "subtitle": "Maps, monster notes, and half-finished spell diagrams.",
+        "title": "Library",
+        "subtitle": "Maps, monster notes, and enemy-pattern records.",
         "wall_color": (50, 58, 84),
         "floor_color": (72, 86, 110),
         "trim_color": (30, 36, 56),
         "accent_color": (178, 205, 255),
-        "service_prompt": "SPACE: study dragon lore",
+        "service_prompt": "OK/SPACE: study lore and gain level insight",
         "flavor": (
             "Blue lamps hum beside stacks of field reports.",
-            "Studying grants level-based experience insight.",
+            "Studying grants level-based experience insight and helps explain dragon phases.",
         ),
         "npc_position": (720, 350),
         "props": (
@@ -175,16 +175,16 @@ TOWN_INTERIORS = {
         ),
     },
     "town_hall": {
-        "title": "Dragonwatch Hall",
-        "subtitle": "The command room tracks boss sightings and town defense.",
+        "title": "Town Hall",
+        "subtitle": "The command room tracks dragon sightings and town errands.",
         "wall_color": (86, 74, 66),
         "floor_color": (112, 96, 78),
         "trim_color": (48, 38, 32),
         "accent_color": (255, 215, 92),
-        "service_prompt": "SPACE: ask about boss progression",
+        "service_prompt": "OK/SPACE: ask about boss progress; Log holds full notes",
         "flavor": (
             "Pins and red thread mark dragon routes across the valley.",
-            "Captain Marcus explains when the next boss can appear.",
+            "Captain Marcus explains the next boss while the menu Log tracks the full route.",
         ),
         "npc_position": (720, 350),
         "props": (
@@ -203,16 +203,16 @@ TOWN_INTERIORS = {
         ),
     },
     "house": {
-        "title": "Mossroof Cottage",
-        "subtitle": "A quiet home with drying herbs and practical local gossip.",
+        "title": "Herbal Cottage",
+        "subtitle": "A quiet home with drying herbs and practical recovery help.",
         "wall_color": (72, 78, 56),
         "floor_color": (100, 84, 58),
         "trim_color": (44, 48, 34),
         "accent_color": (154, 220, 118),
-        "service_prompt": "SPACE: accept a small meal",
+        "service_prompt": "OK/SPACE: accept herbs and a small recovery meal",
         "flavor": (
             "Bundles of herbs hang from the rafters.",
-            "This cottage offers small comforts and careful warnings.",
+            "This cottage offers light healing, local warnings, and calm after fights.",
         ),
         "npc_position": (715, 355),
         "props": (
@@ -230,16 +230,16 @@ TOWN_INTERIORS = {
         ),
     },
     "stall": {
-        "title": "Food Stall",
-        "subtitle": "A bright food counter wedged between roads and rumors.",
+        "title": "Market Stall",
+        "subtitle": "A bright food counter for travel stew and road supplies.",
         "wall_color": (86, 62, 42),
         "floor_color": (126, 92, 58),
         "trim_color": (58, 38, 24),
         "accent_color": (255, 198, 88),
-        "service_prompt": "SPACE: eat travel stew",
+        "service_prompt": "OK/SPACE: eat travel stew",
         "flavor": (
             "Steam curls over baskets of bread and glazed root vegetables.",
-            "The stall gives quick boosts before another hunt.",
+            "The stall gives quick recovery before another hunt.",
         ),
         "npc_position": (720, 350),
         "props": (

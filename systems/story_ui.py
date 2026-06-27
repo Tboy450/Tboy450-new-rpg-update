@@ -107,7 +107,7 @@ def draw_pause_menu_overlay(
     """
     _draw_dim_overlay(screen, screen_width, screen_height, 170)
 
-    # The menu now includes Inventory in addition to Journal/Map/Save/Load.
+    # The menu now includes Inventory in addition to Log/Map/Save/Load.
     # A taller panel keeps seven buttons inside the border on Android.
     panel = pygame.Rect(screen_width // 2 - 220, 70, 440, 590)
     pygame.draw.rect(screen, ui_bg, panel, border_radius=14)

@@ -32,7 +32,7 @@ CONTROLS:
 - Enter/Space: Confirm actions
 - Escape: Shared pause/menu overlay in active gameplay
 - M: Toggle world map view
-- J: Toggle quest journal
+- J: Toggle quest log
 - F5/F9: Save/load game
 - Android: Uses on-screen touch buttons plus the same pause/menu overlay
 
@@ -82,6 +82,7 @@ from game_data import (
     iter_equipment_for_slot,
     OPENING_STORY_LINES,
     STORY_NPCS,
+    TOWN_ERRANDS,
     TOWN_INTERIORS,
     TOWN_GUARD_STORY_LINES,
     TOWN_SERVICES,
@@ -169,6 +170,10 @@ from systems.town_population_ui import draw_town_residents
 from systems.town_services import (
     apply_blacksmith_forge_service,
     apply_inn_rest_service,
+    get_service_completion_label,
+    get_service_hint_lines,
+    get_service_map_label,
+    get_service_overview_lines,
 )
 
 # Initialize Pygame
@@ -295,8 +300,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.28"
-APP_NUMERIC_VERSION = 29
+APP_VERSION = "0.1.29"
+APP_NUMERIC_VERSION = 30
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -1111,10 +1116,15 @@ class WorldArea:
 
             if building["type"] in TOWN_SERVICES:
                 entry_rect = self.get_building_entry_rect(building, depth=38)
-                pygame.draw.rect(surface, (92, 54, 28), entry_rect, border_radius=5)
-                pygame.draw.rect(surface, (140, 86, 42), entry_rect, 2, border_radius=5)
-                label = TOWN_SERVICES[building["type"]]["name"].split()[0].upper()
-                label_text = font_tiny.render(label, True, (255, 235, 180))
+                # BEGINNER NOTE: This is the always-visible doorway mat. It is
+                # intentionally separate from the larger active marker drawn by
+                # `Game.draw_town_service_marker`, because this one identifies
+                # every building even before the player walks close enough.
+                pygame.draw.rect(surface, (34, 26, 24), entry_rect.inflate(8, 6), border_radius=7)
+                pygame.draw.rect(surface, (104, 66, 36), entry_rect, border_radius=5)
+                pygame.draw.rect(surface, (190, 126, 58), entry_rect, 2, border_radius=5)
+                label = get_service_map_label(building["type"])
+                label_text = render_fitted_text(label, (255, 235, 180), entry_rect.width - 8, (font_tiny,))
                 screen_x = entry_rect.centerx - label_text.get_width() // 2
                 screen_y = entry_rect.y + entry_rect.height // 2 - label_text.get_height() // 2
                 surface.blit(label_text, (screen_x, screen_y))
@@ -1305,6 +1315,8 @@ class WorldArea:
         local_y = player_y - area_world_y
         player_rect = pygame.Rect(local_x, local_y, PLAYER_SIZE, PLAYER_SIZE)
 
+        best_service = None
+        best_distance = None
         for building in self.buildings:
             service_type = building["type"]
             if service_type not in TOWN_SERVICES:
@@ -1313,17 +1325,21 @@ class WorldArea:
             door_rect = self.get_building_entry_rect(building)
 
             # Keep interaction doorway-focused so side walls still behave like
-            # walls. The smaller inflate avoids town hall / stall and shop /
-            # blacksmith overlap while still being usable on Android.
+            # walls. If two inflated doorway zones overlap, this method keeps
+            # the closest doorway instead of returning the first building in
+            # the layout table.
             service_rect = door_rect.inflate(44, 24)
             if player_rect.colliderect(door_rect) or player_rect.colliderect(service_rect):
                 service = dict(TOWN_SERVICES[service_type])
                 service["type"] = service_type
                 service["entry_rect"] = door_rect
                 service["service_rect"] = service_rect
-                return service
+                service["distance"] = math.hypot(player_rect.centerx - door_rect.centerx, player_rect.centery - door_rect.centery)
+                if best_distance is None or service["distance"] < best_distance:
+                    best_distance = service["distance"]
+                    best_service = service
 
-        return None
+        return best_service
 
     def _create_town_guard(self):
         """Create the town guard NPC for the entrance cutscene"""
@@ -5763,7 +5779,7 @@ class Game:
         
         # BEGINNER NOTE:
         # `show_pause_menu` is a shared in-game menu for both keyboard and
-        # Android players. It exposes Journal / Map / Save / Load as clickable
+        # Android players. It exposes Log / Map / Save / Load as clickable
         # buttons so the game no longer depends on a hardware keyboard.
         self.show_pause_menu = False
         self.pause_menu_index = 0
@@ -5937,7 +5953,7 @@ class Game:
         """
         entries = [
             ("resume", "RESUME"),
-            ("journal", "JOURNAL"),
+            ("journal", "LOG"),
         ]
         if self.state == "overworld":
             entries.append(("map", "WORLD MAP"))
@@ -6296,6 +6312,11 @@ class Game:
             if added:
                 messages.append(f"{item_type} x{added}")
 
+        for item_key, amount in reward.get("story_items", {}).items():
+            self.player.add_story_item(item_key, int(amount))
+            item = get_story_reward_item(item_key) or {}
+            messages.append(f"{item.get('label', item_key.replace('_', ' ').title())} keepsake")
+
         # BEGINNER NOTE: Town rewards can now grant owned equipment too.
         # Gear does not auto-equip here because players should choose loadouts
         # from Inventory. Story rewards can still auto-equip when needed.
@@ -6534,7 +6555,7 @@ class Game:
         )
 
     def draw_town_service_marker(self, screen, current_area):
-        """Show which town doorway is currently usable.
+        """Show town doorway markers and highlight the currently usable one.
 
         Beginner note:
             The town has buildings close together, so this marker is the visual
@@ -6561,6 +6582,36 @@ class Game:
             return
 
         service = current_area.get_nearby_town_service(self.player.x, self.player.y)
+        active_entry_rect = service.get("entry_rect") if service else None
+
+        # Draw a quiet marker for every enterable building first. The active
+        # doorway is drawn again below with the larger prompt.
+        for building in current_area.buildings:
+            service_type = building.get("type")
+            service_info = TOWN_SERVICES.get(service_type)
+            if not service_info:
+                continue
+            entry = current_area.get_building_entry_rect(building)
+            active = active_entry_rect and entry == active_entry_rect
+            status = get_service_completion_label(service_type, self.completed_town_errands)
+            marker_color = (255, 224, 104) if active else ((124, 202, 132) if status == "DONE" else (128, 154, 172))
+            label_color = (255, 246, 174) if active else (188, 205, 214)
+            pygame.draw.rect(screen, marker_color, entry, 2 if active else 1, border_radius=6)
+            marker_x = entry.centerx
+            marker_y = max(34, entry.y - 17)
+            pygame.draw.circle(screen, marker_color, (marker_x, marker_y), 6 if active else 4)
+            if not active:
+                label = render_fitted_text(get_service_map_label(service_type), label_color, 92, (font_tiny,))
+                label_panel = pygame.Rect(
+                    max(8, min(SCREEN_WIDTH - label.get_width() - 18, marker_x - label.get_width() // 2 - 9)),
+                    max(8, marker_y - 27),
+                    label.get_width() + 18,
+                    22,
+                )
+                pygame.draw.rect(screen, UI_BG, label_panel, border_radius=5)
+                pygame.draw.rect(screen, marker_color, label_panel, 1, border_radius=5)
+                screen.blit(label, (label_panel.x + 9, label_panel.y + 4))
+
         if not service:
             return
 
@@ -6573,6 +6624,9 @@ class Game:
         marker_y = max(34, entry_rect.y - 22)
         marker_color = (255, 224, 104)
         prompt_color = (255, 246, 174)
+        service_type = service["type"]
+        status = get_service_completion_label(service_type, self.completed_town_errands)
+        role = service.get("role", "Town Service")
 
         # Outline the exact doorway instead of the larger tap zone. This keeps
         # the town readable and avoids making neighboring buildings look active.
@@ -6589,14 +6643,16 @@ class Game:
             ],
         )
 
-        label = render_fitted_text(f"OK/USE: {service['name']}", prompt_color, 245, (font_tiny,))
-        panel_w = label.get_width() + 24
+        title = render_fitted_text(f"{service['name']} [{status}]", prompt_color, 260, (font_tiny,))
+        subtitle = render_fitted_text(f"{role} - OK/USE to enter", (220, 225, 220), 260, (font_tiny,))
+        panel_w = max(title.get_width(), subtitle.get_width()) + 24
         panel_x = max(12, min(SCREEN_WIDTH - panel_w - 12, marker_x - panel_w // 2))
         panel_y = max(12, marker_y - 46)
-        panel = pygame.Rect(panel_x, panel_y, panel_w, 30)
+        panel = pygame.Rect(panel_x, panel_y, panel_w, 48)
         pygame.draw.rect(screen, UI_BG, panel, border_radius=6)
         pygame.draw.rect(screen, marker_color, panel, 2, border_radius=6)
-        screen.blit(label, (panel.x + 12, panel.y + 7))
+        screen.blit(title, (panel.x + 12, panel.y + 7))
+        screen.blit(subtitle, (panel.x + 12, panel.y + 27))
 
     def talk_to_town_resident(self, resident_key, resident):
         """Talk to an outdoor resident and complete their one-time errand.
@@ -6765,9 +6821,13 @@ class Game:
             health_added = self.player.add_inventory_item("health")
             mana_added = self.player.add_inventory_item("mana")
             if health_added or mana_added:
-                self.set_town_service_message(f"{npc_name}: Packed HP +{health_added}, MP +{mana_added}.")
+                self.set_town_service_message(
+                    f"{npc_name}: Packed HP +{health_added}, MP +{mana_added}. "
+                    f"Bag now HP x{self.player.get_inventory_count('health')}, "
+                    f"MP x{self.player.get_inventory_count('mana')}."
+                )
             else:
-                self.set_town_service_message(f"{npc_name}: Your potion pouch is full.")
+                self.set_town_service_message(f"{npc_name}: Your potion pouch is full. Spend a few before restocking.")
         elif service_type == "blacksmith":
             self.set_town_service_message(apply_blacksmith_forge_service(self.player, npc_name))
         elif service_type == "library":
@@ -6778,11 +6838,14 @@ class Game:
                 self.player.town_service_claims.add(claim_key)
                 insight = 20 + self.player.level * 5
                 self.player.gain_exp(insight)
-                self.set_town_service_message(f"{npc_name}: Lore insight grants {insight} EXP.")
+                self.set_town_service_message(f"{npc_name}: Copied dragon notes into the Log. Lore insight grants {insight} EXP.")
         elif service_type == "town_hall":
             progress = self.get_player_progression_status()
-            message = progress["lines"][0] if progress else "No active reports."
-            self.set_town_service_message(f"{npc_name}: {message}")
+            if progress:
+                message = f"{progress['title']} - {progress['lines'][0]}"
+            else:
+                message = "No active reports."
+            self.set_town_service_message(f"{npc_name}: {message} Open the Log from the menu for the full route.")
         elif service_type == "house":
             claim_key = ("house", self.player.level)
             if claim_key in self.player.town_service_claims:
@@ -6793,13 +6856,19 @@ class Game:
                 restored_mana = min(8 + self.player.level, self.player.max_mana - self.player.mana)
                 self.player.health += healed
                 self.player.mana += restored_mana
-                self.set_town_service_message(f"{npc_name}: Shared a meal. HP +{healed}, MP +{restored_mana}.")
+                if healed or restored_mana:
+                    self.set_town_service_message(f"{npc_name}: Shared a meal. HP +{healed}, MP +{restored_mana}.")
+                else:
+                    self.set_town_service_message(f"{npc_name}: Shared a meal for the road. You are already fully recovered.")
         elif service_type == "stall":
             healed = min(10 + self.player.level, self.player.max_health - self.player.health)
             restored_mana = min(6 + self.player.level, self.player.max_mana - self.player.mana)
             self.player.health += healed
             self.player.mana += restored_mana
-            self.set_town_service_message(f"{npc_name}: Travel stew warms you. HP +{healed}, MP +{restored_mana}.")
+            if healed or restored_mana:
+                self.set_town_service_message(f"{npc_name}: Travel stew warms you. HP +{healed}, MP +{restored_mana}.")
+            else:
+                self.set_town_service_message(f"{npc_name}: Travel stew packed. You are already topped off.")
         else:
             self.set_town_service_message(f"{npc_name}: Safe travels.")
 
@@ -6940,8 +7009,18 @@ class Game:
             self.SFX_CLICK.play()
         return True
 
-    def draw_journal_line(self, screen, text, x, y, color=(225, 225, 215), font_obj=font_tiny):
-        rendered = font_obj.render(text, True, color)
+    def draw_journal_line(self, screen, text, x, y, color=(225, 225, 215), font_obj=font_tiny, max_width=None):
+        """Draw one Log/Inventory line and return the next y position.
+
+        Beginner note:
+            `max_width` is optional so older calls keep working. Newer Log
+            panels pass a width because Android screens can make long quest
+            labels collide with panel borders.
+        """
+        if max_width:
+            rendered = render_fitted_text(text, color, max_width, (font_obj, font_tiny))
+        else:
+            rendered = font_obj.render(text, True, color)
         screen.blit(rendered, (x, y))
         return y + rendered.get_height() + 7
 
@@ -6957,7 +7036,7 @@ class Game:
         pygame.draw.rect(screen, UI_BG, panel, border_radius=12)
         pygame.draw.rect(screen, UI_BORDER, panel, 3, border_radius=12)
 
-        title = font_large.render("QUEST JOURNAL", True, (255, 215, 0))
+        title = font_large.render("QUEST LOG", True, (255, 215, 0))
         screen.blit(title, (panel.centerx - title.get_width() // 2, panel.y + 18))
 
         progress = self.get_player_progression_status()
@@ -7006,38 +7085,63 @@ class Game:
                 line_y = self.draw_journal_line(screen, f"Effect: {mechanic['label']}", left_x + 14, line_y, mechanic["color"])
             self.draw_journal_line(screen, f"Visited areas: {visited_count}/{WORLD_SIZE * WORLD_SIZE}", left_x + 14, line_y)
 
-        service_panel = pygame.Rect(right_x, y, 336, 150)
+        service_panel = pygame.Rect(right_x, y, 336, 206)
         pygame.draw.rect(screen, (20, 20, 30), service_panel, border_radius=8)
         pygame.draw.rect(screen, (255, 215, 0), service_panel, 2, border_radius=8)
-        line_y = self.draw_journal_line(screen, "TOWN / NPC", right_x + 14, y + 12, (255, 215, 0), font_small)
+        service_line_width = service_panel.width - 28
+        line_y = self.draw_journal_line(screen, "TOWN HUB", right_x + 14, y + 12, (255, 215, 0), font_small, service_line_width)
         completed_count = len(self.completed_town_errands)
         total_count = get_town_errand_count()
         resident_count = len(self.completed_resident_errands)
         resident_total = get_town_resident_errand_count()
-        line_y = self.draw_journal_line(screen, f"Building errands: {completed_count}/{total_count}", right_x + 14, line_y)
-        line_y = self.draw_journal_line(screen, f"Resident errands: {resident_count}/{resident_total}", right_x + 14, line_y)
+        line_y = self.draw_journal_line(screen, f"Buildings {completed_count}/{total_count}   Residents {resident_count}/{resident_total}", right_x + 14, line_y, max_width=service_line_width)
+        open_errands = [
+            (key, errand)
+            for key, errand in TOWN_ERRANDS.items()
+            if key not in self.completed_town_errands
+        ]
+        if open_errands:
+            line_y = self.draw_journal_line(screen, "Open building errands:", right_x + 14, line_y, (245, 235, 180), max_width=service_line_width)
+            for service_key, errand in open_errands[:2]:
+                service_info = TOWN_SERVICES.get(service_key, {})
+                service_label = get_service_map_label(service_key)
+                role = service_info.get("role", "Town")
+                line_y = self.draw_journal_line(
+                    screen,
+                    f"{service_label}: {errand['title']} [{role}]",
+                    right_x + 22,
+                    line_y,
+                    (225, 225, 215),
+                    max_width=service_line_width - 8,
+                )
+            if len(open_errands) > 2:
+                line_y = self.draw_journal_line(screen, f"+{len(open_errands) - 2} more buildings marked in town.", right_x + 22, line_y, (200, 210, 220), max_width=service_line_width - 8)
+        else:
+            line_y = self.draw_journal_line(screen, "All building errands complete.", right_x + 14, line_y, (120, 230, 150), max_width=service_line_width)
         if self.state == "interior" and self.current_interior_service:
-            line_y = self.draw_journal_line(screen, f"Inside: {self.current_interior_service['name']}", right_x + 14, line_y)
-            line_y = self.draw_journal_line(screen, f"NPC: {self.current_interior_service['npc']}", right_x + 14, line_y)
             service_type = self.current_interior_service["type"]
             errand_status = "done" if service_type in self.completed_town_errands else "open"
-            self.draw_journal_line(screen, f"Current errand: {errand_status}", right_x + 14, line_y)
+            line_y = self.draw_journal_line(screen, f"Inside: {self.current_interior_service['name']} ({errand_status})", right_x + 14, line_y, max_width=service_line_width)
+            for detail in get_service_overview_lines(service_type)[:1]:
+                line_y = self.draw_journal_line(screen, detail, right_x + 14, line_y, (210, 220, 230), max_width=service_line_width)
         elif current_area:
             service = current_area.get_nearby_town_service(self.player.x, self.player.y)
             if service:
-                line_y = self.draw_journal_line(screen, f"Nearby: {service['name']}", right_x + 14, line_y)
-                line_y = self.draw_journal_line(screen, f"NPC: {service['npc']}", right_x + 14, line_y)
-                self.draw_journal_line(screen, "SPACE/ENTER enters building", right_x + 14, line_y)
+                status = get_service_completion_label(service["type"], self.completed_town_errands)
+                line_y = self.draw_journal_line(screen, f"Nearby: {service['name']} [{status}]", right_x + 14, line_y, max_width=service_line_width)
+                for detail in get_service_overview_lines(service["type"])[:1]:
+                    line_y = self.draw_journal_line(screen, detail, right_x + 14, line_y, (210, 220, 230), max_width=service_line_width)
+                self.draw_journal_line(screen, "OK/USE enters the marked doorway.", right_x + 14, line_y, max_width=service_line_width)
             else:
                 resident = self.get_nearby_town_resident(current_area)
                 if resident:
                     _, resident_profile = resident
-                    line_y = self.draw_journal_line(screen, f"Nearby: {resident_profile['name']}", right_x + 14, line_y)
-                    self.draw_journal_line(screen, resident_profile["role"], right_x + 14, line_y)
+                    line_y = self.draw_journal_line(screen, f"Nearby: {resident_profile['name']}", right_x + 14, line_y, max_width=service_line_width)
+                    self.draw_journal_line(screen, resident_profile["role"], right_x + 14, line_y, max_width=service_line_width)
                 else:
-                    self.draw_journal_line(screen, "No town service nearby.", right_x + 14, line_y)
+                    self.draw_journal_line(screen, "Walk to a labeled doorway marker.", right_x + 14, line_y, max_width=service_line_width)
 
-        y += 178
+        y += 228
         controls_panel = pygame.Rect(left_x, y, 722, 92)
         pygame.draw.rect(screen, (20, 20, 30), controls_panel, border_radius=8)
         pygame.draw.rect(screen, (180, 180, 220), controls_panel, 2, border_radius=8)
@@ -7045,12 +7149,12 @@ class Game:
             controls = (
                 "Move: touch d-pad or arrows/WASD    Use: USE or SPACE",
                 "Menu: MENU touch button or ESC    OK: confirm / talk / inspect",
-                "Pause menu buttons: Journal, Map, Save, Load    Save path: " + str(DEFAULT_SAVE_PATH),
+                "Pause menu buttons: Log, Map, Save, Load    Save path: " + str(DEFAULT_SAVE_PATH),
             )
         else:
             controls = (
                 "Move: arrows/WASD    Interact: SPACE    Confirm/Talk: ENTER",
-                "Journal: J    Map: M    Save: F5    Load: F9    Close/Menu: ESC",
+                "Log: J    Map: M    Save: F5    Load: F9    Close/Menu: ESC",
                 "Save path: " + str(DEFAULT_SAVE_PATH),
             )
         line_y = y + 14
@@ -8376,7 +8480,7 @@ class Game:
                     "CONTROLS:",
                     "ARROWS/WASD - MOVE",
                     "SPACE/ENTER - INTERACT",
-                    "J - JOURNAL / M - MAP",
+                    "J - LOG / M - MAP",
                     "F5 SAVE / F9 LOAD",
                     "ESC - MENU",
                 ]

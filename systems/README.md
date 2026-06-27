@@ -12,7 +12,7 @@
 - `interior_ui.py`: draws reusable town-interior UI pieces such as service NPCs, service note cards, and the bottom prompt panel.
 - `save_load.py`: serializes and loads JSON save data for the player, score, boss progress, visited areas, and town interaction progress.
 - `story_ui.py`: draws reusable overlays such as the story dialogue box and shared pause menu.
-- `town_services.py`: applies reusable Inn and Blacksmith service mechanics such as rest bonuses and forge rewards.
+- `town_services.py`: applies reusable town service mechanics and formats shared service labels, purpose text, and hint-card lines.
 - `town_population_ui.py`: draws outdoor town residents, quest markers, names, and nearby talk prompts.
 - `__init__.py`: marks this folder as a Python package so helpers can be imported as `systems.assets`, `systems.input_actions`, `systems.android_controls`, `systems.android_update`, `systems.interior_ui`, `systems.story_ui`, `systems.town_services`, `systems.town_population_ui`, and `systems.save_load`.
 
@@ -60,7 +60,7 @@ Current touch-layout rules:
 
 - Normal overworld/interior play uses a d-pad, `USE`, `OK`, and `MENU`.
 - Story dialogue and the town-guard cutscene swap that layout for `NEXT` + `MENU`.
-- Journal and world map use close buttons instead of the movement pad.
+- Log and world map use close buttons instead of the movement pad.
 - Battle action buttons are owned by `BattleScreen` in `main.py`, but input
   routing now lives in `systems/battle_input.py`. Combat still needs to know
   whether `SPECIAL` is unlocked and which turn is active, so the buttons are not
@@ -218,6 +218,9 @@ This module owns town service effects that should not keep growing inside
   it to Inventory without auto-equipping it.
 - `get_service_hint_lines(...)` gives the interior wall card short preview text
   for richer rooms.
+- `get_service_map_label(...)`, `get_service_completion_label(...)`, and
+  `get_service_overview_lines(...)` let outdoor markers, interiors, and the Log
+  reuse the same building labels and purpose text.
 
 Future inn mini-games should start here or in a nearby module, then connect to
 the Inn room through `Game.use_current_town_service` or a new interior action.

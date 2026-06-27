@@ -57,7 +57,7 @@ For a beginner-friendly explanation of the most recent larger commits, read
 - `equipment.py`: weapons, armor, accessories, starting gear, forge progression, rarity/tier labels, and gear stat bonuses.
 - `interiors.py`: room layouts for town buildings, including props and inspect points.
 - `mechanics.py`: combat math tuning, item effects, element visuals, and pickup rules.
-- `npcs.py`: town guard data and NPC service dialogue.
+- `npcs.py`: town guard data, NPC service dialogue, building map labels, service roles, purpose text, first-reward hints, and repeat-use hints.
 - `progression.py`: boss progression, quest status text, and final boss level.
 - `quests.py`: town errands and reward data.
 - `story.py`: opening story lines, Lion Sage placement and reward, Ghost Face area dialogue, and other first-quest story data.
@@ -77,7 +77,7 @@ For a beginner-friendly explanation of the most recent larger commits, read
 - `input_actions.py`: translates keyboard or virtual Android button input into action names like `move_up`.
 - `save_load.py`: converts the current `Game` object into JSON and loads saved JSON back later.
 - `story_ui.py`: draws the reusable story dialogue panel and the shared pause-menu overlay.
-- `town_services.py`: applies Inn rest bonuses, Blacksmith forge rewards, and short service hint-card text.
+- `town_services.py`: applies town service mechanics and formats shared service labels, purpose text, and hint-card text.
 - `town_population_ui.py`: draws outdoor town residents, their markers, names, and nearby prompts.
 
 ## Story + Asset Quick Map
@@ -146,6 +146,12 @@ Use this when you know the feature name but not the file.
   one-time resident errands, and resident rewards. `systems/town_population_ui.py`
   draws the small resident sprites and quest markers. `Game.talk_to_town_resident`
   in `main.py` handles interaction and reward flow.
+- Town building hub markers:
+  `game_data/npcs.py` stores each building's `map_label`, `role`, `purpose`,
+  `first_reward`, and `repeat_use` fields. `systems/town_services.py` formats
+  those labels for outdoor doorway markers, interior service cards, and the
+  pause-menu Log. `WorldArea.get_nearby_town_service` in `main.py` chooses the
+  nearest matching doorway when action spaces overlap.
 - Future inactive assets:
   `assets/processed/future_assets/` stores unused transparent PNG concepts.
   These are intentionally not referenced by active code until a later import pass.
@@ -196,7 +202,7 @@ beginner-facing control labels.
   `Game.draw_inventory` in `main.py`. It shows consumables, equipped weapon /
   armor / charm bonuses, owned gear choices, rarity colors, item icons, and
   story trophies.
-- Journal control text:
+- Quest Log control text:
   `Game.draw_journal` in `main.py`
 - Story dialogue box, portrait, and `NEXT` prompt:
   `systems/story_ui.py`, called by `Game.draw_story_dialogue` in `main.py`

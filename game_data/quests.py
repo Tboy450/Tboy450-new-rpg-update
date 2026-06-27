@@ -14,39 +14,39 @@ Reward fields:
 # Keys should match `TOWN_SERVICES`, `TOWN_INTERIORS`, and building types.
 TOWN_ERRANDS = {
     "inn": {
-        "title": "Warm Beds Ready",
-        "summary": "Check the inn and make sure the recovery room is ready.",
-        "reward": {"score": 5, "exp": 12, "reputation": 1},
+        "title": "Inn Recovery Route",
+        "summary": "Confirm the Warm Hearth Inn is ready for healing, rumors, and safe recovery.",
+        "reward": {"score": 6, "exp": 18, "reputation": 1, "items": {"health": 1}, "story_items": {"inn_recovery_mark": 1}},
     },
     "shop": {
-        "title": "Potion Pouch Stocked",
-        "summary": "Visit the Potion Shop and restock the travel pouch.",
-        "reward": {"score": 5, "exp": 10, "reputation": 1, "items": {"health": 1}},
+        "title": "Potion Shop Stock",
+        "summary": "Restock both health and mana supplies at the Potion Shop.",
+        "reward": {"score": 6, "exp": 16, "reputation": 1, "items": {"health": 1, "mana": 1}, "story_items": {"potion_shop_stamp": 1}},
     },
     "blacksmith": {
-        "title": "Edge And Buckler",
-        "summary": "Let Borin inspect your gear before another hunt.",
-        "reward": {"score": 8, "exp": 14, "reputation": 1},
+        "title": "Blacksmith Gear Check",
+        "summary": "Let Borin inspect your class gear and unlock the forge route.",
+        "reward": {"score": 10, "exp": 22, "reputation": 1, "story_items": {"forge_due_bill": 1}},
     },
     "library": {
-        "title": "Dragon Lore Filed",
-        "summary": "Study Luma's notes and copy the latest dragon pattern.",
-        "reward": {"score": 8, "exp": 16, "reputation": 1, "items": {"mana": 1}},
+        "title": "Library Lore Filed",
+        "summary": "Study Luma's notes and copy the latest dragon pattern into the Log.",
+        "reward": {"score": 9, "exp": 24, "reputation": 1, "items": {"mana": 1}, "story_items": {"library_lore_page": 1}},
     },
     "town_hall": {
-        "title": "Board Checked",
-        "summary": "Report to Captain Marcus and review the current boss threat.",
-        "reward": {"score": 10, "exp": 18, "reputation": 2},
+        "title": "Town Hall Report",
+        "summary": "Report to Captain Marcus and review the current dragon threat.",
+        "reward": {"score": 12, "exp": 28, "reputation": 2, "equipment": ("guardian_seal",), "story_items": {"town_hall_writ": 1}},
     },
     "house": {
-        "title": "Cottage Herbs Sorted",
-        "summary": "Help Toma check the household herb bundles.",
-        "reward": {"score": 6, "exp": 12, "reputation": 1},
+        "title": "Herbal Cottage Stores",
+        "summary": "Help Toma sort the recovery herbs before the next monster raid.",
+        "reward": {"score": 7, "exp": 16, "reputation": 1, "items": {"health": 1}, "story_items": {"herbal_cottage_bundle": 1}},
     },
     "stall": {
-        "title": "Road Stew Shared",
-        "summary": "Visit Meri's stall and keep travelers fed.",
-        "reward": {"score": 6, "exp": 12, "reputation": 1},
+        "title": "Market Stall Supplies",
+        "summary": "Visit Meri's stall and keep travelers fed for the next hunt.",
+        "reward": {"score": 7, "exp": 16, "reputation": 1, "items": {"health": 1}, "story_items": {"market_stew_token": 1}},
     },
 }
 

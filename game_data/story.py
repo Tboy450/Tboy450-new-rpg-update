@@ -124,6 +124,41 @@ STORY_REWARD_ITEMS = {
         "kind": "trophy",
         "description": "A cracked white-mask fragment from your first victory in the northern pines.",
     },
+    "inn_recovery_mark": {
+        "label": "Inn Recovery Mark",
+        "kind": "town",
+        "description": "Proof the Warm Hearth Inn is ready as the town's safe recovery point.",
+    },
+    "potion_shop_stamp": {
+        "label": "Potion Shop Stamp",
+        "kind": "town",
+        "description": "A stamped pouch tag showing the Potion Shop restocked your combat supplies.",
+    },
+    "forge_due_bill": {
+        "label": "Blacksmith Due Bill",
+        "kind": "town",
+        "description": "Borin's note promising level-gated forge work as your class grows stronger.",
+    },
+    "library_lore_page": {
+        "label": "Library Lore Page",
+        "kind": "town",
+        "description": "A copied dragon-pattern note from the Library for the pause-menu Log.",
+    },
+    "town_hall_writ": {
+        "label": "Town Hall Writ",
+        "kind": "town",
+        "description": "Captain Marcus' signed town-defense report and permission to carry the town seal.",
+    },
+    "herbal_cottage_bundle": {
+        "label": "Herbal Cottage Bundle",
+        "kind": "town",
+        "description": "A tied bundle of recovery herbs from Toma's cottage.",
+    },
+    "market_stew_token": {
+        "label": "Market Stew Token",
+        "kind": "town",
+        "description": "A stamped token from Meri proving the Market Stall is feeding the road crews.",
+    },
 }
 
 

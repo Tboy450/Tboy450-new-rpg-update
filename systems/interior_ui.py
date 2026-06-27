@@ -7,7 +7,7 @@ Beginner note:
     This module only draws repeated UI pieces:
 
     - imported/fallback service NPCs
-    - small Inn/Blacksmith service note cards
+    - service note cards for every building
     - the bottom room message and prompt panel
 
     Pulling these helpers out keeps `main.py` from growing every time a town
@@ -17,7 +17,7 @@ Beginner note:
 import pygame
 
 from systems.assets import draw_sprite_in_rect, get_town_service_npc_sprite_path
-from systems.town_services import get_service_hint_lines
+from systems.town_services import get_service_hint_lines, get_service_overview_lines
 
 
 def _shade_color(color, amount):
@@ -66,28 +66,38 @@ def draw_interior_npc(surface, room, service, font_tiny, ui_bg):
 
 
 def draw_interior_service_card(surface, room, service, player, font_tiny, ui_bg, render_fitted_text):
-    """Draw a compact wall note for rooms with richer service mechanics."""
+    """Draw a compact wall note for the active building service.
+
+    Beginner note:
+        The card combines static service purpose text with live state text such
+        as whether a once-per-level bonus is ready. That gives beginner coders
+        one obvious place to adjust the room card without digging through the
+        main game loop.
+    """
     if not service or not player:
         return
 
     service_type = service["type"]
+    overview_lines = get_service_overview_lines(service_type)
     hint_lines = get_service_hint_lines(service_type, player)
-    if not hint_lines:
+    if not overview_lines and not hint_lines:
         return
 
     accent_color = room["accent_color"]
-    panel = pygame.Rect(104, 124, 255, 92)
+    panel = pygame.Rect(82, 112, 308, 132)
     pygame.draw.rect(surface, (18, 18, 26), panel, border_radius=7)
     pygame.draw.rect(surface, accent_color, panel, 2, border_radius=7)
 
-    title = font_tiny.render("SERVICE NOTE", True, accent_color)
+    title = font_tiny.render("SERVICE CARD", True, accent_color)
     surface.blit(title, (panel.x + 12, panel.y + 9))
 
     line_y = panel.y + 31
-    for line in hint_lines[:3]:
-        text = render_fitted_text(line, (222, 222, 214), panel.width - 24, (font_tiny,))
+    card_lines = list(overview_lines[:3]) + list(hint_lines[:2])
+    for index, line in enumerate(card_lines[:5]):
+        color = accent_color if index == 0 else (222, 222, 214)
+        text = render_fitted_text(line, color, panel.width - 24, (font_tiny,))
         surface.blit(text, (panel.x + 12, line_y))
-        line_y += 19
+        line_y += 18
 
 
 def draw_interior_message_panel(
@@ -129,7 +139,7 @@ def draw_interior_message_panel(
     prompt_text = render_fitted_text(room["service_prompt"], accent_color, prompt_width, (font_tiny,))
     if android_mode:
         if player_near_npc:
-            exit_label = "OK: talk   MENU: journal/save/load   exit mat: leave"
+            exit_label = "OK: talk   MENU: log/save/load   exit mat: leave"
         elif nearby_inspect:
             exit_label = f"OK: inspect {nearby_inspect['label']}"
         else:

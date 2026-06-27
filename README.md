@@ -92,7 +92,7 @@ Controls:
 - `ARROWS/WASD`: move
 - `SPACE/ENTER`: interact or confirm
 - `ENTER` inside buildings: talk, inspect nearby marked details, or exit
-- `J`: quest journal
+- `J`: quest log
 - `M`: world map
 - `F5`: save
 - `F9`: load
@@ -107,15 +107,20 @@ Android touch controls:
   battle screen. Tap `ACTIONS` to show attack buttons, tap an attack to choose
   it, and tap `HIDE` when you want the lower battlefield clear. If the action
   row is hidden, tapping the lower command area also brings it back.
-- Pause-menu buttons expose `Journal`, `Map`, `Save`, and `Load` without a hardware keyboard.
+- Pause-menu buttons expose `Log`, `Map`, `Save`, and `Load` without a hardware keyboard.
 - Inventory opens from the pause menu. In Inventory, use `SLOT <` / `SLOT >`
   to switch weapon, armor, and charm slots; arrows to choose owned gear;
   `EQUIP` to equip it; and `UNEQUIP` to clear the active slot.
 
 The default save file is stored at `~/.dragons_lair_rpg_save.json`. Set `DRAGONS_LAIR_SAVE` to choose a different save path.
 
-Town services now also complete one-time errands for town reputation, score,
-experience, and occasional potion rewards. Inspecting marked details inside
+Town services now act as a clearer hub: every enterable building has a visible
+doorway marker, short map label, service role, first-reward hint, repeat-use
+hint, one-time errand, reputation, experience, potions, gear, and town keepsake.
+If two doorway action spaces ever overlap, the game chooses the closest doorway
+instead of whichever building appears first in code. The pause-menu Log tracks
+town progress, open building errands, and nearby service purpose without
+opening a separate board from the OK button. Inspecting marked details inside
 interiors grants a small one-time insight reward. Outdoor town residents also
 have rotating dialogue and one-time errands; some resident rewards grant gear
 that waits in Inventory until equipped.
