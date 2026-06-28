@@ -8,8 +8,8 @@ Beginner note:
     of `main.py` unchanged. That makes the project safer to refactor.
 """
 
-# Playable character starting data.
-from .characters import CHARACTER_CLASS_STATS
+# Playable character starting data and class identity labels.
+from .characters import CHARACTER_CLASS_STATS, get_character_class_profile
 
 # Enemy spawn pools, generated names, and dragon palette data.
 from .enemies import AREA_ENEMY_TYPES, DRAGON_BOSS_COLORS, ENEMY_NAME_POOLS
@@ -61,11 +61,17 @@ from .progression import (
     FINAL_BOSS_LEVEL,
     BOSS_PROGRESSION,
     get_boss_profile,
+    get_next_boss_level,
     get_progression_status,
 )
 
 # Lightweight town errands and rewards.
-from .quests import TOWN_ERRANDS, get_town_errand, get_town_errand_count
+from .quests import (
+    TOWN_ERRANDS,
+    format_town_reward_preview,
+    get_town_errand,
+    get_town_errand_count,
+)
 
 # Main story NPCs and one-shot area dialogue.
 from .story import (
@@ -156,11 +162,13 @@ __all__ = [
     "create_town_guard",
     "format_equipment_bonus",
     "format_equipment_delta",
+    "format_town_reward_preview",
     "get_story_dialogue",
     "get_story_dialogues_for_area",
     "get_story_enemy_reward",
     "get_story_npcs_for_area",
     "get_story_reward_item",
+    "get_character_class_profile",
     "get_town_service_dialogue",
     "get_boss_profile",
     "get_element_profile",
@@ -172,6 +180,7 @@ __all__ = [
     "get_equipment_rarity_color",
     "get_equipment_slot_label",
     "get_next_blacksmith_unlock",
+    "get_next_boss_level",
     "get_progression_status",
     "get_town_errand",
     "get_town_errand_count",

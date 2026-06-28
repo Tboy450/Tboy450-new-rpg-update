@@ -24,7 +24,9 @@ If that link returns 404, the APK workflow has not published a green build yet.
 Use the badge above to open the build status.
 
 The app also checks this GitHub build version from the beginning menu and can
-open the same APK update link from inside the game.
+open the same APK update link from inside the game. On Android, the game tries
+known browser apps first so the APK downloads normally. If that fails, it opens
+the GitHub Android app release page before giving up.
 
 Older links still work through this compatibility filename:
 
@@ -103,6 +105,8 @@ Android touch controls:
 - `MENU`: opens the shared pause menu.
 - `USE`: interact, use town services, or advance town cutscene dialogue.
 - `OK`: confirm, talk, inspect, or advance story dialogue.
+- Inside town buildings, `USE` opens a small service menu with buttons for the
+  building action, Talk, Log, Leave, and Back.
 - Battle uses a small `ACTIONS` / `HIDE` button near the upper-right of the
   battle screen. Tap `ACTIONS` to show attack buttons, tap an attack to choose
   it, and tap `HIDE` when you want the lower battlefield clear. If the action

@@ -72,11 +72,14 @@ from game_data import (
     ENEMY_NAME_POOLS,
     format_equipment_bonus,
     format_equipment_delta,
+    format_town_reward_preview,
+    get_character_class_profile,
     get_default_equipment,
     get_equipment_item,
     get_equipment_power,
     get_equipment_rarity_color,
     get_equipment_slot_label,
+    get_next_boss_level,
     ITEM_PROFILES,
     ITEM_SPAWN_TABLE,
     iter_equipment_for_slot,
@@ -159,11 +162,13 @@ from systems.assets import (
     load_animation_frames,
     load_scaled_sprite,
     load_sprite_by_height,
+    load_tinted_sprite_by_height,
 )
 from systems.interior_ui import (
     draw_interior_message_panel,
     draw_interior_npc,
     draw_interior_service_card,
+    draw_interior_service_menu as draw_interior_service_menu_overlay,
 )
 from systems.save_load import DEFAULT_SAVE_PATH, load_game_state, save_game_state
 from systems.story_ui import draw_pause_menu_overlay, draw_story_dialogue_overlay
@@ -171,6 +176,7 @@ from systems.town_population_ui import draw_town_residents
 from systems.town_services import (
     apply_blacksmith_forge_service,
     apply_inn_rest_service,
+    get_service_action_label,
     get_service_completion_label,
     get_service_hint_lines,
     get_service_map_label,
@@ -301,8 +307,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.30"
-APP_NUMERIC_VERSION = 31
+APP_VERSION = "0.1.31"
+APP_NUMERIC_VERSION = 32
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -3221,9 +3227,26 @@ class Dragon:
         self.fire_active = False
         self.flap_direction = 1
         self.flap_speed = 0.1
-        
-    def draw(self, surface):
-        imported_dragon = load_sprite_by_height(TITLE_DRAGON_SPRITE_PATH, 270)
+
+    def get_boss_palette(self, boss_level):
+        """Return the dragon/body and fire colors for a boss level.
+
+        Beginner note:
+            `DRAGON_BOSS_COLORS` is shared with real dragon boss fights. Using it
+            here makes the title/opening dragon preview the same progression
+            palette the player will later fight.
+        """
+        color_index = (max(1, int(boss_level)) - 1) % len(DRAGON_BOSS_COLORS)
+        return DRAGON_BOSS_COLORS[color_index]
+
+    def draw(self, surface, boss_level=1, target_height=270):
+        dragon_color, fire_color = self.get_boss_palette(boss_level)
+        imported_dragon = load_tinted_sprite_by_height(
+            TITLE_DRAGON_SPRITE_PATH,
+            target_height,
+            dragon_color,
+            tint_alpha=62,
+        )
         if imported_dragon:
             # BEGINNER NOTE: Active title dragon.
             # This PNG is the newer imported dragon. The older Python-drawn
@@ -3252,10 +3275,11 @@ class Dragon:
                 mouth_y = draw_y + int(296 * scale)
                 flame_overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
                 flame_progress = min(1.0, self.fire_frame / 54)
-                flame_length = 150 + int(260 * flame_progress)
+                flame_length = 170 + int(320 * flame_progress)
+                flame_r, flame_g, flame_b = fire_color
 
-                for i in range(46):
-                    travel = i / 45
+                for i in range(58):
+                    travel = i / 57
                     wave = math.sin(self.fire_frame * 0.42 + i * 0.7)
                     flame_x = int(mouth_x - flame_length * travel - self.fire_frame * 1.25)
                     flame_y = int(mouth_y + 46 * travel + wave * (6 + travel * 18))
@@ -3264,13 +3288,13 @@ class Dragon:
 
                     pygame.draw.circle(
                         flame_overlay,
-                        (255, 68, 0, max(35, alpha - 55)),
+                        (flame_r, max(40, flame_g // 2), max(0, flame_b // 4), max(35, alpha - 55)),
                         (flame_x, flame_y),
                         outer_size + 9,
                     )
                     pygame.draw.circle(
                         flame_overlay,
-                        (255, 170, 24, alpha),
+                        (flame_r, flame_g, max(24, flame_b), alpha),
                         (flame_x, flame_y),
                         outer_size,
                     )
@@ -3281,13 +3305,13 @@ class Dragon:
                         max(3, outer_size // 2),
                     )
 
-                for spark in range(26):
-                    travel = spark / 25
+                for spark in range(34):
+                    travel = spark / 33
                     spark_x = int(mouth_x - flame_length * travel + random.randint(-16, 8))
                     spark_y = int(mouth_y + 56 * travel + random.randint(-18, 18))
                     pygame.draw.circle(
                         flame_overlay,
-                        (255, 225, 95, 165),
+                        (255, max(160, flame_g), max(90, flame_b), 165),
                         (spark_x, spark_y),
                         random.randint(2, 5),
                     )
@@ -3300,8 +3324,8 @@ class Dragon:
         # BEGINNER NOTE: Archived fallback title dragon.
         # Keep this older Python-drawn dragon only as an emergency fallback.
         # The active title screen should use assets/processed/ui/title_dragon.png.
-        pygame.draw.ellipse(surface, DRAGON_COLOR, (self.x, self.y + 30, 180, 70))
-        pygame.draw.circle(surface, DRAGON_COLOR, (self.x + 180, self.y + 50), 35)
+        pygame.draw.ellipse(surface, dragon_color, (self.x, self.y + 30, 180, 70))
+        pygame.draw.circle(surface, dragon_color, (self.x + 180, self.y + 50), 35)
         pygame.draw.circle(surface, (255, 255, 255), (self.x + 195, self.y + 45), 10)
         pygame.draw.circle(surface, (0, 0, 0), (self.x + 195, self.y + 45), 5)
         pygame.draw.polygon(surface, (200, 100, 50), [
@@ -3327,7 +3351,7 @@ class Dragon:
             (self.x + 50, self.y + 70)
         ])
         
-        pygame.draw.polygon(surface, DRAGON_COLOR, [
+        pygame.draw.polygon(surface, dragon_color, [
             (self.x, self.y + 50),
             (self.x - 50, self.y + 20),
             (self.x - 50, self.y + 80)
@@ -3514,6 +3538,10 @@ class BattleScreen:
         self.pending_elemental_effect = None
         self.elemental_effect_timer = 0
         self.player_chill_turns = 0
+        # BEGINNER NOTE: Warrior's basic ATTACK sets this to 1. The next enemy
+        # hit spends it to reduce damage, which makes Warrior feel defensive
+        # without adding a separate Guard button.
+        self.player_guard_turns = 0
         self.player_condition = None
         self.player_condition_timer = 0
         self.boss_phase_announced = set()
@@ -3525,6 +3553,9 @@ class BattleScreen:
         gear_line = self.get_battle_gear_line()
         if gear_line:
             self.battle_log.append(gear_line)
+        identity_line = self.get_class_battle_line()
+        if identity_line:
+            self.battle_log.append(identity_line)
 
     def update_combat_toggle_button_label(self):
         """Refresh the small battle touch toggle label.
@@ -3584,6 +3615,32 @@ class BattleScreen:
             font_medium,
             TEXT_COLOR,
         )
+
+    def get_class_profile(self):
+        """Return this hero's class identity record from game_data/characters.py."""
+        return get_character_class_profile(self.player.type)
+
+    def get_basic_attack_name(self):
+        """Return the name used for this class's ATTACK command."""
+        return self.get_class_profile().get("basic_attack", "Attack")
+
+    def get_magic_attack_name(self):
+        """Return the name used for this class's MAGIC command."""
+        return self.get_class_profile().get("magic_attack", "Fireball")
+
+    def get_class_battle_line(self):
+        """Build the short class-style line shown at battle start.
+
+        Beginner note:
+            This is only display text. The actual class mechanics are in
+            execute_attack(), execute_magic(), and the enemy-turn guard block.
+        """
+        profile = self.get_class_profile()
+        role = profile.get("role")
+        style = profile.get("battle_style")
+        if role and style:
+            return f"{role}: {style}"
+        return ""
 
     def get_special_attack_name(self):
         """Return the class-specific SPECIAL attack name.
@@ -4565,6 +4622,20 @@ class BattleScreen:
             damage = max(1, incoming_strength - self.player.effective_defense() // 3)
             base_damage_without_gear = max(1, incoming_strength - self.player.defense // 3)
             gear_guard = max(0, base_damage_without_gear - damage)
+            guard_block = 0
+            if self.player_guard_turns > 0:
+                # BEGINNER NOTE: Warrior's Guard Break does not make the player
+                # invincible. It shaves off part of the next hit, then expires.
+                # `min(damage - 1, ...)` keeps every enemy hit at least 1 damage.
+                guard_block = max(
+                    0,
+                    min(
+                        damage - 1,
+                        int(damage * 0.34) + max(1, self.player.effective_defense() // 6),
+                    ),
+                )
+                damage = max(1, damage - guard_block)
+                self.player_guard_turns = 0
             self.player.health = max(0, self.player.health - damage)
             if ghostface_attack:
                 self.add_log(ghostface_attack["message"].format(name=self.enemy.name, damage=damage))
@@ -4579,6 +4650,8 @@ class BattleScreen:
                 self.add_screen_shake(3, 5)
             if gear_guard:
                 self.add_log(f"Equipped armor blocked {gear_guard} damage.")
+            if guard_block:
+                self.add_log(f"Guard stance blocked {guard_block} more damage.")
             self.damage_target = "player"
             self.damage_amount = damage
             self.damage_effect_timer = 20
@@ -4768,16 +4841,18 @@ class BattleScreen:
         # last button and uses self.run_button_index.
         if self.selected_option == 0:  # Attack
             if game and hasattr(game, 'SFX_ATTACK') and game.SFX_ATTACK: game.SFX_ATTACK.play()
+            attack_name = self.get_basic_attack_name()
             self.action_steps = [
-                lambda: self.add_log("You attack!"),
+                lambda attack_name=attack_name: self.add_log(f"You use {attack_name}!"),
                 lambda: self.start_attack_animation(),
                 lambda: self.execute_attack()
             ]
         elif self.selected_option == 1:  # Magic
             if self.player.mana >= 20:
                 if game and hasattr(game, 'SFX_MAGIC') and game.SFX_MAGIC: game.SFX_MAGIC.play()
+                magic_name = self.get_magic_attack_name()
                 self.action_steps = [
-                    lambda: self.add_log("You cast a fireball!"),
+                    lambda magic_name=magic_name: self.add_log(f"You cast {magic_name}!"),
                     lambda: self.start_magic_animation(),
                     lambda: self.execute_magic()
                 ]
@@ -5048,28 +5123,59 @@ class BattleScreen:
         self.add_screen_shake(4, 18)
     
     def execute_attack(self):
-        damage = self.roll_player_damage(self.player.effective_strength())
-        self.enemy.health = max(0, self.enemy.health - damage)
-        
-        # Character-specific attack messages and effects
+        """Apply the class-specific basic ATTACK command.
+
+        Beginner note:
+            This is where class identity becomes mechanics:
+            - Warrior: heavier hit and one guarded enemy hit.
+            - Mage: lighter Firebolt that restores a little MP.
+            - Rogue: fast knife throw with a chance for a second strike.
+        """
+        attack_name = self.get_basic_attack_name()
+        base_damage = self.player.effective_strength()
         gear_note = self.get_attack_gear_note("magic" if self.player.type == "Mage" else "attack")
+        extra_note = ""
+
+        if self.player.type == "Warrior":
+            base_damage += max(1, self.player.effective_defense() // 3)
+            self.player_guard_turns = 1
+            self.set_player_condition("BRACED", (255, 230, 130), duration=130)
+            extra_note = " Braced for the next hit."
+        elif self.player.type == "Mage":
+            mana_gain = min(self.player.max_mana - self.player.mana, 3 + self.player.level // 2)
+            if mana_gain:
+                self.player.mana += mana_gain
+                extra_note = f" MP +{mana_gain}."
+
+        damage = self.roll_player_damage(base_damage)
+        bonus_damage = 0
+
+        if self.player.type == "Rogue":
+            # Speed is the Rogue's class stat, so it controls the second-hit
+            # chance. The cap stops late-game speed gear from making it certain.
+            second_hit_chance = min(0.48, 0.18 + self.player.effective_speed() * 0.018)
+            if random.random() < second_hit_chance:
+                bonus_base = max(2, self.player.effective_speed() + self.player.effective_strength() // 2)
+                bonus_damage = max(1, self.roll_player_damage(bonus_base) // 2)
+                extra_note = f" Quick second hit +{bonus_damage}."
+
+        total_damage = damage + bonus_damage
+        self.enemy.health = max(0, self.enemy.health - total_damage)
+
         if self.player.type == "Mage":
-            self.add_log(f"Fireball dealt {damage} damage to {self.enemy.name}!{gear_note}")
-            # Fireball explosion happens when projectile hits in update method
+            self.add_log(f"{attack_name} dealt {total_damage} damage to {self.enemy.name}!{extra_note}{gear_note}")
         elif self.player.type == "Rogue":
-            self.add_log(f"Knife throw dealt {damage} damage to {self.enemy.name}!{gear_note}")
-            # Knife explosion happens when projectile hits in update method
+            self.add_log(f"{attack_name} dealt {total_damage} damage to {self.enemy.name}!{extra_note}{gear_note}")
         else:
-            # Warrior/Paladin attack
-            self.add_log(f"You dealt {damage} damage to {self.enemy.name}!{gear_note}")
+            self.add_log(f"{attack_name} dealt {total_damage} damage to {self.enemy.name}!{extra_note}{gear_note}")
             profile = get_element_profile(self.enemy.enemy_type)
             self.particle_system.add_explosion(
                 700 + 30, 250 + 30, random.choice(profile["particle_colors"]),
                 count=28, size_range=(2, 6), speed_range=(1, 4), lifetime_range=(15, 30)
             )
-        
+
         self.damage_target = "enemy"
-        self.damage_amount = damage
+        self.damage_amount = total_damage
         self.damage_effect_timer = 20
         self.enemy.start_hit_animation()
         self.add_screen_shake(5, 8)
@@ -5079,10 +5185,21 @@ class BattleScreen:
         self.action_cooldown = self.action_delay
     
     def execute_magic(self):
-        damage = self.roll_player_damage(self.player.effective_strength() * 2)
+        magic_name = self.get_magic_attack_name()
+        base_damage = self.player.effective_strength() * 2
+        if self.player.type == "Mage":
+            # Mage has the highest MP pool, so MAGIC scales partly from max MP.
+            # This makes the class feel like a spellcaster before SPECIAL unlocks.
+            base_damage += int(self.player.max_mana * 0.12 + self.player.level * 2)
+        elif self.player.type == "Warrior":
+            base_damage += max(1, self.player.effective_defense() // 4)
+        elif self.player.type == "Rogue":
+            base_damage += max(1, self.player.effective_speed() // 3)
+
+        damage = self.roll_player_damage(base_damage)
         self.enemy.health = max(0, self.enemy.health - damage)
         self.player.mana -= 20
-        self.add_log(f"Fireball dealt {damage} damage to {self.enemy.name}!{self.get_attack_gear_note('magic')}")
+        self.add_log(f"{magic_name} dealt {damage} damage to {self.enemy.name}!{self.get_attack_gear_note('magic')}")
         self.damage_target = "enemy"
         self.damage_amount = damage
         self.damage_effect_timer = 20
@@ -5237,6 +5354,7 @@ class OpeningCutscene:
         self.particle_system = ParticleSystem()
         self.transition_state = "none"  # Initialize transition_state
         self.story_page_duration = 160
+        self.dragon = Dragon(SCREEN_WIDTH // 2 - 90, SCREEN_HEIGHT // 2 - 108)
 
         # BEGINNER NOTE: Precompute stars and mountains once. The old opening
         # used random mountain heights every draw call, which made the scene
@@ -5312,6 +5430,10 @@ class OpeningCutscene:
                 random.randint(3, 7),
                 random.randint(40, 80)
             )
+        if self.scene_index == 1:
+            self.dragon.update()
+            if self.timer % 118 == 16:
+                self.dragon.breathe_fire()
         
         # Transition animation
         if self.timer > self.scene_duration - 60:  # Last second of scene
@@ -5420,38 +5542,22 @@ class OpeningCutscene:
                 (base_x + 100, SCREEN_HEIGHT)
             ])
         
-        # Draw dragon silhouette
-        dragon_x = SCREEN_WIDTH//2 - 100
-        dragon_y = SCREEN_HEIGHT//2 - 50
-        
-        # Body
-        pygame.draw.ellipse(screen, (60, 20, 20), (dragon_x, dragon_y, 200, 80))
-        # Head
-        pygame.draw.circle(screen, (60, 20, 20), (dragon_x + 200, dragon_y + 40), 40)
-        # Wings
-        wing_offset = math.sin(pygame.time.get_ticks() * 0.005) * 10
-        pygame.draw.polygon(screen, (80, 30, 30), [
-            (dragon_x + 50, dragon_y + 40),
-            (dragon_x - 50, dragon_y - 50 - wing_offset),
-            (dragon_x + 50, dragon_y - 30 - wing_offset)
-        ])
-        pygame.draw.polygon(screen, (80, 30, 30), [
-            (dragon_x + 50, dragon_y + 40),
-            (dragon_x - 50, dragon_y + 130 + wing_offset),
-            (dragon_x + 50, dragon_y + 110 + wing_offset)
-        ])
-        
-        # Draw fire breath
-        fire_layer = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        for i in range(20):
-            x = dragon_x + 230 + i * 10
-            y = dragon_y + 40 + math.sin(pygame.time.get_ticks() * 0.01 + i) * 10
-            size = 10 - i * 0.4
-            if size > 0:
-                pygame.draw.circle(fire_layer, (255, 80, 0, 100), (int(x), int(y)), int(size + 8))
-                pygame.draw.circle(fire_layer, (255, 170, 30, 230), (int(x), int(y)), int(size))
-                pygame.draw.circle(fire_layer, (255, 245, 150, 240), (int(x - 2), int(y - 1)), max(2, int(size * 0.45)))
-        screen.blit(fire_layer, (0, 0))
+        # BEGINNER NOTE: The opening used to draw a separate old silhouette
+        # dragon here. It now uses the same imported title dragon as the main
+        # menu, tinted through the real boss progression palette.
+        boss_level = min(FINAL_BOSS_LEVEL, 2 + self.timer // 45)
+        boss_profile = get_boss_profile(boss_level)
+        self.dragon.draw(screen, boss_level=boss_level, target_height=280)
+        aspect_label = render_fitted_text(
+            f"Dragon aspect: {boss_profile['name']}",
+            (255, 225, 150),
+            420,
+            (font_tiny,),
+        )
+        aspect_panel = pygame.Rect(SCREEN_WIDTH // 2 - 230, 474, 460, 32)
+        pygame.draw.rect(screen, UI_BG, aspect_panel, border_radius=6)
+        pygame.draw.rect(screen, DRAGON_BOSS_COLORS[(boss_level - 1) % len(DRAGON_BOSS_COLORS)][1], aspect_panel, 2, border_radius=6)
+        screen.blit(aspect_label, (aspect_panel.centerx - aspect_label.get_width() // 2, aspect_panel.y + 8))
         
         # Draw scene text
         scene_text = [
@@ -5656,6 +5762,12 @@ class Game:
         self.interior_player_x = SCREEN_WIDTH // 2 - PLAYER_SIZE // 2
         self.interior_player_y = 500
         self.npc_dialogue_index = 0
+        # BEGINNER NOTE: This is the small button menu shown inside a building.
+        # It gives Android players direct buttons for service/talk/log/leave
+        # instead of relying on hidden keyboard-only shortcuts.
+        self.interior_service_menu_open = False
+        self.interior_service_menu_index = 0
+        self.interior_service_menu_buttons = []
 
         # Town progression saved by `systems/save_load.py`.
         self.town_reputation = 0
@@ -5851,6 +5963,33 @@ class Game:
     def start_menu_buttons(self):
         return [self.start_button, self.load_button, self.update_button, self.quit_button]
 
+    def get_title_dragon_boss_level(self):
+        """Return the boss-level palette the title dragon should preview.
+
+        Beginner note:
+            Before a save is loaded, the title screen slowly cycles through
+            dragon palettes so players can see the progression. After a save is
+            loaded, it previews the next boss level from the player's progress.
+        """
+        if self.player:
+            return get_next_boss_level(self.player.level, self.player.last_boss_level)
+        return 1 + ((pygame.time.get_ticks() // 1800) % len(DRAGON_BOSS_COLORS))
+
+    def draw_title_dragon_progress_badge(self, screen):
+        """Draw a small label for the current title dragon palette."""
+        boss_level = self.get_title_dragon_boss_level()
+        profile = get_boss_profile(boss_level)
+        _, fire_color = DRAGON_BOSS_COLORS[(boss_level - 1) % len(DRAGON_BOSS_COLORS)]
+        if self.player:
+            label = f"Next dragon: {profile['name']}"
+        else:
+            label = f"Dragon progression preview: {profile['name']}"
+        text = render_fitted_text(label, (255, 235, 170), 315, (font_tiny,))
+        panel = pygame.Rect(SCREEN_WIDTH - 370, 204, 350, 30)
+        pygame.draw.rect(screen, UI_BG, panel, border_radius=6)
+        pygame.draw.rect(screen, fire_color, panel, 2, border_radius=6)
+        screen.blit(text, (panel.centerx - text.get_width() // 2, panel.y + 7))
+
     def set_selected_buttons(self, buttons, selected_index):
         for index, button in enumerate(buttons):
             button.selected = index == selected_index
@@ -5918,10 +6057,12 @@ class Game:
         opened_target = open_android_update_download()
         if opened_target in ("apk", "compat"):
             self.update_status = "Opened APK download. Tap the downloaded APK to install."
+        elif opened_target == "github_app":
+            self.update_status = "Opened GitHub app release. Tap the APK asset to download."
         elif opened_target == "release":
             self.update_status = "Opened release page. Tap the APK asset to download."
         else:
-            self.update_status = "Could not open browser. Search GitHub release android-latest."
+            self.update_status = "Could not open update link. Open GitHub release android-latest."
 
     def activate_character_menu_selection(self):
         if self.character_menu_index == 0:
@@ -6011,6 +6152,8 @@ class Game:
             self.show_journal = False
             self.show_inventory = False
             self.show_world_map = False
+            self.interior_service_menu_open = False
+            self.interior_service_menu_buttons = []
             self.rebuild_pause_menu_buttons()
         else:
             self.pause_menu_buttons = []
@@ -6252,6 +6395,8 @@ class Game:
         self.show_inventory = False
         self.show_pause_menu = False
         self.pause_menu_buttons = []
+        self.interior_service_menu_open = False
+        self.interior_service_menu_buttons = []
         self.npc_dialogue_index = 0
         self.town_resident_dialogue_index = {}
         self.world_map = WorldMap()
@@ -6891,6 +7036,133 @@ class Game:
     def shade_color(color, amount):
         return tuple(max(0, min(255, value + amount)) for value in color)
 
+    def build_interior_service_menu_entries(self):
+        """Return the active building-menu commands.
+
+        Beginner note:
+            Each tuple is `(command_key, button_label)`.
+            `command_key` is what code uses.
+            `button_label` is what the player taps or sees highlighted.
+        """
+        if not self.current_interior_service:
+            return []
+        service_type = self.current_interior_service["type"]
+        return [
+            ("service", get_service_action_label(service_type)),
+            ("talk", "TALK"),
+            ("journal", "LOG"),
+            ("leave", "LEAVE"),
+            ("close", "BACK"),
+        ]
+
+    def rebuild_interior_service_menu_buttons(self):
+        """Create clickable buttons for the interior service menu."""
+        entries = self.build_interior_service_menu_entries()
+        button_width = 250
+        button_height = 42
+        gap = 8
+        start_y = 222
+        self.interior_service_menu_buttons = []
+        for index, (command, label) in enumerate(entries):
+            button = Button(
+                SCREEN_WIDTH // 2 - button_width // 2,
+                start_y + index * (button_height + gap),
+                button_width,
+                button_height,
+                label,
+                color=(86, 118, 154),
+            )
+            button.command = command
+            self.interior_service_menu_buttons.append(button)
+
+        if self.interior_service_menu_buttons:
+            self.interior_service_menu_index = max(
+                0,
+                min(self.interior_service_menu_index, len(self.interior_service_menu_buttons) - 1),
+            )
+        else:
+            self.interior_service_menu_index = 0
+
+    def get_current_town_reward_preview(self):
+        """Return the reward line shown in the current building service menu."""
+        if not self.current_interior_service:
+            return ""
+        service_type = self.current_interior_service["type"]
+        errand = get_town_errand(service_type)
+        if errand and service_type not in self.completed_town_errands:
+            return format_town_reward_preview(errand.get("reward", {}), self.player.type if self.player else None)
+
+        repeat_lines = get_service_overview_lines(service_type)
+        if len(repeat_lines) >= 4:
+            return f"Repeat: {repeat_lines[3]}"
+        return "Repeat: service remains available after the first errand."
+
+    def open_interior_service_menu(self):
+        """Open the building action menu and hide conflicting overlays."""
+        if not self.current_interior_service:
+            return
+        self.show_pause_menu = False
+        self.pause_menu_buttons = []
+        self.show_journal = False
+        self.show_inventory = False
+        self.show_world_map = False
+        self.interior_service_menu_open = True
+        self.interior_service_menu_index = 0
+        self.rebuild_interior_service_menu_buttons()
+        if self.SFX_CLICK:
+            self.SFX_CLICK.play()
+
+    def close_interior_service_menu(self, play_sound=True):
+        """Close the building action menu without leaving the room."""
+        self.interior_service_menu_open = False
+        self.interior_service_menu_buttons = []
+        if play_sound and self.SFX_CLICK:
+            self.SFX_CLICK.play()
+
+    def activate_interior_service_menu_command(self, command):
+        """Run one command from the interior service menu."""
+        if command == "service":
+            self.close_interior_service_menu(play_sound=False)
+            self.apply_town_service(self.current_interior_service)
+            if self.SFX_ITEM:
+                self.SFX_ITEM.play()
+            return
+
+        if command == "talk":
+            self.close_interior_service_menu(play_sound=False)
+            self.talk_to_current_npc()
+            return
+
+        if command == "journal":
+            self.close_interior_service_menu(play_sound=False)
+            self.show_journal = True
+            self.show_inventory = False
+            self.show_world_map = False
+            if self.SFX_CLICK:
+                self.SFX_CLICK.play()
+            return
+
+        if command == "leave":
+            self.close_interior_service_menu(play_sound=False)
+            self.exit_town_interior()
+            return
+
+        self.close_interior_service_menu(play_sound=True)
+
+    def activate_interior_service_menu_selection(self):
+        """Run the currently highlighted interior service-menu button."""
+        if not self.interior_service_menu_buttons:
+            self.rebuild_interior_service_menu_buttons()
+        if not self.interior_service_menu_buttons:
+            return
+        command = getattr(
+            self.interior_service_menu_buttons[self.interior_service_menu_index],
+            "command",
+            None,
+        )
+        if command:
+            self.activate_interior_service_menu_command(command)
+
     def enter_town_interior(self, service):
         room = TOWN_INTERIORS.get(service["type"])
         if not room:
@@ -6899,6 +7171,8 @@ class Game:
 
         self.show_pause_menu = False
         self.pause_menu_buttons = []
+        self.interior_service_menu_open = False
+        self.interior_service_menu_buttons = []
         self.current_interior = room
         self.current_interior_service = dict(service)
         self.interior_return_position = (self.player.x, self.player.y) if self.player else None
@@ -6919,6 +7193,8 @@ class Game:
 
         self.show_pause_menu = False
         self.pause_menu_buttons = []
+        self.interior_service_menu_open = False
+        self.interior_service_menu_buttons = []
         self.current_interior = None
         self.current_interior_service = None
         self.interior_return_position = None
@@ -6931,9 +7207,7 @@ class Game:
     def use_current_town_service(self):
         if not self.current_interior_service:
             return
-        self.apply_town_service(self.current_interior_service)
-        if self.SFX_ITEM:
-            self.SFX_ITEM.play()
+        self.open_interior_service_menu()
 
     def get_interior_blockers(self):
         if not self.current_interior:
@@ -7059,7 +7333,9 @@ class Game:
         hero_panel = pygame.Rect(right_x, y, 336, 136)
         pygame.draw.rect(screen, (20, 20, 30), hero_panel, border_radius=8)
         pygame.draw.rect(screen, TEXT_COLOR, hero_panel, 2, border_radius=8)
+        class_profile = get_character_class_profile(self.player.type)
         line_y = self.draw_journal_line(screen, f"HERO: {self.player.type}  LV.{self.player.level}", right_x + 14, y + 12, TEXT_COLOR, font_small)
+        line_y = self.draw_journal_line(screen, class_profile.get("role", "Adventurer"), right_x + 14, line_y, (245, 235, 180))
         line_y = self.draw_journal_line(screen, f"HP {self.player.health}/{self.player.max_health}   MP {self.player.mana}/{self.player.max_mana}", right_x + 14, line_y)
         line_y = self.draw_journal_line(
             screen,
@@ -7067,13 +7343,13 @@ class Game:
             right_x + 14,
             line_y,
         )
-        line_y = self.draw_journal_line(
+        self.draw_journal_line(
             screen,
-            f"Bag: HP x{self.player.get_inventory_count('health')}  MP x{self.player.get_inventory_count('mana')}",
+            f"Bag HP x{self.player.get_inventory_count('health')} MP x{self.player.get_inventory_count('mana')}  Rep {self.town_reputation}",
             right_x + 14,
             line_y,
+            (255, 215, 0),
         )
-        self.draw_journal_line(screen, f"Town rep: {self.town_reputation}", right_x + 14, line_y, (255, 215, 0))
 
         y += 160
         current_area = self.world_map.get_current_area()
@@ -7118,6 +7394,15 @@ class Game:
                     (225, 225, 215),
                     max_width=service_line_width - 8,
                 )
+                if line_y < service_panel.bottom - 54:
+                    line_y = self.draw_journal_line(
+                        screen,
+                        format_town_reward_preview(errand.get("reward", {}), self.player.type, max_parts=3),
+                        right_x + 28,
+                        line_y,
+                        (205, 216, 190),
+                        max_width=service_line_width - 14,
+                    )
             if len(open_errands) > 2:
                 line_y = self.draw_journal_line(screen, f"+{len(open_errands) - 2} more buildings marked in town.", right_x + 22, line_y, (200, 210, 220), max_width=service_line_width - 8)
         else:
@@ -7789,6 +8074,29 @@ class Game:
             render_fitted_text,
         )
 
+    def draw_interior_service_menu(self, screen):
+        """Draw the active building action menu if it is open."""
+        if not self.interior_service_menu_open:
+            return
+        if not self.interior_service_menu_buttons:
+            self.rebuild_interior_service_menu_buttons()
+        draw_interior_service_menu_overlay(
+            screen,
+            self.current_interior,
+            self.current_interior_service,
+            self.interior_service_menu_buttons,
+            self.interior_service_menu_index,
+            self.get_current_town_reward_preview(),
+            font_large,
+            font_small,
+            font_tiny,
+            UI_BG,
+            SCREEN_WIDTH,
+            SCREEN_HEIGHT,
+            wrap_text_to_width,
+            render_fitted_text,
+        )
+
     def emit_area_particles(self, current_area):
         area_world_x, area_world_y = current_area.get_world_position()
         for profile in AREA_PARTICLE_PROFILES.get(current_area.area_type, ()):
@@ -8192,7 +8500,8 @@ class Game:
             subtitle = font_medium.render("A RETRO RPG ADVENTURE", True, TEXT_COLOR)
             screen.blit(subtitle, (SCREEN_WIDTH//2 - subtitle.get_width()//2, 140))
             
-            self.dragon.draw(screen)
+            self.dragon.draw(screen, boss_level=self.get_title_dragon_boss_level())
+            self.draw_title_dragon_progress_badge(screen)
             
             self.start_button.draw(screen)
             self.load_button.draw(screen)
@@ -8587,6 +8896,9 @@ class Game:
         if self.active_story_dialogue and self.state == "overworld":
             self.draw_story_dialogue(screen)
 
+        if self.interior_service_menu_open and self.state == "interior":
+            self.draw_interior_service_menu(screen)
+
         if self.show_pause_menu and self.state in ["overworld", "interior"]:
             self.draw_pause_menu(screen)
 
@@ -8755,6 +9067,34 @@ class Game:
                             self.close_pause_menu(play_sound=True)
                             continue
 
+                    if self.interior_service_menu_open and self.state == "interior":
+                        if not self.interior_service_menu_buttons:
+                            self.rebuild_interior_service_menu_buttons()
+                        if action in [MOVE_UP, MOVE_LEFT]:
+                            self.move_menu_selection(
+                                "interior_service_menu_index",
+                                len(self.interior_service_menu_buttons),
+                                -1,
+                            )
+                            continue
+                        if action in [MOVE_DOWN, MOVE_RIGHT]:
+                            self.move_menu_selection(
+                                "interior_service_menu_index",
+                                len(self.interior_service_menu_buttons),
+                                1,
+                            )
+                            continue
+                        if action in [CONFIRM, INTERACT]:
+                            self.activate_interior_service_menu_selection()
+                            continue
+                        if action == JOURNAL:
+                            self.activate_interior_service_menu_command("journal")
+                            continue
+                        if action == CANCEL:
+                            self.close_interior_service_menu(play_sound=True)
+                            continue
+                        continue
+
                     if self.active_story_dialogue and self.state == "overworld":
                         if action in [CONFIRM, INTERACT, CANCEL]:
                             self.advance_story_dialogue()
@@ -8909,7 +9249,19 @@ class Game:
                         self.battle_screen.handle_input(event, self)
             
             # Handle button clicks
-            if self.show_pause_menu and self.state in ["overworld", "interior"]:
+            if self.interior_service_menu_open and self.state == "interior":
+                if not self.interior_service_menu_buttons:
+                    self.rebuild_interior_service_menu_buttons()
+                for index, button in enumerate(self.interior_service_menu_buttons):
+                    if button.update(mouse_pos):
+                        self.interior_service_menu_index = index
+                    if button.is_clicked(mouse_pos, mouse_click):
+                        self.interior_service_menu_index = index
+                        self.activate_interior_service_menu_selection()
+                        mouse_click = False
+                        break
+
+            elif self.show_pause_menu and self.state in ["overworld", "interior"]:
                 if not self.pause_menu_buttons:
                     self.rebuild_pause_menu_buttons()
                 for index, button in enumerate(self.pause_menu_buttons):
@@ -9103,6 +9455,8 @@ class Game:
         self.show_inventory = False
         self.show_pause_menu = False
         self.pause_menu_buttons = []
+        self.interior_service_menu_open = False
+        self.interior_service_menu_buttons = []
         self.pickup_message = None
         self.pickup_message_timer = 0
         self.area_effect_timer = 0

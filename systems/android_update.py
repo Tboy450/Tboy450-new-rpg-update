@@ -35,9 +35,22 @@ APP_UPDATE_APK_COMPAT_URL = (
 APP_UPDATE_RELEASE_PAGE_URL = (
     "https://github.com/Tboy450/Tboy450-new-rpg-update/releases/tag/android-latest"
 )
+APP_UPDATE_GITHUB_APP_INTENT_URL = (
+    "intent://github.com/Tboy450/Tboy450-new-rpg-update/releases/tag/android-latest"
+    "#Intent;scheme=https;package=com.github.android;end"
+)
 APP_VERSION_SPEC_URL = (
     "https://raw.githubusercontent.com/Tboy450/Tboy450-new-rpg-update/main/"
     "buildozer.spec"
+)
+GITHUB_ANDROID_PACKAGE = "com.github.android"
+ANDROID_BROWSER_PACKAGES = (
+    "com.android.chrome",
+    "com.sec.android.app.sbrowser",
+    "org.mozilla.firefox",
+    "com.brave.browser",
+    "com.microsoft.emmx",
+    "com.android.browser",
 )
 
 
@@ -73,7 +86,7 @@ def fetch_latest_android_numeric_version(timeout=4):
     raise ValueError("android.numeric_version not found")
 
 
-def _run_android_view_intent(url, mime_type=None):
+def _run_android_view_intent(url, mime_type=None, package=None):
     """Ask Android to open one URL through Activity Manager."""
     intent_command = [
         "start",
@@ -82,6 +95,8 @@ def _run_android_view_intent(url, mime_type=None):
     ]
     if mime_type:
         intent_command.extend(["-t", mime_type])
+    if package:
+        intent_command.extend(["-p", package])
     for am_path in ("/system/bin/am", "am"):
         try:
             result = subprocess.run(
@@ -98,7 +113,7 @@ def _run_android_view_intent(url, mime_type=None):
     return False
 
 
-def open_external_url(url, mime_type=None):
+def open_external_url(url, mime_type=None, preferred_package=None):
     """Open a URL from desktop Python or from the Android APK.
 
     Beginner note:
@@ -112,6 +127,8 @@ def open_external_url(url, mime_type=None):
         downloaded APK is opened.
     """
     if is_android_runtime():
+        if preferred_package and _run_android_view_intent(url, mime_type, preferred_package):
+            return True
         if _run_android_view_intent(url):
             return True
         if mime_type and _run_android_view_intent(url, mime_type):
@@ -123,15 +140,46 @@ def open_external_url(url, mime_type=None):
         return False
 
 
+def _open_android_url_with_packages(url, packages, mime_type=None):
+    """Try specific Android apps before Android picks a default handler.
+
+    Beginner note:
+        GitHub links can be intercepted by the GitHub app. For the APK file
+        itself, a web browser is usually better because it downloads the file
+        into My Files/Downloads. This helper tries browser package names first.
+    """
+    for package in packages:
+        if _run_android_view_intent(url, mime_type=mime_type, package=package):
+            return True
+    return False
+
+
 def open_android_update_download():
     """Open the best available APK update location.
 
     Returns:
         `"apk"` when the direct APK URL was opened,
         `"compat"` when the older debug filename URL was opened,
+        `"github_app"` when the GitHub Android app release fallback was opened,
         `"release"` when the release page fallback was opened,
         or `None` when no external URL opener worked.
     """
+    if is_android_runtime():
+        if _open_android_url_with_packages(APP_UPDATE_APK_URL, ANDROID_BROWSER_PACKAGES):
+            return "apk"
+        if _open_android_url_with_packages(APP_UPDATE_APK_COMPAT_URL, ANDROID_BROWSER_PACKAGES):
+            return "compat"
+        if _run_android_view_intent(APP_UPDATE_RELEASE_PAGE_URL, package=GITHUB_ANDROID_PACKAGE):
+            return "github_app"
+        if _run_android_view_intent(APP_UPDATE_GITHUB_APP_INTENT_URL):
+            return "github_app"
+        if _run_android_view_intent(APP_UPDATE_APK_URL):
+            return "apk"
+        if _run_android_view_intent(APP_UPDATE_APK_COMPAT_URL):
+            return "compat"
+        if _run_android_view_intent(APP_UPDATE_RELEASE_PAGE_URL):
+            return "release"
+
     if open_external_url(APP_UPDATE_APK_URL):
         return "apk"
     if open_external_url(APP_UPDATE_APK_COMPAT_URL):

@@ -23,6 +23,21 @@ INN_REST_CLAIM_PREFIX = "inn_rest_level"
 INN_REST_EXP_BASE = 6
 INN_REST_EXP_PER_LEVEL = 4
 
+# Short button labels for the active service command inside each building.
+# Beginner note:
+#     The same interior menu can serve every building because this table names
+#     the first button by service type. Add a new key here when a new town
+#     building gets a custom action.
+SERVICE_ACTION_LABELS = {
+    "inn": "REST",
+    "shop": "RESTOCK",
+    "blacksmith": "FORGE",
+    "library": "STUDY",
+    "town_hall": "REPORT",
+    "house": "MEAL",
+    "stall": "STEW",
+}
+
 
 def _join_parts(parts):
     """Return a readable comma-separated list without empty pieces."""
@@ -49,6 +64,11 @@ def get_service_map_label(service_type):
 def get_service_completion_label(service_type, completed_town_errands):
     """Return OPEN or DONE for a building's one-time errand state."""
     return "DONE" if service_type in completed_town_errands else "OPEN"
+
+
+def get_service_action_label(service_type):
+    """Return the service-menu verb for one town building."""
+    return SERVICE_ACTION_LABELS.get(service_type, "USE")
 
 
 def get_service_overview_lines(service_type):

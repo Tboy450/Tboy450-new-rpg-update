@@ -67,13 +67,13 @@ For a beginner-friendly explanation of the most recent larger commits, read
 
 ## `systems/` Modules
 
-- `assets.py`: imported-art paths, sprite caches, animation frame loading, and reusable sprite drawing.
+- `assets.py`: imported-art paths, sprite caches, tint helpers, animation frame loading, and reusable sprite drawing.
 - `android_controls.py`: state-aware Android touch button layout, drawing, and tap hit-testing.
 - `android_update.py`: APK update URL constants, GitHub version-check helper, and Android/desktop link opening helper.
 - `battle_input.py`: battle-only keyboard/touch routing for action buttons, item buttons, and NEXT prompts.
 - `battle_rewards.py`: scaled normal-enemy and boss reward formulas.
 - `battle_ui.py`: reusable battle HUD pieces such as the gear strip, log panel, action buttons, and result summary.
-- `interior_ui.py`: draws reusable town-interior service NPCs, service note cards, and bottom prompt panels.
+- `interior_ui.py`: draws reusable town-interior service NPCs, service note cards, service menus, and bottom prompt panels.
 - `input_actions.py`: translates keyboard or virtual Android button input into action names like `move_up`.
 - `save_load.py`: converts the current `Game` object into JSON and loads saved JSON back later.
 - `story_ui.py`: draws the reusable story dialogue panel and the shared pause-menu overlay.
@@ -99,9 +99,11 @@ Use this when you know the feature name but not the file.
   `WorldArea.draw_cutscene` in `main.py` draws it on top of the old procedural guard.
 - Title dragon and title fire:
   `assets/processed/ui/title_dragon.png` is the active imported start-menu dragon.
-  `Dragon.draw` in `main.py` draws that PNG first and adds an animated fire
-  extension from the imported dragon's mouth. The older procedural dragon/fire
-  remains in `Dragon.draw` only as fallback/archive code.
+  `Dragon.draw` in `main.py` draws that PNG first, tints it through
+  `DRAGON_BOSS_COLORS`, and adds an animated fire extension from the imported
+  dragon's mouth. The opening cutscene uses the same imported dragon path now.
+  The older procedural dragon/fire remains in `Dragon.draw` only as
+  fallback/archive code.
 - SPECIAL unlock flow:
   `game_data/story.py` grants the first unlock through the Lion Sage reward.
   `Game.apply_story_reward` in `main.py` sets `player.special_unlocked = True`.
@@ -200,6 +202,10 @@ beginner-facing control labels.
   `Game.build_pause_menu_entries`, `Game.toggle_pause_menu`, and `Game.activate_pause_menu_command` in `main.py`
 - Shared pause-menu drawing:
   `systems/story_ui.py`
+- Interior service menu:
+  `Game.use_current_town_service` opens the menu, `Game.activate_interior_service_menu_command`
+  runs the button commands, and `systems/interior_ui.py` draws the panel.
+  Android controls hide the d-pad while this service menu is open.
 - Inventory overlay:
   `Game.draw_inventory` in `main.py`. It shows consumables, equipped weapon /
   armor / charm bonuses, owned gear choices, rarity colors, item icons, and
@@ -386,12 +392,14 @@ The active imported character art lives in `assets/processed/characters/`.
 2. `android.numeric_version` in `buildozer.spec` is the version code Android uses when installing the APK.
 3. Both numbers must increase before publishing a new APK.
 4. `systems/android_update.py` stores the stable APK URL, compatibility APK URL,
-   release-page fallback URL, and the GitHub `buildozer.spec` URL.
+   Android browser package list, GitHub app fallback, release-page fallback URL,
+   and the GitHub `buildozer.spec` URL.
 5. `fetch_latest_android_numeric_version` in that module reads `buildozer.spec` from GitHub.
 6. `check_for_updates` in `main.py` compares the GitHub version code with the installed version code.
 7. `open_update_link` in `main.py` calls `open_android_update_download` from
-   `systems/android_update.py`. It tries the direct APK download first, then
-   the compatibility APK filename, then the release page.
+   `systems/android_update.py`. On Android it tries known browsers for the
+   direct APK first, then the compatibility APK filename, then the GitHub
+   Android app release fallback, then the release page.
 8. Android still requires the player to approve the install/update prompt after
    the APK downloads.
 

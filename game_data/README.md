@@ -12,14 +12,14 @@ an enemy list changes what can spawn in an area.
 ## Modules
 
 - `__init__.py`: re-exports active data so `main.py` can import from one stable place.
-- `characters.py`: playable class starting stats. Edit this to tune Warrior, Mage, or Rogue.
+- `characters.py`: playable class starting stats, role labels, battle-style text, and class attack names. Edit this to tune Warrior, Mage, or Rogue.
 - `enemies.py`: enemy names, area enemy spawn tables, and dragon boss color palettes.
 - `equipment.py`: weapons, armor, accessories, starting gear, blacksmith forge progression, rarity/tier labels, icon filenames, and equipment stat bonuses.
 - `interiors.py`: town building interior layouts, props, inspect points, colors, and room prompts.
 - `mechanics.py`: combat tuning, elemental status effects, pickup item profiles, and item spawn tables.
 - `npcs.py`: town guard template/dialogue, town service NPC metadata, and rotating interior NPC dialogue.
 - `progression.py`: boss names, boss hints, final boss level, and player-facing quest status.
-- `quests.py`: town errand names, summaries, and rewards.
+- `quests.py`: town errand names, summaries, rewards, and compact reward-preview text.
 - `story.py`: opening story text, Lion Sage map placement/dialogue/reward, and Ghost Face area intro dialogue.
 - `town.py`: town overworld buildings, boundaries, decorations, smoke sources, and building collision tuning.
 - `town_population.py`: outdoor town residents, their rotating dialogue, one-time resident errands, and resident rewards.
@@ -45,9 +45,12 @@ an enemy list changes what can spawn in an area.
 - `interaction_depth`: optional doorway trigger height. Lower this when two
   nearby buildings need separated entrance/action zones.
 - `reward`: score, experience, reputation, or item prizes granted by a quest or errand.
+- `reward preview`: short display text built from reward data. It does not
+  grant rewards; it only explains them in the Log or service menu.
 - `message`: text shown to the player.
 - `map_label`: short doorway label used on the outdoor town map.
 - `role`: one- or two-word service category, such as Recovery, Gear, or Lore.
+- `battle_style`: one-sentence class identity text used by combat and the Log.
 - `purpose`: player-facing reason to visit a town service.
 - `first_reward`: what the first one-time building errand can give.
 - `repeat_use`: why the service still matters after the first errand is done.
@@ -84,9 +87,13 @@ Some strings must match across modules:
 ## Safe Editing Examples
 
 - To make Warrior tougher, raise `Warrior` `max_health` in `characters.py`.
+- To change how Warrior/Mage/Rogue are described in combat, edit `role`,
+  `battle_style`, `basic_attack`, or `magic_attack` in `characters.py`.
 - To make volcano enemies more dangerous by variety, add another element key to `AREA_ENEMY_TYPES["volcano"]` in `enemies.py`.
 - To move the shop outdoors, edit the shop record in `TOWN_BUILDINGS` in `town.py`.
 - To add a line of shopkeeper dialogue, edit the `shop` `dialogue` tuple in `npcs.py`.
+- To change town reward preview wording, edit `format_town_reward_preview` in
+  `quests.py`; to change actual reward values, edit the reward dictionaries.
 - To make a building clearer on the town map, edit its `map_label`, `role`,
   `purpose`, `first_reward`, or `repeat_use` fields in `TOWN_SERVICES`.
 - To add an outdoor town resident, edit `TOWN_RESIDENTS` and optional `TOWN_RESIDENT_ERRANDS` in `town_population.py`.

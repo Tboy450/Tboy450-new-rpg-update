@@ -83,12 +83,17 @@ def build_android_touch_buttons(game, screen_width, screen_height):
     - World map: CLOSE MAP button only
     - Pause menu: pause-menu buttons are drawn by `main.py`, so this helper
       returns an empty list
+    - Interior service menu: service buttons are drawn by `main.py`, so this
+      helper returns an empty list
     """
     if getattr(game, "show_pause_menu", False):
         return []
 
     state = getattr(game, "state", "")
     if state not in {"overworld", "interior"}:
+        return []
+
+    if state == "interior" and getattr(game, "interior_service_menu_open", False):
         return []
 
     buttons = []

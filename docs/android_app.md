@@ -128,9 +128,10 @@ Android may ask you to allow installs from unknown sources.
 - `main.py` still owns the actual pause-menu commands, save/load actions, and gameplay state changes.
 - APK version-check and link-opening helpers now live in `systems/android_update.py`.
 - For APK updates, both `APP_NUMERIC_VERSION` in `main.py` and `android.numeric_version` in `buildozer.spec` must increase.
-- The beginning-menu **UPDATE APP** button opens the direct APK download first,
-  then falls back to the compatibility APK filename and the `android-latest`
-  GitHub release page if Android cannot open the direct download.
+- The beginning-menu **UPDATE APP** button tries known Android browsers first
+  for the direct APK download, then falls back to the compatibility APK filename,
+  the `android-latest` GitHub Android app release page, and finally the normal
+  GitHub release page.
 - Saves use app/private storage, so uninstalling the app can remove local saves.
 
 ## If The APK Build Fails

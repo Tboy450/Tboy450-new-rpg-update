@@ -59,6 +59,8 @@ This module owns the Android touch-button layout.
 Current touch-layout rules:
 
 - Normal overworld/interior play uses a d-pad, `USE`, `OK`, and `MENU`.
+- When the interior service menu is open, Android controls return an empty
+  list because those service buttons are drawn and clicked by `main.py`.
 - Story dialogue and the town-guard cutscene swap that layout for `NEXT` + `MENU`.
 - Log and world map use close buttons instead of the movement pad.
 - Battle action buttons are owned by `BattleScreen` in `main.py`, but input
@@ -79,10 +81,15 @@ This module owns the APK update plumbing.
 - `APP_UPDATE_APK_COMPAT_URL` is the older debug filename kept as a fallback.
 - `APP_UPDATE_RELEASE_PAGE_URL` is the release page fallback if direct APK
   opening fails.
+- `APP_UPDATE_GITHUB_APP_INTENT_URL` and `GITHUB_ANDROID_PACKAGE` are the
+  GitHub Android app fallback when normal browser/download intents fail.
+- `ANDROID_BROWSER_PACKAGES` lists browser package names to try before GitHub
+  intercepts the APK URL.
 - `APP_VERSION_SPEC_URL` points at the live `buildozer.spec` file on GitHub.
 - `fetch_latest_android_numeric_version()` reads the remote version code.
-- `open_android_update_download()` opens the direct APK first, then the
-  compatibility APK URL, then the release page.
+- `open_android_update_download()` tries known Android browsers for the direct
+  APK first, then the compatibility APK URL, then the GitHub Android app release
+  fallback, then the release page.
 - `open_external_url()` asks Android's Activity Manager to open links as normal
   browser/download URLs first, then falls back to Python's browser support.
 
@@ -97,6 +104,9 @@ This module keeps imported-art plumbing out of `main.py`.
 - Asset path constants point to the active processed PNG files and frame folders.
 - `load_scaled_sprite` loads square enemy/UI-style sprites.
 - `load_sprite_by_height` loads tall character/effect sprites without squashing them.
+- `load_tinted_sprite_by_height` loads one PNG and applies a cached color tint.
+  The title/opening dragon uses this so boss progression colors share one
+  imported dragon asset.
 - `load_animation_frames` loads numbered PNG frame folders such as `frame_00.png`.
 - `draw_character_sprite` draws Warrior/Mage/Rogue imported sprites with a shared foot anchor.
 - `draw_enemy_sprite` draws enemies that have an imported sprite path.
@@ -128,7 +138,8 @@ Beginner feature map:
   `TOWN_SERVICE_NPC_SPRITE_PATHS`; their screen placement lives in
   `game_data/interiors.py`.
 - The start-menu dragon loads `TITLE_DRAGON_SPRITE_PATH` first and then draws
-  an animated fire extension from the imported dragon's mouth. The older
+  a boss-palette tint and animated fire extension from the imported dragon's
+  mouth. The opening cutscene uses the same imported dragon path now. The older
   procedural dragon remains as fallback/archive code in `Dragon.draw`.
 - The SPECIAL unlock is gameplay state, but `assets.py` is where the related story/effect art file paths are clearly labeled.
 - Inventory gear uses icon filenames from `game_data/equipment.py`; those filenames are joined to `EQUIPMENT_ICON_DIR` by `get_equipment_icon_path`.
@@ -200,6 +211,8 @@ This module draws reusable town-interior UI pieces that were split out of
   Inn and Blacksmith, with the older simple Python NPC as fallback.
 - `draw_interior_service_card(...)` draws the small service note card on the
   room wall.
+- `draw_interior_service_menu(...)` draws the clickable service/talk/log/leave
+  menu that opens inside town buildings.
 - `draw_interior_message_panel(...)` wraps room messages and draws the
   Android/keyboard prompt line.
 
@@ -218,6 +231,8 @@ This module owns town service effects that should not keep growing inside
   it to Inventory without auto-equipping it.
 - `get_service_hint_lines(...)` gives the interior wall card short preview text
   for richer rooms.
+- `get_service_action_label(...)` names the first interior service-menu button,
+  such as REST, FORGE, STUDY, REPORT, or STEW.
 - `get_service_map_label(...)`, `get_service_completion_label(...)`, and
   `get_service_overview_lines(...)` let outdoor markers, interiors, and the Log
   reuse the same building labels and purpose text.

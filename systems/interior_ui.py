@@ -8,6 +8,7 @@ Beginner note:
 
     - imported/fallback service NPCs
     - service note cards for every building
+    - the clickable service menu opened inside a building
     - the bottom room message and prompt panel
 
     Pulling these helpers out keeps `main.py` from growing every time a town
@@ -118,6 +119,72 @@ def draw_interior_service_card(
         text = render_fitted_text(line, color, panel.width - 24, (font_tiny,))
         surface.blit(text, (panel.x + 12, line_y))
         line_y += 18
+
+
+def draw_interior_service_menu(
+    surface,
+    room,
+    service,
+    buttons,
+    selected_index,
+    reward_preview,
+    font_large,
+    font_small,
+    font_tiny,
+    ui_bg,
+    screen_width,
+    screen_height,
+    wrap_text_to_width,
+    render_fitted_text,
+):
+    """Draw the clickable service menu shown inside town buildings.
+
+    Beginner note:
+        The service menu is intentionally drawn here, not in `main.py`, because
+        this is visual layout. `main.py` still decides what each button does.
+        The `buttons` list contains normal Button objects from the main game.
+    """
+    if not room or not service:
+        return
+
+    overlay = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 158))
+    surface.blit(overlay, (0, 0))
+
+    accent_color = room["accent_color"]
+    panel = pygame.Rect(screen_width // 2 - 235, 122, 470, 424)
+    pygame.draw.rect(surface, ui_bg, panel, border_radius=10)
+    pygame.draw.rect(surface, accent_color, panel, 3, border_radius=10)
+
+    title = render_fitted_text(service["name"].upper(), accent_color, panel.width - 44, (font_large, font_small))
+    surface.blit(title, (panel.centerx - title.get_width() // 2, panel.y + 24))
+
+    npc_line = render_fitted_text(f"{service['npc']} - {service.get('role', 'Town Service')}", (230, 230, 220), panel.width - 44, (font_small, font_tiny))
+    surface.blit(npc_line, (panel.centerx - npc_line.get_width() // 2, panel.y + 73))
+
+    overview = get_service_overview_lines(service["type"])
+    body_lines = []
+    if len(overview) > 1:
+        body_lines.extend(wrap_text_to_width(overview[1], font_tiny, panel.width - 48)[:2])
+    if reward_preview:
+        body_lines.extend(wrap_text_to_width(reward_preview, font_tiny, panel.width - 48)[:2])
+
+    line_y = panel.y + 106
+    for index, line in enumerate(body_lines[:4]):
+        color = (245, 235, 180) if index >= 2 else (220, 225, 220)
+        text = render_fitted_text(line, color, panel.width - 48, (font_tiny,))
+        surface.blit(text, (panel.x + 24, line_y))
+        line_y += 22
+
+    hint_panel = pygame.Rect(panel.x + 24, panel.bottom - 52, panel.width - 48, 28)
+    pygame.draw.rect(surface, (18, 18, 28), hint_panel, border_radius=5)
+    pygame.draw.rect(surface, accent_color, hint_panel, 1, border_radius=5)
+    hint = render_fitted_text("Select an action. LOG opens from this menu; BACK closes it.", (210, 215, 225), hint_panel.width - 18, (font_tiny,))
+    surface.blit(hint, (hint_panel.x + 9, hint_panel.y + 7))
+
+    for index, button in enumerate(buttons):
+        button.selected = index == selected_index
+        button.draw(surface)
 
 
 def draw_interior_message_panel(

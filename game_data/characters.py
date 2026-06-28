@@ -11,6 +11,10 @@ Field meanings:
     strength: improves physical attack damage.
     defense: reduces incoming damage.
     speed: improves dodge, escape, and some battle timing.
+    role: short class identity text shown in the Log and battle start.
+    battle_style: one sentence explaining how this class now plays.
+    basic_attack: the name used for the ATTACK command in battle messages.
+    magic_attack: the name used for the MAGIC command in battle messages.
 """
 
 # Add a new playable class here first, then add a matching select button in
@@ -22,6 +26,10 @@ CHARACTER_CLASS_STATS = {
         "strength": 15,
         "defense": 10,
         "speed": 7,
+        "role": "Frontline Guard",
+        "battle_style": "Hits hard, then braces to reduce the next enemy hit.",
+        "basic_attack": "Guard Break",
+        "magic_attack": "Rune Spark",
     },
     "Mage": {
         "max_health": 80,
@@ -29,6 +37,10 @@ CHARACTER_CLASS_STATS = {
         "strength": 8,
         "defense": 6,
         "speed": 8,
+        "role": "Arcane Burst",
+        "battle_style": "Builds MP with Firebolt and spends it on stronger spell damage.",
+        "basic_attack": "Firebolt",
+        "magic_attack": "Fireball",
     },
     "Rogue": {
         "max_health": 100,
@@ -36,5 +48,20 @@ CHARACTER_CLASS_STATS = {
         "strength": 12,
         "defense": 8,
         "speed": 12,
+        "role": "Quick Striker",
+        "battle_style": "Uses speed for dodge, escape, and possible second hits.",
+        "basic_attack": "Twin Throw",
+        "magic_attack": "Smoke Flash",
     },
 }
+
+
+def get_character_class_profile(char_type):
+    """Return class stats and beginner-facing identity text.
+
+    Beginner note:
+        This helper keeps battle and Log code from reaching directly into
+        `CHARACTER_CLASS_STATS`. If an unknown class name appears, Rogue is the
+        fallback because it already was the safe default in `Character`.
+    """
+    return CHARACTER_CLASS_STATS.get(char_type, CHARACTER_CLASS_STATS["Rogue"])
