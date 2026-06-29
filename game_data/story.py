@@ -11,10 +11,20 @@ Beginner note:
     The drawing, input handling, and reward code still live in `main.py`.
     Keeping the text here makes future story edits safer because a beginner can
     change dialogue without hunting through the whole game loop.
+
+    Plain-language terms:
+    - NPC means "non-player character": a person in the game who is not the hero.
+    - Sprite means the picture used to draw a character, enemy, item, or prop.
+    - Key means a short nickname the code uses to find a larger group of data.
 """
 
-# Opening cutscene text is still drawn by `OpeningCutscene` in main.py. These
-# lines are imported there so the stronger story setup is easy to tune later.
+# ============================================================================
+# OPENING CUTSCENE SUMMARY LINES
+# ============================================================================
+# These short lines are the compact version of the opening story. The large
+# `main.py` file reads them and shows them during the animated intro. Change the
+# words here when the story changes. Change timing or screen placement in
+# `OpeningCutscene` in `main.py`.
 OPENING_STORY_LINES = (
     "Malakor's shadow did not rise alone.",
     "A white mask began walking the northern pines.",
@@ -22,10 +32,13 @@ OPENING_STORY_LINES = (
     "The Lion Sage holds the first true quest.",
 )
 
-# These lines are appended to the town guard's first conversation. The guard is
-# still created from `game_data/npcs.py`; this simply lets the town intro point
-# toward the new story characters without mixing town-service data and main
-# quest data in the same file.
+# ============================================================================
+# TOWN GUARD STORY BRIDGE
+# ============================================================================
+# `game_data/npcs.py` owns the basic town guard greeting. These extra lines are
+# added onto that greeting when the town is created. In plain terms: this lets
+# the guard mention world-story events without mixing all guard, shop, and quest
+# text into one giant file.
 TOWN_GUARD_STORY_LINES = (
     "The dragon is not only a beast. Malakor is a test the world keeps failing.",
     "Do not chase his fire first. A white mask stalks the northern pines.",
@@ -34,9 +47,25 @@ TOWN_GUARD_STORY_LINES = (
     "And listen for smaller troubles on the side roads. A saved stranger can change a whole map.",
 )
 
-# Friendly story NPCs placed on the 3x3 world map. Positions are local to the
-# area tile. `local_position` is the NPC's foot-center point, not its top-left
-# corner, so tall sprites stand naturally on the ground.
+# ============================================================================
+# FRIENDLY OVERWORLD STORY NPC PLACEMENT
+# ============================================================================
+# Each named group below creates one friendly person on the 3x3 overworld map.
+# Programmers often call one named group of settings a "record" or "dictionary."
+#
+# Field guide for one NPC group:
+# - `name`: short name painted over the sprite.
+# - `title`: longer role label for humans reading this data file.
+# - `area`: which square of the 3-by-3 world map this person stands in.
+#   `(0, 0)` means top-left. `(2, 2)` means bottom-right.
+# - `local_position`: where the person's feet touch the ground inside that map
+#   square. This is not the top-left of the picture.
+# - `sprite_key`: a short nickname for the picture file. The real file path is
+#   listed in `systems/assets.py` under `STORY_SPRITE_PATHS`.
+# - `sprite_height`: how tall the imported sprite should be when drawn.
+# - `aura_color`: color used for the ring/marker around that NPC.
+# - `prompt`: text shown when the player is close enough to interact.
+# - `dialogue_key`: a short nickname for this person's conversation below.
 STORY_NPCS = {
     "lion_sage": {
         "name": "Lion Sage",
@@ -100,9 +129,22 @@ STORY_NPCS = {
     },
 }
 
-# One-shot area conversations. `trigger` currently supports "enter_area".
-# The same record can also be reused when the player manually talks to a map
-# NPC; in that case `repeat_lines` are shown after the first full conversation.
+# ============================================================================
+# STORY DIALOGUE RECORDS
+# ============================================================================
+# Each named group below controls a first conversation, optional repeat lines,
+# and optional one-time rewards.
+#
+# Field guide for one conversation group:
+# - `trigger`: `"enter_area"` starts automatically when the player enters the
+#   area. `"talk_npc"` only starts when the player talks to the matching person.
+# - `area`: same map square where the scene belongs.
+# - `speaker` / `title`: text shown at the top of the dialogue panel.
+# - `portrait`: short nickname for the portrait picture shown in the panel.
+# - `color`: border/accent color for the dialogue panel.
+# - `lines`: first-time dialogue shown one line at a time.
+# - `repeat_lines`: shorter dialogue used after the first conversation is done.
+# - `reward`: optional one-time reward block applied by `Game.apply_story_reward`.
 STORY_AREA_DIALOGUES = {
     "ghost_face_forest": {
         "trigger": "enter_area",
@@ -142,6 +184,14 @@ STORY_AREA_DIALOGUES = {
             "Lion Sage: Study the enemy, then protect what still has a chance to grow.",
         ),
         "reward": {
+            # Reward field guide in plain language:
+            # - `exp`: experience points, used for leveling up.
+            # - `items`: usable supplies such as health or mana potions.
+            # - `score`: adds to the game score.
+            # - `reputation`: adds town reputation.
+            # - `unlock_special`: makes the SPECIAL battle button available.
+            # - `story_items`: permanent keepsakes shown in Inventory.
+            # - `equipment`: weapons, armor, or charms from `game_data/equipment.py`.
             "exp": 260,
             "items": {"health": 1, "mana": 1},
             "score": 8,
@@ -259,8 +309,16 @@ STORY_AREA_DIALOGUES = {
 }
 
 
-# Story item records are non-consumable inventory entries. They are displayed in
-# the pause-menu Inventory screen and saved by systems/save_load.py.
+# ============================================================================
+# PERMANENT STORY / SIDE-STORY KEEPSAKES
+# ============================================================================
+# These are not potions and are not gear. They are permanent souvenirs from
+# quests or side stories. The player sees them in the Inventory trophy panel.
+#
+# Field guide:
+# - `label`: player-facing item name.
+# - `kind`: short category shown before the item in Inventory.
+# - `description`: one-line reminder of where the keepsake came from.
 STORY_REWARD_ITEMS = {
     "lion_sage_medallion": {
         "label": "Lion Sage Medallion",
@@ -330,8 +388,13 @@ STORY_REWARD_ITEMS = {
 }
 
 
-# Special map enemies can respawn, but their first defeat should matter more
-# than repeat farming. These rewards are read by Game.apply_story_enemy_reward.
+# ============================================================================
+# SPECIAL STORY ENEMY REWARDS
+# ============================================================================
+# Special map enemies can return after being defeated, but the first win should
+# feel more important than later farming. `first` means the reward for defeating
+# that enemy type for the first time. `repeat` means the smaller reward for later
+# defeats of the same enemy type.
 STORY_ENEMY_REWARDS = {
     "ghost_face": {
         "first": {

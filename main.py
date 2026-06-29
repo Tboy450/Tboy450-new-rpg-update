@@ -6480,22 +6480,30 @@ class Game:
         """Begin a story dialogue overlay.
 
         Beginner note:
-            This method does not decide *when* dialogue should happen. It only
-            takes a dialogue key from game_data/story.py, loads the text, and
-            tells draw_story_dialogue() what to show.
+            This method opens the conversation box.
+
+            It does not decide *when* a conversation should happen. Other code
+            decides that, then sends this method a `dialogue_key`. A dialogue key
+            is just a short nickname, such as "plains_ranger_waymarks", used to
+            find the matching conversation in game_data/story.py.
 
             `repeat=True` means the player has already seen the full scene and
-            is talking to the same NPC again. Repeat dialogue does not grant
-            rewards or mark quest progress.
+            is talking to the same person again. Repeat dialogue does not give
+            rewards again.
         """
+        # STEP 1: Look up the conversation data by its nickname.
         dialogue = get_story_dialogue(dialogue_key)
         if not dialogue:
             return False
 
+        # STEP 2: If the player already finished this conversation, block the
+        # first-time version. The caller must ask for repeat dialogue instead.
         already_seen = dialogue_key in self.seen_story_dialogues
         if already_seen and not repeat:
             return False
 
+        # STEP 3: Choose which words to show. First-time talks use `lines`.
+        # Later talks use `repeat_lines` when those exist.
         if repeat and dialogue.get("repeat_lines"):
             lines = list(dialogue["repeat_lines"])
         else:
@@ -6503,11 +6511,16 @@ class Game:
         if not lines:
             return False
 
+        # STEP 4: Store the active conversation on the Game object. The draw
+        # method reads these values every frame until the conversation closes.
         self.active_story_dialogue_key = dialogue_key
         self.active_story_dialogue = dialogue
         self.active_story_lines = lines
         self.active_story_line_index = 0
         self.active_story_repeat = bool(repeat)
+
+        # STEP 5: Hide other overlays. This prevents the map, inventory, pause
+        # menu, or log from covering the story box.
         self.show_world_map = False
         self.show_journal = False
         self.show_inventory = False
@@ -6518,25 +6531,33 @@ class Game:
         return True
 
     def advance_story_dialogue(self):
-        """Move to the next line or finish the current story dialogue."""
+        """Move to the next story line, or close the box after the last line."""
         if not self.active_story_dialogue:
             return False
 
+        # Move the page counter forward by one line.
         self.active_story_line_index += 1
+
+        # If there are still lines left, keep the box open.
         if self.active_story_line_index < len(self.active_story_lines):
             if self.SFX_CLICK:
                 self.SFX_CLICK.play()
             return True
 
+        # If the player advanced past the final line, close the conversation.
         self.finish_story_dialogue()
         return True
 
     def finish_story_dialogue(self):
         """Close the story dialogue and apply any first-time reward."""
+        # Save the active conversation values before clearing them. The reward
+        # code still needs to know which conversation just ended.
         dialogue_key = self.active_story_dialogue_key
         dialogue = self.active_story_dialogue
         repeat = self.active_story_repeat
 
+        # Clear the active conversation. After this, draw_story_dialogue() has
+        # nothing to draw and normal gameplay can continue.
         self.active_story_dialogue_key = None
         self.active_story_dialogue = None
         self.active_story_lines = []
@@ -6546,6 +6567,7 @@ class Game:
         if not dialogue_key or not dialogue or repeat:
             return
 
+        # Mark this conversation as completed so future talks use repeat lines.
         self.seen_story_dialogues.add(dialogue_key)
         self.apply_story_reward(dialogue_key, dialogue)
 
@@ -6553,10 +6575,15 @@ class Game:
         """Apply a one-time story reward such as the Lion Sage blessing.
 
         Beginner note:
-            Rewards are stored in the dialogue data because the text and reward
-            belong to the same story beat. This method is the only place that
-            turns those data numbers into live player stats.
+            Rewards are written beside the dialogue in game_data/story.py because
+            the reward belongs to that story moment.
+
+            This method turns those written reward values into actual player
+            changes: experience, score, supplies, keepsakes, gear, or SPECIAL.
         """
+        # If the dialogue has no reward, or this reward was already claimed,
+        # leave immediately. This is what prevents farming the same side-story
+        # keepsake over and over.
         reward = dialogue.get("reward")
         if not reward or dialogue_key in self.claimed_story_rewards or not self.player:
             return
@@ -6567,23 +6594,38 @@ class Game:
         mana_gain = int(reward.get("mana", 0))
         level_before = self.player.level
 
+        # Experience can level the player up, so it is applied before checking
+        # the special Lion Sage boss-cooldown rule below.
         if exp_gain:
             self.player.gain_exp(exp_gain)
 
+        # Direct HP/MP restoration is supported for special scenes, even though
+        # most side-story rewards use potion items instead.
         if health_gain:
             self.player.health = min(self.player.max_health, self.player.health + health_gain)
         if mana_gain:
             self.player.mana = min(self.player.max_mana, self.player.mana + mana_gain)
+
+        # Score and reputation are simple counters on the Game object.
         if reward.get("score"):
             self.score += int(reward["score"])
         if reward.get("reputation"):
             self.town_reputation += int(reward["reputation"])
+
+        # Consumable supplies go into the normal potion/item inventory.
         for item_type, amount in reward.get("items", {}).items():
             self.player.add_inventory_item(item_type, int(amount))
+
+        # Keepsakes are permanent story souvenirs shown in the Inventory trophy
+        # panel. They are separate from consumable potions and wearable gear.
         for item_key, amount in reward.get("story_items", {}).items():
             self.player.add_story_item(item_key, int(amount))
+
+        # Equipment rewards use gear keys from game_data/equipment.py.
         for equipment_key in reward.get("equipment", ()):
             self.player.add_equipment_item(equipment_key, auto_equip=True)
+
+        # This is how Lion Sage enables the SPECIAL battle button.
         if reward.get("unlock_special"):
             self.player.special_unlocked = True
         if reward.get("calm_boss_pressure") and self.player.level > level_before:
@@ -6639,15 +6681,23 @@ class Game:
         if not current_area or self.active_story_dialogue:
             return False
 
+        # This only handles automatic area-entry scenes. Side-story NPCs use
+        # `trigger: "talk_npc"`, so they wait until the player walks up and talks.
         for dialogue_key, dialogue in get_story_dialogues_for_area(current_area.area_x, current_area.area_y):
             if dialogue.get("trigger") != "enter_area":
                 continue
+
+            # A conversation key in `seen_story_dialogues` means the player has
+            # already finished that first-time scene.
             if dialogue_key not in self.seen_story_dialogues:
                 return self.start_story_dialogue(dialogue_key)
         return False
 
     def get_story_npc_world_position(self, current_area, npc):
         """Convert an NPC's local area position into world coordinates."""
+        # Story data stores positions inside one map tile because that is easier
+        # for humans to edit. The game world is larger than one screen, so we add
+        # the tile's top-left world position to get the real world position.
         area_world_x, area_world_y = current_area.get_world_position()
         local_x, local_y = npc["local_position"]
         return area_world_x + local_x, area_world_y + local_y
@@ -6657,12 +6707,16 @@ class Game:
         if not current_area or not self.player:
             return None
 
+        # Use the center of the player sprite, not its top-left corner, so the
+        # talk radius feels natural around the visible character.
         player_center = (self.player.x + PLAYER_SIZE // 2, self.player.y + PLAYER_SIZE // 2)
+
+        # Only check NPCs that belong to the same map tile the player is in.
         for npc_key, npc in get_story_npcs_for_area(current_area.area_x, current_area.area_y):
             npc_x, npc_y = self.get_story_npc_world_position(current_area, npc)
             distance = math.hypot(player_center[0] - npc_x, player_center[1] - npc_y)
-            # BEGINNER NOTE: A slightly larger talk radius makes the Lion Sage
-            # easier to interact with on mobile and on the scaled Android APK.
+            # A slightly larger talk radius makes friendly NPCs easier to use on
+            # touch screens and on the scaled Android APK.
             if distance <= 160:
                 return npc_key, npc
         return None
@@ -6853,21 +6907,35 @@ class Game:
         if not current_area:
             return
 
+        # First find the nearby NPC, if any. Drawing uses this to highlight that
+        # person's name and show the interaction prompt.
         nearby = self.get_nearby_story_npc(current_area)
         nearby_key = nearby[0] if nearby else None
 
         for npc_key, npc in get_story_npcs_for_area(current_area.area_x, current_area.area_y):
+            # STEP 1: Convert the NPC's map-tile position into camera/screen
+            # coordinates. World position is where the person is in the full map.
+            # Screen position is where the camera should draw them this frame.
             world_x, world_y = self.get_story_npc_world_position(current_area, npc)
             screen_x, screen_y = self.world_map.world_to_screen(world_x, world_y)
+
+            # STEP 2: Load the imported PNG for this NPC. If the file is missing,
+            # the fallback circles below still draw a simple placeholder.
             sprite_path = get_story_sprite_path(npc.get("sprite_key"))
             sprite = load_sprite_by_height(sprite_path, npc.get("sprite_height", 120)) if sprite_path else None
             dialogue_key = npc.get("dialogue_key", npc_key)
 
+            # STEP 3: Draw the shadow and aura. The aura makes friendly story NPCs
+            # visually different from enemies, so players know they can talk.
             aura_color = npc.get("aura_color", TEXT_COLOR)
             pulse = 6 + int(math.sin(self.game_time * 0.08) * 3)
             pygame.draw.ellipse(screen, (0, 0, 0), (screen_x - 42, screen_y - 14, 84, 22))
             pygame.draw.circle(screen, aura_color, (int(screen_x), int(screen_y - 70)), 42 + pulse, 2)
             pygame.draw.circle(screen, (255, 255, 255), (int(screen_x), int(screen_y - 70)), 30 + pulse, 1)
+
+            # STEP 4: Draw a floating marker only before the first conversation is
+            # complete. Once the dialogue key is in `seen_story_dialogues`, the
+            # player can still talk, but the "new" marker disappears.
             if dialogue_key not in self.seen_story_dialogues:
                 pygame.draw.line(screen, aura_color, (screen_x, screen_y - 136), (screen_x, screen_y - 178 - pulse), 3)
                 pygame.draw.polygon(
@@ -6880,6 +6948,8 @@ class Game:
                     ],
                 )
 
+            # STEP 5: Draw the actual imported character art, or a basic fallback
+            # if the PNG failed to load.
             if sprite:
                 screen.blit(sprite, (int(screen_x - sprite.get_width() / 2), int(screen_y - sprite.get_height())))
             else:
@@ -6887,10 +6957,13 @@ class Game:
                 pygame.draw.circle(screen, aura_color, (int(screen_x), int(screen_y - 65)), 36)
                 pygame.draw.circle(screen, (255, 215, 100), (int(screen_x), int(screen_y - 92)), 22)
 
+            # STEP 6: Draw the NPC name. The nearby NPC gets a brighter name.
             name_color = (255, 245, 160) if npc_key == nearby_key else aura_color
             label = font_tiny.render(npc["name"], True, name_color)
             screen.blit(label, (screen_x - label.get_width() // 2, screen_y + 8))
 
+            # STEP 7: If the player is close enough, draw the prompt telling them
+            # which button starts the conversation.
             if npc_key == nearby_key:
                 prompt = font_tiny.render(npc["prompt"], True, (255, 245, 160))
                 panel_w = prompt.get_width() + 24
