@@ -24,6 +24,10 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 GHOST_FACE_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "enemies" / "ghost_face.png")
 LION_SAGE_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "npcs" / "lion_sage.png")
 TOWN_GUARD_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "npcs" / "town_guard.png")
+FOREST_APOTHECARY_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "npcs" / "forest_apothecary.png")
+PLAINS_RANGER_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "npcs" / "plains_ranger.png")
+STAR_CARTOGRAPHER_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "npcs" / "star_cartographer.png")
+LANTERN_GUARD_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "npcs" / "lantern_guard.png")
 TITLE_DRAGON_SPRITE_PATH = str(BASE_DIR / "assets" / "processed" / "ui" / "title_dragon.png")
 FLAME_TORNADO_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "flame_tornado")
 FIRE_BLAST_FRAME_DIR = str(BASE_DIR / "assets" / "processed" / "effects" / "fire_blast")
@@ -53,6 +57,10 @@ CHARACTER_SPRITE_PATHS = {
 STORY_SPRITE_PATHS = {
     "ghost_face": GHOST_FACE_SPRITE_PATH,
     "lion_sage": LION_SAGE_SPRITE_PATH,
+    "forest_apothecary": FOREST_APOTHECARY_SPRITE_PATH,
+    "plains_ranger": PLAINS_RANGER_SPRITE_PATH,
+    "star_cartographer": STAR_CARTOGRAPHER_SPRITE_PATH,
+    "lantern_guard": LANTERN_GUARD_SPRITE_PATH,
 }
 
 # BEGINNER NOTE: These caches prevent Pygame from reloading and resizing PNGs

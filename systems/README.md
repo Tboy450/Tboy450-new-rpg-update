@@ -110,7 +110,7 @@ This module keeps imported-art plumbing out of `main.py`.
 - `load_animation_frames` loads numbered PNG frame folders such as `frame_00.png`.
 - `draw_character_sprite` draws Warrior/Mage/Rogue imported sprites with a shared foot anchor.
 - `draw_enemy_sprite` draws enemies that have an imported sprite path.
-- `get_story_sprite_path` maps story keys such as `lion_sage` and `ghost_face` to the active PNG files.
+- `get_story_sprite_path` maps story keys such as `lion_sage`, `forest_apothecary`, `plains_ranger`, `star_cartographer`, `lantern_guard`, and `ghost_face` to active PNG files.
 - `get_equipment_icon_path` maps equipment icon filenames to the processed equipment icon folder.
 - `get_town_service_npc_sprite_path` maps town service keys such as `inn` and
   `blacksmith` to active imported service NPC sprites.
@@ -119,6 +119,9 @@ Active imported art paths:
 
 - `GHOST_FACE_SPRITE_PATH`: processed Ghost Face enemy sprite.
 - `LION_SAGE_SPRITE_PATH`: processed Lion Sage story NPC and portrait sprite.
+- `FOREST_APOTHECARY_SPRITE_PATH`, `PLAINS_RANGER_SPRITE_PATH`,
+  `STAR_CARTOGRAPHER_SPRITE_PATH`, and `LANTERN_GUARD_SPRITE_PATH`: processed
+  side-story NPC sprites and portraits.
 - `TOWN_GUARD_SPRITE_PATH`: processed imported town guard overlay for the intro cutscene.
 - `SCENERY_ASSET_DIR`: processed active scenery sprite folder used by town
   buildings and interior props.

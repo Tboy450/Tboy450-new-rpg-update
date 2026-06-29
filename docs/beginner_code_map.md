@@ -60,7 +60,7 @@ For a beginner-friendly explanation of the most recent larger commits, read
 - `npcs.py`: town guard data, NPC service dialogue, building map labels, service roles, purpose text, first-reward hints, and repeat-use hints.
 - `progression.py`: boss progression, quest status text, and final boss level.
 - `quests.py`: town errands and reward data.
-- `story.py`: opening story lines, Lion Sage placement and reward, Ghost Face area dialogue, and other first-quest story data.
+- `story.py`: opening story lines, Lion Sage placement and reward, Ghost Face area dialogue, side-story NPC placement, and side-story keepsake rewards.
 - `town.py`: outdoor town buildings, walls, decorations, smoke sources, and collision tuning fields.
 - `town_population.py`: outdoor town residents, their rotating dialogue, one-time resident errands, and resident rewards.
 - `world.py`: 3x3 world layout, area descriptions, colors, particles, and environmental effects.
@@ -117,6 +117,11 @@ Use this when you know the feature name but not the file.
   keepsakes separately from potion inventory. `Game.apply_story_enemy_reward`
   gives Ghost Face a stronger first-clear reward and smaller repeat rewards
   while still allowing the enemy to respawn.
+- Side-story NPCs:
+  `game_data/story.py` stores Wren, Elian, Ivo, and Kael in `STORY_NPCS`.
+  Their sprite keys are active in `systems/assets.py`, their conversations live
+  in `STORY_AREA_DIALOGUES`, and their keepsakes appear in Inventory under
+  `STORY_REWARD_ITEMS`.
 - General battle rewards:
   `systems/battle_rewards.py` scales normal monster EXP/score from enemy stats
   and centralizes boss reward fallback math. `Game.run` applies those rewards

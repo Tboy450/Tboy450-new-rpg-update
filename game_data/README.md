@@ -20,7 +20,7 @@ an enemy list changes what can spawn in an area.
 - `npcs.py`: town guard template/dialogue, town service NPC metadata, and rotating interior NPC dialogue.
 - `progression.py`: boss names, boss hints, final boss level, and player-facing quest status.
 - `quests.py`: town errand names, summaries, rewards, and compact reward-preview text.
-- `story.py`: opening story text, Lion Sage map placement/dialogue/reward, and Ghost Face area intro dialogue.
+- `story.py`: opening story text, Lion Sage map placement/dialogue/reward, Ghost Face area intro dialogue, and overworld side-story NPC conversations.
 - `town.py`: town overworld buildings, boundaries, decorations, smoke sources, and building collision tuning.
 - `town_population.py`: outdoor town residents, their rotating dialogue, one-time resident errands, and resident rewards.
 - `world.py`: world grid layout, area descriptions, area visuals, area particles, and environmental area effects.
@@ -69,7 +69,7 @@ Some strings must match across modules:
 - Interior `npc_sprite_rect` entries in `interiors.py` depend on service keys
   in `systems/assets.py` `TOWN_SERVICE_NPC_SPRITE_PATHS`.
 - Area names like `forest`, `town`, and `volcano` should match entries in `WORLD_LAYOUT`, `AREA_VISUALS`, and `AREA_ENEMY_TYPES`.
-- Story sprite keys like `lion_sage` and `ghost_face` should match `STORY_SPRITE_PATHS` in `systems/assets.py`.
+- Story sprite keys like `lion_sage`, `forest_apothecary`, and `ghost_face` should match `STORY_SPRITE_PATHS` in `systems/assets.py`.
 
 ## Placement Rules
 
@@ -102,6 +102,7 @@ Some strings must match across modules:
 - To tune gear, edit the item record in `EQUIPMENT_ITEMS` in `equipment.py`. The most common fields are `tier`, `rarity`, `icon`, `bonuses`, and `description`.
 - To tune blacksmith progression, edit `BLACKSMITH_GEAR_REWARDS` in `equipment.py`.
 - To move the Lion Sage, edit `STORY_NPCS["lion_sage"]["local_position"]` in `story.py`.
+- To move a side-story NPC, edit its `local_position` and `area` in `STORY_NPCS` in `story.py`.
 - To change when SPECIAL unlocks, edit the `reward` block in `STORY_AREA_DIALOGUES["lion_sage_swamp"]`.
 
 ## Story Data Map
@@ -112,8 +113,8 @@ Some strings must match across modules:
   The longer readable parchment pages and their timing live in
   `OpeningCutscene` in `main.py`, because that layout is tied to animation.
 - `TOWN_GUARD_STORY_LINES`: extra town-guard warning lines that point the player toward Lion Sage and Ghost Face.
-- `STORY_NPCS`: friendly story NPC placement records for the world map.
-- `STORY_AREA_DIALOGUES`: one-shot or repeat story scenes, including Lion Sage and Ghost Face.
+- `STORY_NPCS`: friendly story NPC placement records for the world map, including main-story and side-story characters.
+- `STORY_AREA_DIALOGUES`: one-shot or repeat story scenes, including Lion Sage, Ghost Face, and side-story conversations.
 - `STORY_REWARD_ITEMS`: permanent trophies and story keepsakes shown in the Inventory screen.
 - `STORY_ENEMY_REWARDS`: first-clear and repeat-clear rewards for respawning story enemies.
 
@@ -122,6 +123,13 @@ Current first-story path:
 - The guard warns about the dragon and sends the player toward Lion Sage.
 - Lion Sage gives the first real quest direction, a large EXP training reward, a trophy, the first SPECIAL unlock, and the Lion Sage Charm accessory.
 - Ghost Face uses one-time area-enter dialogue in the forest, can respawn, and gives a larger first-clear reward than repeat clears. The first clear also equips the Mask-Shard Edge weapon.
+
+Current side-story NPCs:
+
+- Wren, the Forest Apothecary, gives the Mooncap Vial keepsake in the northern forest.
+- Elian, the Road Ranger, gives the Ranger Waymark keepsake in the center plains.
+- Ivo, the Star Cartographer, gives the Star Chart Corner keepsake in the north-west mountains.
+- Kael, the Lantern Guard, gives the Echo Lantern Glass keepsake in the south-east cave.
 
 ## Town Population Map
 

@@ -56,6 +56,10 @@ Active NPC assets:
 - `assets/processed/npcs/town_guard.png`: imported town guard overlay used during the town intro cutscene.
 - `assets/processed/npcs/blacksmith.png`: imported Blacksmith interior sprite used in Ironroot Forge.
 - `assets/processed/npcs/innkeeper.png`: imported Innkeeper interior sprite used in Warm Hearth Inn.
+- `assets/processed/npcs/forest_apothecary.png`: Wren side-story NPC and portrait used in the northern forest.
+- `assets/processed/npcs/plains_ranger.png`: Elian side-story NPC and portrait used in the center plains.
+- `assets/processed/npcs/star_cartographer.png`: Ivo side-story NPC and portrait used in the north-west mountains.
+- `assets/processed/npcs/lantern_guard.png`: Kael side-story NPC and portrait used in the south-east cave.
 
 Active scenery assets:
 
@@ -78,10 +82,10 @@ Active scenery assets:
 
 Feature map:
 
-- Lion Sage story logic lives in `game_data/story.py`, but his source and processed art live under `assets/source/npcs/` and `assets/processed/npcs/`.
-- The start-menu dragon is currently procedural code in `main.py`. The previous generated title dragon was archived under `archive/assets/ui/` because it did not fit the active fire animation.
+- Story NPC logic lives in `game_data/story.py`, while active source and processed art live under `assets/source/npcs/` and `assets/processed/npcs/`.
+- The start-menu/opening dragon uses `assets/processed/ui/title_dragon.png`; `main.py` tints that one imported sprite for boss progression colors and extends its fire animation.
 - The guard is a story-facing NPC visually, so his files live under `assets/source/npcs/` and `assets/processed/npcs/`, even though he appears in the town intro cutscene.
-- The Blacksmith and Innkeeper are town-service NPCs, so their active gameplay copies live under `assets/processed/npcs/`, while their future-shelf copies remain under `assets/processed/future_assets/npcs/`.
+- The Blacksmith and Innkeeper are town-service NPCs, so their active gameplay copies live under `assets/processed/npcs/`.
 - The first SPECIAL unlock uses both story data and effect assets:
   `game_data/story.py` grants it, while `assets/processed/effects/flame_tornado/` and `assets/processed/effects/fire_blast/` provide the related imported battle visuals.
 

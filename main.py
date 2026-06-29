@@ -307,8 +307,8 @@ FPS = 60
 #   this number to decide whether a downloaded APK is allowed to update the app.
 #   If Android says "App not installed" after an update, check that this number
 #   and `android.numeric_version` in buildozer.spec were both increased.
-APP_VERSION = "0.1.31"
-APP_NUMERIC_VERSION = 32
+APP_VERSION = "0.1.32"
+APP_NUMERIC_VERSION = 33
 
 # BEGINNER NOTE: Special attack tuning lives here first.
 # Fire Tornado is the default special. Mage renames it to Fire Blast and adds a
@@ -6849,7 +6849,7 @@ class Game:
         return True
 
     def draw_story_npcs(self, screen, current_area):
-        """Draw friendly story NPCs such as Lion Sage on the overworld map."""
+        """Draw friendly main-story and side-story NPCs on the overworld map."""
         if not current_area:
             return
 
@@ -6861,13 +6861,14 @@ class Game:
             screen_x, screen_y = self.world_map.world_to_screen(world_x, world_y)
             sprite_path = get_story_sprite_path(npc.get("sprite_key"))
             sprite = load_sprite_by_height(sprite_path, npc.get("sprite_height", 120)) if sprite_path else None
+            dialogue_key = npc.get("dialogue_key", npc_key)
 
             aura_color = npc.get("aura_color", TEXT_COLOR)
             pulse = 6 + int(math.sin(self.game_time * 0.08) * 3)
             pygame.draw.ellipse(screen, (0, 0, 0), (screen_x - 42, screen_y - 14, 84, 22))
             pygame.draw.circle(screen, aura_color, (int(screen_x), int(screen_y - 70)), 42 + pulse, 2)
             pygame.draw.circle(screen, (255, 255, 255), (int(screen_x), int(screen_y - 70)), 30 + pulse, 1)
-            if npc_key not in self.seen_story_dialogues:
+            if dialogue_key not in self.seen_story_dialogues:
                 pygame.draw.line(screen, aura_color, (screen_x, screen_y - 136), (screen_x, screen_y - 178 - pulse), 3)
                 pygame.draw.polygon(
                     screen,

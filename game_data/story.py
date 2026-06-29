@@ -31,6 +31,7 @@ TOWN_GUARD_STORY_LINES = (
     "Do not chase his fire first. A white mask stalks the northern pines.",
     "Seek the Lion Sage in the western marsh. He knows how fear and healing both begin.",
     "Earn his blessing, then choose which threat you are ready to face.",
+    "And listen for smaller troubles on the side roads. A saved stranger can change a whole map.",
 )
 
 # Friendly story NPCs placed on the 3x3 world map. Positions are local to the
@@ -49,6 +50,53 @@ STORY_NPCS = {
         "aura_color": (80, 220, 170),
         "prompt": "ENTER: seek Lion Sage guidance",
         "dialogue_key": "lion_sage_swamp",
+    },
+    "forest_apothecary": {
+        "name": "Wren",
+        "title": "Forest Apothecary",
+        "area": (1, 0),  # northern forest, same tile where Ghost Face appears
+        # BEGINNER NOTE: Wren stays near the lower-left trail, away from the
+        # Ghost Face enemy in the center, so players can choose conversation or
+        # combat instead of being forced into both at once.
+        "local_position": (245, 525),
+        "sprite_key": "forest_apothecary",
+        "sprite_height": 140,
+        "aura_color": (130, 230, 150),
+        "prompt": "ENTER: talk to Wren",
+        "dialogue_key": "forest_apothecary_mooncap",
+    },
+    "plains_ranger": {
+        "name": "Elian",
+        "title": "Road Ranger",
+        "area": (1, 1),  # center plains tile
+        "local_position": (350, 360),
+        "sprite_key": "plains_ranger",
+        "sprite_height": 148,
+        "aura_color": (235, 210, 110),
+        "prompt": "ENTER: talk to Elian",
+        "dialogue_key": "plains_ranger_waymarks",
+    },
+    "star_cartographer": {
+        "name": "Ivo",
+        "title": "Star Cartographer",
+        "area": (0, 0),  # north-west mountain tile
+        "local_position": (755, 410),
+        "sprite_key": "star_cartographer",
+        "sprite_height": 146,
+        "aura_color": (160, 185, 255),
+        "prompt": "ENTER: talk to Ivo",
+        "dialogue_key": "star_cartographer_chart",
+    },
+    "lantern_guard": {
+        "name": "Kael",
+        "title": "Lantern Guard",
+        "area": (2, 2),  # south-east cave tile
+        "local_position": (265, 470),
+        "sprite_key": "lantern_guard",
+        "sprite_height": 150,
+        "aura_color": (255, 190, 95),
+        "prompt": "ENTER: talk to Kael",
+        "dialogue_key": "lantern_guard_echo",
     },
 }
 
@@ -108,6 +156,106 @@ STORY_AREA_DIALOGUES = {
             "message": "Lion Sage blessing: {exp} EXP, SPECIAL awakened, medallion received.",
         },
     },
+    "forest_apothecary_mooncap": {
+        "trigger": "talk_npc",
+        "area": (1, 0),
+        "speaker": "Wren",
+        "title": "Mooncap Antidote",
+        "portrait": "forest_apothecary",
+        "color": (130, 230, 150),
+        "lines": (
+            "Wren: Step softly. Mooncaps bruise if you look proud while picking them.",
+            "Wren: I came here for medicine, not hero songs. Fear leaves toxins in the hands.",
+            "Wren: If the white mask corners you, breathe out first. Panic makes every wound deeper.",
+            "Wren: Take this vial. It is not a miracle, but it reminds the body how to keep fighting.",
+        ),
+        "repeat_lines": (
+            "Wren: Mooncaps grow back when the forest feels trusted.",
+            "Wren: If your hands shake after battle, warm them before gripping steel again.",
+        ),
+        "reward": {
+            "exp": 55,
+            "score": 4,
+            "items": {"health": 1},
+            "story_items": {"mooncap_vial": 1},
+            "message": "Wren shares a Mooncap Vial and {exp} EXP.",
+        },
+    },
+    "plains_ranger_waymarks": {
+        "trigger": "talk_npc",
+        "area": (1, 1),
+        "speaker": "Elian",
+        "title": "Waymarks In Tall Grass",
+        "portrait": "plains_ranger",
+        "color": (235, 210, 110),
+        "lines": (
+            "Elian: The plains look empty until you are lost in them.",
+            "Elian: I mark safe turns with three stones, risky turns with two, and foolish turns with none.",
+            "Elian: Monsters use straight roads. People survive by knowing when to bend.",
+            "Elian: Here. Carry one of my waymarks. Drop it when the grass starts repeating itself.",
+        ),
+        "repeat_lines": (
+            "Elian: If the horizon starts lying, stop walking and count your shadows.",
+            "Elian: Side roads are not distractions. They are how towns keep breathing.",
+        ),
+        "reward": {
+            "exp": 60,
+            "score": 5,
+            "items": {"health": 1},
+            "story_items": {"ranger_waymark": 1},
+            "message": "Elian gives you a ranger waymark and {exp} EXP.",
+        },
+    },
+    "star_cartographer_chart": {
+        "trigger": "talk_npc",
+        "area": (0, 0),
+        "speaker": "Ivo",
+        "title": "Stars Under Stone",
+        "portrait": "star_cartographer",
+        "color": (160, 185, 255),
+        "lines": (
+            "Ivo: Everyone looks up for stars. Mountains teach you to find them in cracks of ice.",
+            "Ivo: This chart is not for the dragon. It is for anyone walking home after dark.",
+            "Ivo: Mark one star you trust. When fear moves the horizon, that mark stays honest.",
+            "Ivo: Keep this torn corner. It has saved better navigators than me from worse weather.",
+        ),
+        "repeat_lines": (
+            "Ivo: Maps do not remove danger. They make danger less dramatic.",
+            "Ivo: If you reach a peak, look back. The path behind you is also a teacher.",
+        ),
+        "reward": {
+            "exp": 70,
+            "score": 6,
+            "items": {"mana": 1},
+            "story_items": {"star_chart_corner": 1},
+            "message": "Ivo marks your map with a Star Chart Corner and {exp} EXP.",
+        },
+    },
+    "lantern_guard_echo": {
+        "trigger": "talk_npc",
+        "area": (2, 2),
+        "speaker": "Kael",
+        "title": "The Echo Lantern",
+        "portrait": "lantern_guard",
+        "color": (255, 190, 95),
+        "lines": (
+            "Kael: Cave echoes are thieves. They steal your voice and sell it back as doubt.",
+            "Kael: I guard lanterns for miners, children, and anyone too stubborn to admit the dark is winning.",
+            "Kael: If your light goes out, do not run. Running teaches the cave your rhythm.",
+            "Kael: Take this lantern glass. It catches one good spark and remembers it longer than fear does.",
+        ),
+        "repeat_lines": (
+            "Kael: Walk slow in caves. The ground is allowed to be older than your plans.",
+            "Kael: A lantern is a promise you carry with your hand.",
+        ),
+        "reward": {
+            "exp": 80,
+            "score": 7,
+            "items": {"mana": 1},
+            "story_items": {"echo_lantern_glass": 1},
+            "message": "Kael gives you Echo Lantern Glass and {exp} EXP.",
+        },
+    },
 }
 
 
@@ -118,6 +266,26 @@ STORY_REWARD_ITEMS = {
         "label": "Lion Sage Medallion",
         "kind": "trophy",
         "description": "A healer's sigil proving the Guardian Sage awakened your special technique.",
+    },
+    "mooncap_vial": {
+        "label": "Mooncap Vial",
+        "kind": "side",
+        "description": "Wren's forest medicine, brewed for steady hands after fear or poison.",
+    },
+    "ranger_waymark": {
+        "label": "Ranger Waymark",
+        "kind": "side",
+        "description": "Elian's trail stone, used to mark a safe return through tall grass.",
+    },
+    "star_chart_corner": {
+        "label": "Star Chart Corner",
+        "kind": "side",
+        "description": "A torn mountain chart from Ivo, marked with one trustworthy star.",
+    },
+    "echo_lantern_glass": {
+        "label": "Echo Lantern Glass",
+        "kind": "side",
+        "description": "A warm cave-lantern shard from Kael that keeps one good spark.",
     },
     "ghost_face_mask_shard": {
         "label": "Ghost Face Mask Shard",
