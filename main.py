@@ -98,6 +98,7 @@ from game_data import (
     get_story_dialogue,
     get_story_dialogues_for_area,
     get_story_enemy_reward,
+    get_story_log_overview,
     get_story_npcs_for_area,
     get_story_reward_item,
     get_town_errand,
@@ -7376,6 +7377,51 @@ class Game:
         screen.blit(rendered, (x, y))
         return y + rendered.get_height() + 7
 
+    def draw_world_map_story_markers(self, screen, map_x, map_y, cell_size):
+        """Draw small story markers on the pause-menu world map.
+
+        Beginner note:
+            The full world map is only 3 by 3 squares. These markers make the
+            Log's directions easier to act on:
+
+            - `S` means an unfinished friendly story NPC is in that map square.
+            - `!` means a first-clear story enemy target is in that map square.
+        """
+        markers_by_area = {}
+
+        # Friendly story NPCs: Lion Sage plus the optional side-story helpers.
+        for npc in STORY_NPCS.values():
+            dialogue_key = npc.get("dialogue_key")
+            if dialogue_key in self.seen_story_dialogues:
+                continue
+            area_key = tuple(npc.get("area", ()))
+            if len(area_key) == 2:
+                markers_by_area.setdefault(area_key, []).append(("S", npc.get("aura_color", (190, 170, 255))))
+
+        # Ghost Face is an enemy, not a friendly NPC, so its progress is tracked
+        # by defeat count instead of dialogue completion.
+        if int(self.story_enemy_defeats.get("ghost_face", 0)) <= 0:
+            ghost_dialogue = get_story_dialogue("ghost_face_forest") or {}
+            ghost_area = tuple(ghost_dialogue.get("area", ()))
+            if len(ghost_area) == 2:
+                markers_by_area.setdefault(ghost_area, []).append(("!", ghost_dialogue.get("color", (255, 105, 180))))
+
+        for (area_x, area_y), markers in markers_by_area.items():
+            cell_x = map_x + area_x * cell_size
+            cell_y = map_y + area_y * cell_size
+            for index, (label, color) in enumerate(markers[:3]):
+                marker_center = (cell_x + 18 + index * 22, cell_y + 18)
+                pygame.draw.circle(screen, UI_BG, marker_center, 12)
+                pygame.draw.circle(screen, color, marker_center, 11, 2)
+                label_surface = font_tiny.render(label, True, color)
+                screen.blit(
+                    label_surface,
+                    (
+                        marker_center[0] - label_surface.get_width() // 2,
+                        marker_center[1] - label_surface.get_height() // 2,
+                    ),
+                )
+
     def draw_journal(self, screen):
         if not self.player:
             return
@@ -7427,17 +7473,64 @@ class Game:
 
         y += 160
         current_area = self.world_map.get_current_area()
-        area_panel = pygame.Rect(left_x, y, 342, 150)
+        area_panel = pygame.Rect(left_x, y, 342, 90)
         pygame.draw.rect(screen, (20, 20, 30), area_panel, border_radius=8)
         pygame.draw.rect(screen, (150, 230, 150), area_panel, 2, border_radius=8)
         if current_area:
             visited_count = sum(1 for area in self.world_map.areas.values() if area.visited)
-            line_y = self.draw_journal_line(screen, f"AREA: {current_area.area_type.upper()}", left_x + 14, y + 12, (150, 230, 150), font_small)
-            line_y = self.draw_journal_line(screen, AREA_DESCRIPTIONS.get(current_area.area_type, "Unknown region"), left_x + 14, line_y)
+            area_line_width = area_panel.width - 28
+            line_y = self.draw_journal_line(screen, f"AREA: {current_area.area_type.upper()}", left_x + 14, y + 12, (150, 230, 150), font_small, area_line_width)
+            line_y = self.draw_journal_line(screen, AREA_DESCRIPTIONS.get(current_area.area_type, "Unknown region"), left_x + 14, line_y, max_width=area_line_width)
             mechanic = AREA_MECHANICS.get(current_area.area_type)
             if mechanic:
-                line_y = self.draw_journal_line(screen, f"Effect: {mechanic['label']}", left_x + 14, line_y, mechanic["color"])
-            self.draw_journal_line(screen, f"Visited areas: {visited_count}/{WORLD_SIZE * WORLD_SIZE}", left_x + 14, line_y)
+                self.draw_journal_line(screen, f"Effect: {mechanic['label']}", left_x + 14, line_y, mechanic["color"], max_width=area_line_width)
+            else:
+                self.draw_journal_line(screen, f"Visited areas: {visited_count}/{WORLD_SIZE * WORLD_SIZE}", left_x + 14, line_y, max_width=area_line_width)
+
+        # BEGINNER NOTE: Story progress is separate from town errands. The
+        # helper in `game_data/story.py` turns saved progress flags into plain
+        # words like NEXT, OPEN, and DONE before this draw code paints them.
+        story_panel = pygame.Rect(left_x, y + 104, 342, 116)
+        pygame.draw.rect(screen, (20, 20, 30), story_panel, border_radius=8)
+        pygame.draw.rect(screen, (175, 150, 255), story_panel, 2, border_radius=8)
+        story_line_width = story_panel.width - 28
+        story_overview = get_story_log_overview(
+            self.seen_story_dialogues,
+            self.story_enemy_defeats,
+            limit=2,
+        )
+        line_y = self.draw_journal_line(
+            screen,
+            f"STORY THREADS {story_overview['completed']}/{story_overview['total']}",
+            left_x + 14,
+            story_panel.y + 10,
+            (190, 170, 255),
+            font_small,
+            story_line_width,
+        )
+        for index, entry in enumerate(story_overview["entries"]):
+            status_color = {
+                "NEXT": (255, 220, 120),
+                "OPEN": (210, 210, 230),
+                "DONE": (130, 235, 150),
+            }.get(entry["status"], (210, 210, 230))
+            line_y = self.draw_journal_line(
+                screen,
+                f"{entry['status']}: {entry['title']}",
+                left_x + 18,
+                line_y,
+                status_color,
+                max_width=story_line_width - 4,
+            )
+            if index == 0 and line_y < story_panel.bottom - 18:
+                line_y = self.draw_journal_line(
+                    screen,
+                    entry["hint"],
+                    left_x + 26,
+                    line_y,
+                    (205, 205, 215),
+                    max_width=story_line_width - 12,
+                )
 
         service_panel = pygame.Rect(right_x, y, 336, 206)
         pygame.draw.rect(screen, (20, 20, 30), service_panel, border_radius=8)
@@ -8784,6 +8877,8 @@ class Game:
                             text_x = cell_x + (cell_size - name_text.get_width()) // 2
                             text_y = cell_y + (cell_size - name_text.get_height()) // 2
                             screen.blit(name_text, (text_x, text_y))
+
+                self.draw_world_map_story_markers(screen, map_x, map_y, cell_size)
                 
                 # Draw player position
                 player_world_x, player_world_y = self.player.x, self.player.y
@@ -8798,7 +8893,7 @@ class Game:
                 screen.blit(title, (SCREEN_WIDTH//2 - title.get_width()//2, map_y - 40))
                 
                 # Draw instructions
-                instructions = font_tiny.render("Press M to close", True, (180, 180, 200))
+                instructions = font_tiny.render("Press M to close    S story NPC    ! first-clear enemy", True, (180, 180, 200))
                 screen.blit(instructions, (SCREEN_WIDTH//2 - instructions.get_width()//2, map_y + map_size + 10))
             
             # Draw the top-left player HUD. The panel is intentionally wider

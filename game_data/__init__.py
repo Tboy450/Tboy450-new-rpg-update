@@ -84,6 +84,7 @@ from .story import (
     get_story_dialogue,
     get_story_dialogues_for_area,
     get_story_enemy_reward,
+    get_story_log_overview,
     get_story_npcs_for_area,
     get_story_reward_item,
 )
@@ -166,6 +167,7 @@ __all__ = [
     "get_story_dialogue",
     "get_story_dialogues_for_area",
     "get_story_enemy_reward",
+    "get_story_log_overview",
     "get_story_npcs_for_area",
     "get_story_reward_item",
     "get_character_class_profile",

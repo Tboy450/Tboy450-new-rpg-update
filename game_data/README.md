@@ -20,7 +20,7 @@ an enemy list changes what can spawn in an area.
 - `npcs.py`: town guard template/dialogue, town service NPC metadata, and rotating interior NPC dialogue.
 - `progression.py`: boss names, boss hints, final boss level, and player-facing quest status.
 - `quests.py`: town errand names, summaries, rewards, and compact reward-preview text.
-- `story.py`: opening story text, Lion Sage map placement/dialogue/reward, Ghost Face area intro dialogue, and overworld side-story NPC conversations.
+- `story.py`: opening story text, Lion Sage map placement/dialogue/reward, Ghost Face area intro dialogue, overworld side-story NPC conversations, and the pause-menu story checklist helper.
 - `town.py`: town overworld buildings, boundaries, decorations, smoke sources, and building collision tuning.
 - `town_population.py`: outdoor town residents, their rotating dialogue, one-time resident errands, and resident rewards.
 - `world.py`: world grid layout, area descriptions, area visuals, area particles, and environmental area effects.
@@ -117,6 +117,9 @@ Some strings must match across modules:
 - `STORY_AREA_DIALOGUES`: one-shot or repeat story scenes, including Lion Sage, Ghost Face, and side-story conversations.
 - `STORY_REWARD_ITEMS`: permanent trophies and story keepsakes shown in the Inventory screen.
 - `STORY_ENEMY_REWARDS`: first-clear and repeat-clear rewards for respawning story enemies.
+- `STORY_LOG_STEPS` and `get_story_log_overview(...)`: the readable checklist
+  shown in the pause-menu Log. These translate save flags into labels like
+  `NEXT`, `OPEN`, and `DONE`.
 
 Current first-story path:
 

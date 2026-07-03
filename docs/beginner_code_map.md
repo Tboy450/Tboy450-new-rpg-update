@@ -90,6 +90,10 @@ Use this when you know the feature name but not the file.
   `assets/processed/npcs/lion_sage.png` is the active sprite and portrait.
   `systems/assets.py` labels the path.
   `Game.draw_story_npcs` and `Game.draw_story_dialogue` in `main.py` draw it.
+- Story Log and world-map markers:
+  `game_data/story.py` owns the readable story checklist data, while
+  `Game.draw_journal` and `Game.draw_world_map_story_markers` in `main.py`
+  display the `NEXT`, `OPEN`, `DONE`, `S`, and `!` labels for players.
 - Town guard story warning:
   `game_data/npcs.py` stores the base guard template.
   `game_data/story.py` stores the newer warning lines about the dragon, Ghost Face, and Lion Sage.

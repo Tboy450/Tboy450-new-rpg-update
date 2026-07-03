@@ -415,6 +415,129 @@ STORY_ENEMY_REWARDS = {
 }
 
 
+# ============================================================================
+# PAUSE-MENU STORY LOG CHECKLIST
+# ============================================================================
+# The pause-menu Log should not force players or beginner coders to remember
+# raw save flags like `seen_story_dialogues` or `story_enemy_defeats`.
+#
+# Each row below is one readable story objective:
+# - `title`: short label shown in the Log.
+# - `kind`: what type of progress proves the step is finished.
+# - `key`: the matching dialogue key or enemy type key.
+# - `hint`: what the player should do before the step is complete.
+# - `done`: short reminder shown only when every listed step is complete.
+STORY_LOG_STEPS = (
+    {
+        "title": "Meet the Lion Sage",
+        "kind": "dialogue",
+        "key": "lion_sage_swamp",
+        "hint": "Travel west to the swamp and listen to the Guardian Healer.",
+        "done": "Lion Sage blessing received.",
+    },
+    {
+        "title": "Break Ghost Face's fear",
+        "kind": "enemy",
+        "key": "ghost_face",
+        "hint": "Enter the northern forest and defeat Ghost Face once.",
+        "done": "Ghost Face first-clear trophy claimed.",
+    },
+    {
+        "title": "Help Wren gather medicine",
+        "kind": "dialogue",
+        "key": "forest_apothecary_mooncap",
+        "hint": "Talk to Wren in the northern forest.",
+        "done": "Mooncap Vial received.",
+    },
+    {
+        "title": "Mark Elian's safe road",
+        "kind": "dialogue",
+        "key": "plains_ranger_waymarks",
+        "hint": "Talk to Elian in the center plains.",
+        "done": "Ranger Waymark received.",
+    },
+    {
+        "title": "Copy Ivo's star chart",
+        "kind": "dialogue",
+        "key": "star_cartographer_chart",
+        "hint": "Talk to Ivo in the north-west mountains.",
+        "done": "Star Chart Corner received.",
+    },
+    {
+        "title": "Guard Kael's lantern",
+        "kind": "dialogue",
+        "key": "lantern_guard_echo",
+        "hint": "Talk to Kael in the south-east cave.",
+        "done": "Echo Lantern Glass received.",
+    },
+)
+
+
+def _story_log_step_done(step, seen_dialogues, story_enemy_defeats):
+    """Return True when one story-log step is finished.
+
+    Beginner note:
+        Save files store progress in two different ways:
+        dialogue scenes go into `seen_dialogues`, while defeated special enemies
+        go into `story_enemy_defeats`. This helper hides that detail from the
+        Log drawing code.
+    """
+    if step["kind"] == "dialogue":
+        return step["key"] in seen_dialogues
+    if step["kind"] == "enemy":
+        return int(story_enemy_defeats.get(step["key"], 0)) > 0
+    return False
+
+
+def get_story_log_overview(seen_dialogues, story_enemy_defeats, limit=2):
+    """Return readable story progress for the pause-menu Log.
+
+    Beginner note:
+        This turns internal progress data into a small player-facing checklist.
+        `limit` controls how many unfinished tasks the Log should show at once
+        so the panel stays readable on Android.
+    """
+    seen_dialogues = set(seen_dialogues or ())
+    story_enemy_defeats = dict(story_enemy_defeats or {})
+
+    completed = [
+        step
+        for step in STORY_LOG_STEPS
+        if _story_log_step_done(step, seen_dialogues, story_enemy_defeats)
+    ]
+    unfinished = [
+        step
+        for step in STORY_LOG_STEPS
+        if not _story_log_step_done(step, seen_dialogues, story_enemy_defeats)
+    ]
+
+    entries = []
+    for index, step in enumerate(unfinished[:limit]):
+        entries.append(
+            {
+                "status": "NEXT" if index == 0 else "OPEN",
+                "title": step["title"],
+                "hint": step["hint"],
+            }
+        )
+
+    if not entries:
+        final_step = completed[-1] if completed else None
+        entries.append(
+            {
+                "status": "DONE",
+                "title": "Story threads complete",
+                "hint": final_step["done"] if final_step else "No story steps are listed yet.",
+            }
+        )
+
+    return {
+        "completed": len(completed),
+        "total": len(STORY_LOG_STEPS),
+        "entries": entries,
+    }
+
+
 def get_story_dialogue(dialogue_key):
     """Return one story dialogue record by key.
 
