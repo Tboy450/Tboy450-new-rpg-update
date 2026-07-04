@@ -5,6 +5,12 @@ Beginner note:
     `main.py` because those visuals depend on many live objects. This module
     owns smaller reusable panels: gear status, battle log, action buttons, and
     result summary.
+
+    Plain-language terms:
+    - Panel: a boxed UI area, such as the top battle message box.
+    - Surface: a pygame drawing layer. Drawing to a surface changes pixels.
+    - Rendered text: text that pygame has turned into an image.
+    - Fitted text: text scaled down just enough to stay inside its box.
 """
 
 import pygame
@@ -14,7 +20,12 @@ from systems.assets import get_equipment_icon_path, load_scaled_sprite
 
 
 def set_button_text(button, text, font, text_color):
-    """Change a Button label and rebuild its cached rendered text."""
+    """Change a Button label and rebuild its cached rendered text.
+
+    Beginner note:
+        A `Button` stores both the words and the already-drawn text image.
+        Changing only `button.text` would not update what appears on screen.
+    """
     if button.text == text:
         return
     button.text = text
@@ -30,7 +41,12 @@ def draw_battle_gear_strip(
     font_tiny,
     bg_color,
 ):
-    """Draw the player's equipped weapon and effective battle stats."""
+    """Draw the player's equipped weapon and effective battle stats.
+
+    Beginner note:
+        "Effective" stats include gear bonuses. For example, if base strength is
+        8 and a sword gives +3, effective strength is 11.
+    """
     weapon_profile = get_equipment_item(player.equipment.get("weapon"))
     weapon_label = weapon_profile.get("label", "Unarmed") if weapon_profile else "Unarmed"
     rarity_color = (
@@ -72,7 +88,12 @@ def draw_battle_log_panel(
     border_color,
     log_lines_per_page,
 ):
-    """Draw the top battle log panel and optional NEXT prompt."""
+    """Draw the top battle log panel and optional NEXT prompt.
+
+    Beginner note:
+        The log only shows the newest few lines. Older messages stay in
+        `battle_log`, but this panel keeps combat readable on a phone screen.
+    """
     panel = pygame.Rect(100, 50, 800, 100)
     pygame.draw.rect(surface, bg_color, panel, border_radius=8)
     pygame.draw.rect(surface, border_color, panel, 3, border_radius=8)
@@ -103,7 +124,13 @@ def draw_battle_action_buttons(
     text_color,
     special_cost,
 ):
-    """Draw the visible battle command buttons and their small hint labels."""
+    """Draw the visible battle command buttons and their small hint labels.
+
+    Beginner note:
+        This helper does not decide what a button does. It only draws whatever
+        `BattleScreen.buttons` currently points at: either ATTACK/MAGIC/ITEM
+        commands or the Health/Mana/BACK item row.
+    """
     if battle.state != "player_turn" or battle.waiting_for_continue or battle.battle_ended:
         return
 
@@ -163,7 +190,12 @@ def draw_battle_summary(
     screen_width,
     screen_height,
 ):
-    """Draw the dark victory/defeat/escape overlay after a battle ends."""
+    """Draw the dark victory/defeat/escape overlay after a battle ends.
+
+    Beginner note:
+        Rewards are not applied here. This is only the visual "battle finished"
+        layer that asks the player to continue.
+    """
     overlay = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 180))
     surface.blit(overlay, (0, 0))

@@ -5,6 +5,13 @@ Beginner note:
     keyboard/touch routing. That keeps the large battle class from growing every
     time Android buttons or battle menu behavior changes.
 
+    Plain-language terms:
+    - Event: one input moment, such as pressing a key or tapping the screen.
+    - Route: decide which part of the battle should receive that input.
+    - Cooldown: a short wait after an action so animations/log text can play.
+    - Game-space point: the tap position after it is converted to the game's
+      fixed 1000x700 coordinate system.
+
     The helper functions accept a `battle` object instead of importing
     `BattleScreen` from `main.py`. That avoids circular imports:
 
@@ -38,6 +45,7 @@ def play_game_sound(game, sound_name):
 
 
 def _is_confirm_key(pygame_module, event):
+    """Return True when a keyboard event means "choose/continue"."""
     return event.type == pygame_module.KEYDOWN and event.key in (
         pygame_module.K_RETURN,
         pygame_module.K_SPACE,
@@ -45,11 +53,19 @@ def _is_confirm_key(pygame_module, event):
 
 
 def _is_mouse_down(pygame_module, event):
+    """Return True when the input event is a mouse click or screen tap."""
     return event.type == pygame_module.MOUSEBUTTONDOWN
 
 
 def _continue_if_needed(battle, event, pygame_module):
-    """Handle summary/log pauses before normal battle menu input."""
+    """Handle summary/log pauses before normal battle menu input.
+
+    Beginner note:
+        Some battle messages should stay on screen until the player taps NEXT or
+        presses ENTER. This helper checks those pause screens first so a tap
+        cannot accidentally continue the message and select ATTACK at the same
+        time.
+    """
     if battle.battle_ended and battle.show_summary:
         if _is_confirm_key(pygame_module, event) or _is_mouse_down(pygame_module, event):
             battle.waiting_for_continue = False
@@ -83,6 +99,8 @@ def handle_battle_input(battle, event, game, pygame_module, display_to_game_pos)
     if battle.state != "player_turn" or battle.battle_ended or battle.action_cooldown > 0:
         return False
 
+    # Keyboard path for desktop and Chromebooks. The same battle object is used
+    # on Android, but Android usually reaches the mouse/touch path below.
     if event.type == pygame_module.KEYDOWN:
         if event.key in (pygame_module.K_TAB, pygame_module.K_h):
             battle.toggle_combat_buttons()
@@ -90,6 +108,8 @@ def handle_battle_input(battle, event, game, pygame_module, display_to_game_pos)
             return True
 
         if not battle.combat_buttons_visible:
+            # Commands are intentionally hidden. Swallow arrow/confirm input so
+            # hidden commands cannot be triggered by accident.
             return True
 
         option_count = len(battle.buttons)
@@ -106,6 +126,8 @@ def handle_battle_input(battle, event, game, pygame_module, display_to_game_pos)
             battle.handle_action(game)
             return True
 
+    # Touch/mouse path. Android taps can arrive in real screen pixels or in the
+    # game's internal 1000x700 pixels, so get_touch_positions() returns both.
     if event.type == pygame_module.MOUSEBUTTONDOWN:
         touch_positions = get_touch_positions(event, display_to_game_pos)
 

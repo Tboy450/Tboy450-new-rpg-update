@@ -165,6 +165,9 @@ This module owns battle-specific input routing.
   launch paths can report touch positions differently.
 - `play_game_sound(...)` safely plays optional sound effects from `Game`.
 
+Beginner terminology notes are inside the module for `event`, `route`,
+`cooldown`, and Android game-space coordinates.
+
 Keep turn rules and action math in `BattleScreen`; use this module when a
 keyboard/touch battle input path needs to change.
 
@@ -178,6 +181,9 @@ This module draws reusable battle panels.
   counts, special MP cost, and escape chance.
 - `draw_battle_summary(...)` draws the victory/defeat/escape overlay.
 - `set_button_text(...)` updates button labels such as `HEALTH x2`.
+
+Beginner terminology notes are inside the module for panels, pygame surfaces,
+rendered text, fitted text, and effective stats.
 
 Keep character sprites, projectiles, and attack effects in `BattleScreen` until
 those animation systems are split out separately.

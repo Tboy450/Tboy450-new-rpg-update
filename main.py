@@ -4670,6 +4670,13 @@ class BattleScreen:
         return False
     
     def add_log(self, message):
+        """Add one battle message and pause until the player continues.
+
+        Beginner note:
+            `battle_log` is the list of messages shown in the top battle box.
+            Setting `waiting_for_continue` to True makes the NEXT prompt appear
+            so players can read the message before another action happens.
+        """
         self.battle_log.append(message)
         self.waiting_for_continue = True
 
@@ -4720,10 +4727,23 @@ class BattleScreen:
         return random.choice(attacks)
 
     def set_player_condition(self, label, color, duration=90):
+        """Show a short status label over the player during battle.
+
+        Beginner note:
+            This is visual feedback only. The real effect is stored elsewhere,
+            such as `player_chill_turns` or `player_guard_turns`.
+        """
         self.player_condition = {"label": label, "color": color}
         self.player_condition_timer = duration
 
     def apply_enemy_elemental_effect(self):
+        """Apply an enemy's burn, mana-drain, or chill status effect.
+
+        Beginner note:
+            Normal enemy damage already happened before this method runs. This
+            method handles the extra "element" consequence from enemy type, such
+            as fire burning HP or shadow draining MP.
+        """
         profile = get_element_profile(self.enemy.enemy_type)
         status = profile.get("status")
         if not status or random.random() > status["chance"]:
@@ -4753,6 +4773,7 @@ class BattleScreen:
             self.add_log(status["message"])
 
     def apply_player_damage_modifiers(self, damage):
+        """Reduce outgoing player damage when temporary conditions require it."""
         if self.player_chill_turns <= 0:
             return damage
 
@@ -4763,6 +4784,13 @@ class BattleScreen:
         return reduced_damage
 
     def roll_player_damage(self, base_damage):
+        """Return final player damage after chill and critical-hit checks.
+
+        Beginner note:
+            `base_damage` is the starting number from the chosen move. This
+            method can lower it if the player is chilled, or raise it if a
+            critical hit happens.
+        """
         damage = self.apply_player_damage_modifiers(base_damage)
         crit_chance = min(
             BATTLE_RULES["max_crit_chance"],
@@ -4774,6 +4802,12 @@ class BattleScreen:
         return damage
 
     def roll_player_dodge(self):
+        """Return True when the player dodges the enemy's turn.
+
+        Beginner note:
+            Speed gear matters here. The more the player's effective speed beats
+            the enemy's speed, the better the dodge chance, up to a cap.
+        """
         speed_edge = max(0, self.player.effective_speed() - self.enemy.speed)
         dodge_chance = min(
             BATTLE_RULES["max_dodge_chance"],
@@ -4782,6 +4816,7 @@ class BattleScreen:
         return random.random() < dodge_chance
 
     def get_escape_chance(self):
+        """Return the current RUN success chance as a number from 0.0 to 1.0."""
         speed_edge = self.player.effective_speed() - self.enemy.speed
         chance = BATTLE_RULES["base_escape_chance"] + speed_edge * BATTLE_RULES["speed_escape_bonus"]
         return max(
@@ -4801,6 +4836,7 @@ class BattleScreen:
         return True, ""
 
     def get_boss_phase(self):
+        """Return the active boss phase based on boss health, if any."""
         if not self.is_boss or not hasattr(self.enemy, "phase_thresholds"):
             return None
 
@@ -4812,6 +4848,7 @@ class BattleScreen:
         return active_phase
 
     def check_boss_phase_transition(self):
+        """Announce and animate a boss phase the first time it becomes active."""
         phase = self.get_boss_phase()
         if not phase or self.enemy.health <= 0 or phase["name"] in self.boss_phase_announced:
             return
@@ -4829,6 +4866,13 @@ class BattleScreen:
         handle_battle_input(self, event, game, pygame, display_to_game_pos)
     
     def handle_action(self, game=None):
+        """Turn the currently selected battle button into queued work.
+
+        Beginner note:
+            This method does not usually apply damage immediately. It fills
+            `action_steps` with small steps such as "write log line", "start
+            animation", and "apply damage". `update()` runs one step at a time.
+        """
         if self.state != "player_turn" or self.battle_ended or self.action_cooldown > 0:
             return
 
@@ -4901,7 +4945,12 @@ class BattleScreen:
             self.update_combat_toggle_button_label()
 
     def handle_item_action(self, game=None):
-        """Run the selected item menu command."""
+        """Run the selected item menu command.
+
+        Beginner note:
+            The item row has only three slots: HEALTH, MANA, BACK. HEALTH and
+            MANA queue a potion action. BACK returns to ATTACK/MAGIC/ITEM/RUN.
+        """
         item_keys = ("health", "mana")
         if self.selected_option == self.item_back_button_index:
             if game and hasattr(game, 'SFX_CLICK') and game.SFX_CLICK: game.SFX_CLICK.play()
@@ -5186,6 +5235,12 @@ class BattleScreen:
         self.action_cooldown = self.action_delay
     
     def execute_magic(self):
+        """Apply the class-specific MAGIC command's MP cost and damage.
+
+        Beginner note:
+            MAGIC always costs 20 MP here. Each class adds a different stat
+            bonus before roll_player_damage() checks for critical hits.
+        """
         magic_name = self.get_magic_attack_name()
         base_damage = self.player.effective_strength() * 2
         if self.player.type == "Mage":
@@ -5281,6 +5336,13 @@ class BattleScreen:
         self.action_cooldown = SPECIAL_ATTACK_DURATION
     
     def execute_item(self, item_type):
+        """Spend one battle potion and apply its healing or mana effect.
+
+        Beginner note:
+            The potion count is reduced by `use_inventory_item`. The actual HP
+            or MP restoration happens after that so the log can report the
+            exact amount restored.
+        """
         profile = ITEM_PROFILES[item_type]
         can_use, reason = self.can_use_battle_item(item_type)
         if not can_use:
@@ -5316,6 +5378,12 @@ class BattleScreen:
         self.action_cooldown = self.action_delay
     
     def execute_run(self):
+        """Try to escape the battle using the current escape chance.
+
+        Beginner note:
+            A successful run ends battle with result `escape`. A failed run
+            passes the turn to the enemy instead.
+        """
         if random.random() < self.get_escape_chance():
             self.add_log("You successfully escaped!")
             self.battle_ended = True
