@@ -6870,7 +6870,11 @@ class Game:
             marker_y = max(34, entry.y - 17)
             pygame.draw.circle(screen, marker_color, (marker_x, marker_y), 6 if active else 4)
             if not active:
-                label = render_fitted_text(get_service_map_label(service_type), label_color, 92, (font_tiny,))
+                # BEGINNER NOTE: Non-active doorway tags still show OPEN/DONE
+                # so players can scan town errands without stepping onto every
+                # building entrance one by one.
+                label_text = f"{get_service_map_label(service_type)} {status}"
+                label = render_fitted_text(label_text, label_color, 112, (font_tiny,))
                 label_panel = pygame.Rect(
                     max(8, min(SCREEN_WIDTH - label.get_width() - 18, marker_x - label.get_width() // 2 - 9)),
                     max(8, marker_y - 27),
