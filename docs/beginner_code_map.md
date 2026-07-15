@@ -210,7 +210,10 @@ beginner-facing control labels.
   different APK launch paths report touches differently.
 - Shared pause-menu logic and button commands:
   `Game.build_pause_menu_entries`, `Game.toggle_pause_menu`, and `Game.activate_pause_menu_command` in `main.py`
-- Shared pause-menu drawing:
+- Help / Controls state:
+  `Game.show_help`, `Game.draw_help_controls`, and `Game.close_help_controls`
+  in `main.py`
+- Shared pause-menu and Help / Controls drawing:
   `systems/story_ui.py`
 - Interior service menu:
   `Game.use_current_town_service` opens the menu, `Game.activate_interior_service_menu_command`

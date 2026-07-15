@@ -66,6 +66,8 @@ Current touch-layout rules:
   list because those service buttons are drawn and clicked by `main.py`.
 - Story dialogue and the town-guard cutscene swap that layout for `NEXT` + `MENU`.
 - Log and world map use close buttons instead of the movement pad.
+- Help / Controls uses a `CLOSE HELP` button so Android players can return
+  without a hardware keyboard.
 - Battle action buttons are owned by `BattleScreen` in `main.py`, but input
   routing now lives in `systems/battle_input.py`. Combat still needs to know
   whether `SPECIAL` is unlocked and which turn is active, so the buttons are not
@@ -202,11 +204,14 @@ because they are quest-specific reward tables.
 
 ## `story_ui.py`
 
-This module owns two beginner-visible overlays that used to sit directly inside
+This module owns beginner-visible overlays that used to sit directly inside
 `Game`:
 
 - `draw_story_dialogue_overlay(...)`: draws the portrait, speaker name, wrapped text, and NEXT/keyboard prompt for Lion Sage, Ghost Face, and future story scenes.
 - `draw_pause_menu_overlay(...)`: draws the dim background, pause panel, subtitle text, and the already-built pause buttons.
+- `draw_help_controls_overlay(...)`: draws the pause-menu Help / Controls panel
+  for desktop and Android players. `main.py` still decides when it opens and
+  closes.
 
 Keep story timing, menu commands, and save/load behavior in `main.py`. Use
 `story_ui.py` when the change is only about how those overlays look.
