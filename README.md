@@ -11,6 +11,11 @@ This repository is intentionally labeled for beginner coders, future readers,
 and future AI/code assistants. The active modules and helper systems are
 documented on purpose so the project is easier to extend without guessing.
 
+Contributor note: when project requests mention **beginner labeling**, that
+means explanatory code comments, docstrings, README notes, and file maps for
+beginner programmers. Do not turn that phrase into new player-facing beginner
+controls or tutorials unless the request explicitly asks for player help UI.
+
 ## Android Install / Update
 
 The installable Android app is published here after the **Build Android APK**

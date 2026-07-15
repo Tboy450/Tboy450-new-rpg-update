@@ -3,6 +3,12 @@
 This guide explains where the active game code lives and what each module is
 responsible for. Read this before editing if you are new to Python or this repo.
 
+Important clarification for future contributors and AI assistants:
+when a task asks for **beginner labeling**, it means beginner-friendly code
+comments, docstrings, data-field explanations, README notes, and file maps for
+people learning the code. It does not mean adding a player-facing beginner
+controls screen or tutorial unless that UI is requested directly.
+
 For a beginner-friendly explanation of the most recent larger commits, read
 `docs/recent_commit_walkthrough.md` after this file.
 
