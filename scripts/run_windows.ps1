@@ -25,6 +25,35 @@ function Invoke-Checked {
     }
 }
 
+function Get-DirtyActivePaths {
+    Push-Location $RepoDir
+    try {
+        $statusArgs = @("status", "--porcelain", "--") + $ActivePaths
+        $statusLines = & git @statusArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw "Could not check for local file edits."
+        }
+
+        $dirtyPaths = @()
+        foreach ($line in $statusLines) {
+            if ([string]::IsNullOrWhiteSpace($line) -or $line.Length -lt 4) {
+                continue
+            }
+
+            $path = $line.Substring(3).Trim()
+            if ($path.Contains(" -> ")) {
+                $path = ($path -split " -> ")[-1]
+            }
+            $dirtyPaths += $path.Trim('"')
+        }
+
+        return $dirtyPaths | Sort-Object -Unique
+    }
+    finally {
+        Pop-Location
+    }
+}
+
 function Get-BasePython {
     if ($env:DRAGONS_LAIR_PYTHON -and (Test-Path -LiteralPath $env:DRAGONS_LAIR_PYTHON)) {
         return [PSCustomObject]@{ FilePath = $env:DRAGONS_LAIR_PYTHON; Arguments = @() }
@@ -59,6 +88,15 @@ function Update-GameFiles {
 
     if (-not (Test-Path -LiteralPath (Join-Path $RepoDir ".git"))) {
         Write-Host "No .git folder found; skipping auto-update." -ForegroundColor Yellow
+        return
+    }
+
+    $dirtyPaths = @(Get-DirtyActivePaths)
+    if ($dirtyPaths.Count -gt 0) {
+        Write-Host "Local game edits detected; skipping auto-update so they are not overwritten." -ForegroundColor Yellow
+        foreach ($path in $dirtyPaths) {
+            Write-Host "  $path" -ForegroundColor DarkYellow
+        }
         return
     }
 

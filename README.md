@@ -102,6 +102,7 @@ Controls:
 
 Android touch controls:
 
+- Touch buttons keep a small phone-edge margin and forgiving tap targets.
 - `MENU`: opens the shared pause menu.
 - `USE`: interact, use town services, or advance town cutscene dialogue.
 - `OK`: confirm, talk, inspect, or advance story dialogue.
@@ -163,4 +164,6 @@ Root files:
 - `play_android.py`: Android/Pydroid source-launch helper.
 - `run_android.py`: Android/Pydroid runtime launcher.
 - `Run Dragons Lair RPG.cmd`: Windows double-click launcher.
+- `scripts/run_windows.ps1`: Windows launcher/update helper; it skips GitHub
+  auto-sync when active game files have local edits.
 - `README.md`: this project overview and install/update guide.

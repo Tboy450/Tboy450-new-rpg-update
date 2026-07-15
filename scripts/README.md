@@ -17,7 +17,9 @@ and packaging.
 - `process_uploaded_enemy_sheet.py`: splits a user-supplied green-screen enemy sheet into future transparent enemy PNGs.
 - `process_uploaded_npc_sheet.py`: splits a user-supplied green-screen NPC sheet into future transparent NPC PNGs.
 - `run_local_android.py`: Android/Pydroid runtime launcher helper for source installs.
-- `run_windows.ps1`: Windows PowerShell launcher helper.
+- `run_windows.ps1`: Windows PowerShell launcher helper. It auto-syncs active
+  game files from GitHub only when those files are clean locally, so uncommitted
+  work is not overwritten.
 
 ## Beginner Rule
 

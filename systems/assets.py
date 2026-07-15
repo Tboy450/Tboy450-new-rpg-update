@@ -150,33 +150,6 @@ def load_sprite_by_height(path, target_height):
     return sprite
 
 
-def load_tinted_sprite_by_height(path, target_height, tint_color, tint_alpha=72):
-    """Load a sprite by height and apply a cached color tint.
-
-    Beginner note:
-        The active title dragon is one PNG, but boss progression needs the same
-        dragon to show different elemental colors. This helper keeps the base
-        imported art and adds a light transparent color layer on top.
-    """
-    tint_color = tuple(int(value) for value in tint_color[:3])
-    cache_key = (path, "height_tint", int(target_height), tint_color, int(tint_alpha))
-    if cache_key in SPRITE_CACHE:
-        return SPRITE_CACHE[cache_key]
-
-    base_sprite = load_sprite_by_height(path, target_height)
-    if not base_sprite:
-        SPRITE_CACHE[cache_key] = None
-        return None
-
-    sprite = base_sprite.copy()
-    tint = pygame.Surface(sprite.get_size(), pygame.SRCALPHA)
-    tint.fill((*tint_color, max(0, min(255, int(tint_alpha)))))
-    sprite.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
-
-    SPRITE_CACHE[cache_key] = sprite
-    return sprite
-
-
 def load_sprite_for_rect(path, target_width, target_height, preserve_aspect=True):
     """Load a sprite and resize it for a target rectangle.
 

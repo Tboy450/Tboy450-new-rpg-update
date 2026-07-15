@@ -163,7 +163,6 @@ from systems.assets import (
     load_animation_frames,
     load_scaled_sprite,
     load_sprite_by_height,
-    load_tinted_sprite_by_height,
 )
 from systems.interior_ui import (
     draw_interior_message_panel,
@@ -3233,26 +3232,22 @@ class Dragon:
         """Return the dragon/body and fire colors for a boss level.
 
         Beginner note:
-            `DRAGON_BOSS_COLORS` is shared with real dragon boss fights. Using it
-            here makes the title/opening dragon preview the same progression
-            palette the player will later fight.
+            The imported title dragon keeps its original artwork. This palette
+            remains useful for the animated fire overlay and the procedural
+            fallback if the PNG cannot load on a future device.
         """
         color_index = (max(1, int(boss_level)) - 1) % len(DRAGON_BOSS_COLORS)
         return DRAGON_BOSS_COLORS[color_index]
 
     def draw(self, surface, boss_level=1, target_height=270):
         dragon_color, fire_color = self.get_boss_palette(boss_level)
-        imported_dragon = load_tinted_sprite_by_height(
-            TITLE_DRAGON_SPRITE_PATH,
-            target_height,
-            dragon_color,
-            tint_alpha=62,
-        )
+        imported_dragon = load_sprite_by_height(TITLE_DRAGON_SPRITE_PATH, target_height)
         if imported_dragon:
             # BEGINNER NOTE: Active title dragon.
-            # This PNG is the newer imported dragon. The older Python-drawn
-            # dragon below is now fallback/archive code only, used if the PNG
-            # cannot load on a future device.
+            # Keep the PNG's original red-and-gold colors. A former full-image
+            # tint made transparent pixels visible as a colored rectangle and
+            # washed out the sprite's detailed shading. The older Python-drawn
+            # dragon below remains fallback/archive code only.
             bob = int(math.sin(self.animation_frame * 1.4) * 4)
             draw_x = int(self.x - 72)
             draw_y = int(self.y - 42 + bob)
@@ -5611,22 +5606,8 @@ class OpeningCutscene:
                 (base_x + 100, SCREEN_HEIGHT)
             ])
         
-        # BEGINNER NOTE: The opening used to draw a separate old silhouette
-        # dragon here. It now uses the same imported title dragon as the main
-        # menu, tinted through the real boss progression palette.
-        boss_level = min(FINAL_BOSS_LEVEL, 2 + self.timer // 45)
-        boss_profile = get_boss_profile(boss_level)
-        self.dragon.draw(screen, boss_level=boss_level, target_height=280)
-        aspect_label = render_fitted_text(
-            f"Dragon aspect: {boss_profile['name']}",
-            (255, 225, 150),
-            420,
-            (font_tiny,),
-        )
-        aspect_panel = pygame.Rect(SCREEN_WIDTH // 2 - 230, 474, 460, 32)
-        pygame.draw.rect(screen, UI_BG, aspect_panel, border_radius=6)
-        pygame.draw.rect(screen, DRAGON_BOSS_COLORS[(boss_level - 1) % len(DRAGON_BOSS_COLORS)][1], aspect_panel, 2, border_radius=6)
-        screen.blit(aspect_label, (aspect_panel.centerx - aspect_label.get_width() // 2, aspect_panel.y + 8))
+        # Use the same original-color imported dragon as the main menu.
+        self.dragon.draw(screen, target_height=280)
         
         # Draw scene text
         scene_text = [
@@ -6031,33 +6012,6 @@ class Game:
 
     def start_menu_buttons(self):
         return [self.start_button, self.load_button, self.update_button, self.quit_button]
-
-    def get_title_dragon_boss_level(self):
-        """Return the boss-level palette the title dragon should preview.
-
-        Beginner note:
-            Before a save is loaded, the title screen slowly cycles through
-            dragon palettes so players can see the progression. After a save is
-            loaded, it previews the next boss level from the player's progress.
-        """
-        if self.player:
-            return get_next_boss_level(self.player.level, self.player.last_boss_level)
-        return 1 + ((pygame.time.get_ticks() // 1800) % len(DRAGON_BOSS_COLORS))
-
-    def draw_title_dragon_progress_badge(self, screen):
-        """Draw a small label for the current title dragon palette."""
-        boss_level = self.get_title_dragon_boss_level()
-        profile = get_boss_profile(boss_level)
-        _, fire_color = DRAGON_BOSS_COLORS[(boss_level - 1) % len(DRAGON_BOSS_COLORS)]
-        if self.player:
-            label = f"Next dragon: {profile['name']}"
-        else:
-            label = f"Dragon progression preview: {profile['name']}"
-        text = render_fitted_text(label, (255, 235, 170), 315, (font_tiny,))
-        panel = pygame.Rect(SCREEN_WIDTH - 370, 204, 350, 30)
-        pygame.draw.rect(screen, UI_BG, panel, border_radius=6)
-        pygame.draw.rect(screen, fire_color, panel, 2, border_radius=6)
-        screen.blit(text, (panel.centerx - text.get_width() // 2, panel.y + 7))
 
     def set_selected_buttons(self, buttons, selected_index):
         for index, button in enumerate(buttons):
@@ -8739,8 +8693,7 @@ class Game:
             subtitle = font_medium.render("A RETRO RPG ADVENTURE", True, TEXT_COLOR)
             screen.blit(subtitle, (SCREEN_WIDTH//2 - subtitle.get_width()//2, 140))
             
-            self.dragon.draw(screen, boss_level=self.get_title_dragon_boss_level())
-            self.draw_title_dragon_progress_badge(screen)
+            self.dragon.draw(screen)
             
             self.start_button.draw(screen)
             self.load_button.draw(screen)

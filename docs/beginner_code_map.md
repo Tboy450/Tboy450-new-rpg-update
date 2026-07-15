@@ -196,6 +196,7 @@ beginner-facing control labels.
   `systems/input_actions.py`
 - Android touch layout and draw rules:
   `systems/android_controls.py`
+  This file also owns phone edge margins and tap-hit padding.
 - Android/touch runtime detection:
   `is_touch_ui_runtime` in `main.py`. It enables phone controls through Android
   platform values or Android system paths, and can be forced with

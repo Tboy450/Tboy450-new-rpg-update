@@ -83,7 +83,7 @@ Active scenery assets:
 Feature map:
 
 - Story NPC logic lives in `game_data/story.py`, while active source and processed art live under `assets/source/npcs/` and `assets/processed/npcs/`.
-- The start-menu/opening dragon uses `assets/processed/ui/title_dragon.png`; `main.py` tints that one imported sprite for boss progression colors and extends its fire animation.
+- The start-menu/opening dragon uses `assets/processed/ui/title_dragon.png` in its original red-and-gold colors; `main.py` extends its fire animation without tinting the full sprite.
 - The guard is a story-facing NPC visually, so his files live under `assets/source/npcs/` and `assets/processed/npcs/`, even though he appears in the town intro cutscene.
 - The Blacksmith and Innkeeper are town-service NPCs, so their active gameplay copies live under `assets/processed/npcs/`.
 - The first SPECIAL unlock uses both story data and effect assets:

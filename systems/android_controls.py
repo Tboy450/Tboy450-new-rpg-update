@@ -20,7 +20,23 @@ import pygame
 from .input_actions import CANCEL, CONFIRM, INTERACT, MAP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, MOVE_UP
 
 
-def _make_button(name, rect, label, action, fill, border, kind="text", alpha=210):
+TOUCH_EDGE_MARGIN = 24
+# pygame.Rect.inflate adds this many total pixels, so 16 means 8 per side.
+DEFAULT_TAP_PADDING = 16
+TIGHT_ROW_TAP_PADDING = 8
+
+
+def _make_button(
+    name,
+    rect,
+    label,
+    action,
+    fill,
+    border,
+    kind="text",
+    alpha=210,
+    hit_padding=None,
+):
     """Build one touch-button record.
 
     The returned dictionary is intentionally plain and beginner-friendly so
@@ -35,7 +51,14 @@ def _make_button(name, rect, label, action, fill, border, kind="text", alpha=210
         "border": border,
         "kind": kind,
         "alpha": alpha,
+        "hit_padding": DEFAULT_TAP_PADDING if hit_padding is None else int(hit_padding),
     }
+
+
+def _right_aligned_rect(screen_width, y, width, height):
+    """Return a rect with enough right-edge clearance for phone screens."""
+    x = max(0, screen_width - TOUCH_EDGE_MARGIN - width)
+    return pygame.Rect(x, max(0, y), width, height)
 
 
 def _current_area(game):
@@ -63,7 +86,7 @@ def _menu_button(screen_width):
     """Small top-right button used to open the shared pause/touch menu."""
     return _make_button(
         "pause_menu",
-        pygame.Rect(screen_width - 128, 22, 106, 44),
+        _right_aligned_rect(screen_width, TOUCH_EDGE_MARGIN, 106, 44),
         "MENU",
         "toggle_pause_menu",
         (28, 38, 60),
@@ -103,7 +126,7 @@ def build_android_touch_buttons(game, screen_width, screen_height):
         buttons.append(
             _make_button(
                 "close_map",
-                pygame.Rect(screen_width - 170, 82, 148, 48),
+                _right_aligned_rect(screen_width, 82, 148, 48),
                 "CLOSE MAP",
                 MAP,
                 (24, 48, 74),
@@ -116,7 +139,7 @@ def build_android_touch_buttons(game, screen_width, screen_height):
         buttons.append(
             _make_button(
                 "close_journal",
-                pygame.Rect(screen_width - 180, 82, 158, 48),
+                _right_aligned_rect(screen_width, 82, 158, 48),
                 "CLOSE LOG",
                 CONFIRM,
                 (34, 54, 74),
@@ -126,66 +149,79 @@ def build_android_touch_buttons(game, screen_width, screen_height):
         return buttons
 
     if getattr(game, "show_inventory", False):
-        base_y = screen_height - 54
+        base_y = screen_height - TOUCH_EDGE_MARGIN - 42
+        gap = 8
+        close_x = screen_width - TOUCH_EDGE_MARGIN - 106
+        unequip_x = close_x - gap - 104
+        equip_x = unequip_x - gap - 92
+        down_x = equip_x - gap - 62
+        up_x = down_x - gap - 62
         buttons.extend(
             [
                 _make_button(
                     "inventory_slot_left",
-                    pygame.Rect(28, base_y, 88, 42),
+                    pygame.Rect(TOUCH_EDGE_MARGIN, base_y, 88, 42),
                     "SLOT <",
                     MOVE_LEFT,
                     (42, 50, 76),
                     (180, 220, 255),
+                    hit_padding=TIGHT_ROW_TAP_PADDING,
                 ),
                 _make_button(
                     "inventory_slot_right",
-                    pygame.Rect(126, base_y, 88, 42),
+                    pygame.Rect(TOUCH_EDGE_MARGIN + 88 + gap, base_y, 88, 42),
                     "SLOT >",
                     MOVE_RIGHT,
                     (42, 50, 76),
                     (180, 220, 255),
+                    hit_padding=TIGHT_ROW_TAP_PADDING,
                 ),
                 _make_button(
                     "inventory_up",
-                    pygame.Rect(514, base_y, 62, 42),
+                    pygame.Rect(up_x, base_y, 62, 42),
                     "",
                     MOVE_UP,
                     (44, 52, 72),
                     (210, 220, 235),
                     kind="arrow_up",
+                    hit_padding=TIGHT_ROW_TAP_PADDING,
                 ),
                 _make_button(
                     "inventory_down",
-                    pygame.Rect(584, base_y, 62, 42),
+                    pygame.Rect(down_x, base_y, 62, 42),
                     "",
                     MOVE_DOWN,
                     (44, 52, 72),
                     (210, 220, 235),
                     kind="arrow_down",
+                    hit_padding=TIGHT_ROW_TAP_PADDING,
                 ),
                 _make_button(
                     "inventory_equip",
-                    pygame.Rect(654, base_y, 92, 42),
+                    pygame.Rect(equip_x, base_y, 92, 42),
                     "EQUIP",
                     CONFIRM,
                     (42, 70, 48),
                     (120, 220, 160),
+                    hit_padding=TIGHT_ROW_TAP_PADDING,
                 ),
                 _make_button(
                     "inventory_unequip",
-                    pygame.Rect(754, base_y, 104, 42),
+                    pygame.Rect(unequip_x, base_y, 104, 42),
                     "UNEQUIP",
                     INTERACT,
                     (76, 50, 42),
                     (255, 170, 120),
+                    hit_padding=TIGHT_ROW_TAP_PADDING,
                 ),
                 _make_button(
                     "close_inventory",
-                    pygame.Rect(866, base_y, 106, 42),
+                    pygame.Rect(close_x, base_y, 106, 42),
                     "CLOSE",
                     CANCEL,
                     (42, 50, 76),
                     (255, 215, 0),
+                    hit_padding=TIGHT_ROW_TAP_PADDING,
                 ),
             ]
         )
@@ -195,11 +231,12 @@ def build_android_touch_buttons(game, screen_width, screen_height):
         buttons.append(
             _make_button(
                 "advance_dialogue",
-                pygame.Rect(screen_width - 174, 352, 152, 54),
+                _right_aligned_rect(screen_width, 352, 152, 54),
                 "NEXT",
                 CONFIRM,
                 (88, 58, 18),
                 (255, 215, 0),
+                hit_padding=20,
             )
         )
         return buttons
@@ -209,9 +246,9 @@ def build_android_touch_buttons(game, screen_width, screen_height):
     dpad_size = 56 if state == "overworld" else 52
     action_w = 104
     action_h = 50
-    bottom_margin = 20 if state == "overworld" else 118
-    left_margin = 22
-    right_margin = 22
+    bottom_margin = TOUCH_EDGE_MARGIN if state == "overworld" else 118
+    left_margin = TOUCH_EDGE_MARGIN
+    right_margin = TOUCH_EDGE_MARGIN
 
     top_y = screen_height - bottom_margin - 3 * dpad_size
     mid_y = screen_height - bottom_margin - 2 * dpad_size
@@ -282,7 +319,7 @@ def build_android_touch_buttons(game, screen_width, screen_height):
     return buttons
 
 
-def find_android_touch_button(buttons, pos, extra_padding=8):
+def find_android_touch_button(buttons, pos, extra_padding=DEFAULT_TAP_PADDING):
     """Return the touched button dictionary, or None if nothing was hit.
 
     Beginner note:
@@ -291,12 +328,13 @@ def find_android_touch_button(buttons, pos, extra_padding=8):
         grows too far beyond the visible rectangle.
     """
     for button in reversed(buttons):
-        if button["rect"].inflate(extra_padding, extra_padding).collidepoint(pos):
+        hit_padding = button.get("hit_padding", extra_padding)
+        if button["rect"].inflate(hit_padding, hit_padding).collidepoint(pos):
             return button
     return None
 
 
-def find_android_touch_button_at_positions(buttons, positions, extra_padding=8):
+def find_android_touch_button_at_positions(buttons, positions, extra_padding=DEFAULT_TAP_PADDING):
     """Return the first touch button found from one or more coordinate guesses.
 
     Beginner note:

@@ -46,9 +46,12 @@ This module owns the Android touch-button layout.
 
 - `build_android_touch_buttons(game, screen_width, screen_height)` decides which touch buttons should exist for the current UI state.
 - `draw_android_touch_buttons(...)` draws those buttons.
-- `find_android_touch_button(...)` hit-tests the buttons with a small extra tap
-  target. Keep this padding modest because stacked Android buttons can overlap
-  mechanically if the hitboxes are too large.
+- `TOUCH_EDGE_MARGIN` keeps buttons away from phone edges and fullscreen
+  cutouts.
+- `find_android_touch_button(...)` hit-tests buttons with small per-button tap
+  padding. Keep this padding modest because stacked Android buttons can overlap
+  mechanically if the hitboxes are too large. Inventory uses tighter padding
+  because its row has several nearby buttons.
 - `find_android_touch_button_at_positions(...)` checks more than one coordinate
   guess. The APK sometimes reports real phone-display coordinates and
   sometimes reports the 1000x700 virtual game coordinates.
@@ -104,9 +107,6 @@ This module keeps imported-art plumbing out of `main.py`.
 - Asset path constants point to the active processed PNG files and frame folders.
 - `load_scaled_sprite` loads square enemy/UI-style sprites.
 - `load_sprite_by_height` loads tall character/effect sprites without squashing them.
-- `load_tinted_sprite_by_height` loads one PNG and applies a cached color tint.
-  The title/opening dragon uses this so boss progression colors share one
-  imported dragon asset.
 - `load_animation_frames` loads numbered PNG frame folders such as `frame_00.png`.
 - `draw_character_sprite` draws Warrior/Mage/Rogue imported sprites with a shared foot anchor.
 - `draw_enemy_sprite` draws enemies that have an imported sprite path.
@@ -140,10 +140,10 @@ Beginner feature map:
 - Innkeeper and Blacksmith interior sprites use
   `TOWN_SERVICE_NPC_SPRITE_PATHS`; their screen placement lives in
   `game_data/interiors.py`.
-- The start-menu dragon loads `TITLE_DRAGON_SPRITE_PATH` first and then draws
-  a boss-palette tint and animated fire extension from the imported dragon's
-  mouth. The opening cutscene uses the same imported dragon path now. The older
-  procedural dragon remains as fallback/archive code in `Dragon.draw`.
+- The start-menu dragon loads `TITLE_DRAGON_SPRITE_PATH` in its original
+  red-and-gold colors, then draws the animated fire extension from the imported
+  dragon's mouth. The opening cutscene uses the same original-color dragon. The
+  older procedural dragon remains as fallback/archive code in `Dragon.draw`.
 - The SPECIAL unlock is gameplay state, but `assets.py` is where the related story/effect art file paths are clearly labeled.
 - Inventory gear uses icon filenames from `game_data/equipment.py`; those filenames are joined to `EQUIPMENT_ICON_DIR` by `get_equipment_icon_path`.
 
