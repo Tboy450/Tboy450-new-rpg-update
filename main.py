@@ -171,11 +171,7 @@ from systems.interior_ui import (
     draw_interior_service_menu as draw_interior_service_menu_overlay,
 )
 from systems.save_load import DEFAULT_SAVE_PATH, load_game_state, save_game_state
-from systems.story_ui import (
-    draw_help_controls_overlay,
-    draw_pause_menu_overlay,
-    draw_story_dialogue_overlay,
-)
+from systems.story_ui import draw_pause_menu_overlay, draw_story_dialogue_overlay
 from systems.town_population_ui import draw_town_residents
 from systems.town_services import (
     apply_blacksmith_forge_service,
@@ -5799,7 +5795,6 @@ class Game:
         self.inventory_slot_index = 0
         self.inventory_item_index = 0
         self.inventory_message = "Select gear with arrows. OK equips. USE unequips."
-        self.show_help = False
         self.show_pause_menu = False
         self.pause_menu_buttons = []
         self.pickup_message = None
@@ -6136,7 +6131,6 @@ class Game:
         )
         if self.state == "interior":
             entries.append(("leave_interior", "LEAVE BUILDING"))
-        entries.append(("help", "HELP / CONTROLS"))
         entries.append(("main_menu", "MAIN MENU"))
         return entries
 
@@ -6144,10 +6138,10 @@ class Game:
         """Recreate pause-menu buttons after the available commands change."""
         entries = self.build_pause_menu_entries()
         button_width = 320
-        button_height = 48
-        gap = 8
+        button_height = 52
+        gap = 12
         total_height = len(entries) * button_height + max(0, len(entries) - 1) * gap
-        start_y = max(150, SCREEN_HEIGHT // 2 - total_height // 2)
+        start_y = max(186, SCREEN_HEIGHT // 2 - total_height // 2)
         self.pause_menu_buttons = []
         for index, (command, label) in enumerate(entries):
             button = Button(
@@ -6181,7 +6175,6 @@ class Game:
             self.show_journal = False
             self.show_inventory = False
             self.show_world_map = False
-            self.show_help = False
             self.interior_service_menu_open = False
             self.interior_service_menu_buttons = []
             self.rebuild_pause_menu_buttons()
@@ -6200,7 +6193,6 @@ class Game:
             self.show_journal = True
             self.show_inventory = False
             self.show_world_map = False
-            self.show_help = False
             self.close_pause_menu(play_sound=True)
             return
 
@@ -6208,7 +6200,6 @@ class Game:
             self.show_inventory = True
             self.show_journal = False
             self.show_world_map = False
-            self.show_help = False
             self.inventory_slot_index = 0
             self.inventory_item_index = 0
             self.inventory_message = "Select gear with arrows. OK equips. USE unequips."
@@ -6219,7 +6210,6 @@ class Game:
             self.show_world_map = True
             self.show_journal = False
             self.show_inventory = False
-            self.show_help = False
             self.close_pause_menu(play_sound=True)
             return
 
@@ -6233,14 +6223,6 @@ class Game:
             self.load_saved_game()
             return
 
-        if command == "help":
-            self.show_help = True
-            self.show_journal = False
-            self.show_inventory = False
-            self.show_world_map = False
-            self.close_pause_menu(play_sound=True)
-            return
-
         if command == "leave_interior":
             self.close_pause_menu(play_sound=False)
             self.exit_town_interior()
@@ -6251,7 +6233,6 @@ class Game:
             self.show_journal = False
             self.show_inventory = False
             self.show_world_map = False
-            self.show_help = False
             self.state = "start_menu"
             if self.SFX_CLICK:
                 self.SFX_CLICK.play()
@@ -6435,7 +6416,6 @@ class Game:
         self.show_world_map = False
         self.show_journal = False
         self.show_inventory = False
-        self.show_help = False
         self.show_pause_menu = False
         self.pause_menu_buttons = []
         self.interior_service_menu_open = False
@@ -6567,7 +6547,6 @@ class Game:
         self.show_world_map = False
         self.show_journal = False
         self.show_inventory = False
-        self.show_help = False
         self.show_pause_menu = False
         self.pause_menu_buttons = []
         if self.SFX_ENTER:
@@ -6815,7 +6794,6 @@ class Game:
             or self.show_world_map
             or self.show_journal
             or self.show_inventory
-            or self.show_help
             or self.show_pause_menu
         ):
             return
@@ -7065,29 +7043,6 @@ class Game:
             android_mode=is_android(),
         )
 
-    def draw_help_controls(self, screen):
-        """Draw the beginner help overlay when the pause menu opens it."""
-        if not self.show_help:
-            return
-
-        draw_help_controls_overlay(
-            screen,
-            font_large=font_large,
-            font_small=font_small,
-            font_tiny=font_tiny,
-            screen_width=SCREEN_WIDTH,
-            screen_height=SCREEN_HEIGHT,
-            ui_bg=UI_BG,
-            text_color=TEXT_COLOR,
-            android_mode=self.android_touch_enabled,
-        )
-
-    def close_help_controls(self, play_sound=True):
-        """Hide the beginner help overlay."""
-        self.show_help = False
-        if play_sound and self.SFX_CLICK:
-            self.SFX_CLICK.play()
-
     def complete_town_errand(self, service_type):
         errand = get_town_errand(service_type)
         if not errand or service_type in self.completed_town_errands:
@@ -7252,7 +7207,6 @@ class Game:
         self.show_journal = False
         self.show_inventory = False
         self.show_world_map = False
-        self.show_help = False
         self.interior_service_menu_open = True
         self.interior_service_menu_index = 0
         self.rebuild_interior_service_menu_buttons()
@@ -7285,7 +7239,6 @@ class Game:
             self.show_journal = True
             self.show_inventory = False
             self.show_world_map = False
-            self.show_help = False
             if self.SFX_CLICK:
                 self.SFX_CLICK.play()
             return
@@ -7329,8 +7282,6 @@ class Game:
         self.npc_dialogue_index = 0
         self.show_world_map = False
         self.show_journal = False
-        self.show_inventory = False
-        self.show_help = False
         self.state = "interior"
         self.set_town_service_message(f"Entered {room['title']}.")
         if self.SFX_ENTER:
@@ -7349,8 +7300,6 @@ class Game:
         self.current_interior_service = None
         self.interior_return_position = None
         self.show_journal = False
-        self.show_inventory = False
-        self.show_help = False
         self.state = "overworld"
         self.set_town_service_message(f"Left {room_title}.")
         if self.SFX_ENTER:
@@ -8551,7 +8500,7 @@ class Game:
             return
 
         elif self.state == "interior" and self.player:
-            if self.show_pause_menu or self.show_inventory or self.show_help:
+            if self.show_pause_menu or self.show_inventory:
                 return
             self.game_time += 1
             self.player.update_animation()
@@ -8559,7 +8508,7 @@ class Game:
                 self.town_service_message_timer -= 1
                 
         elif self.state == "overworld" and self.player:
-            if self.show_pause_menu or self.show_inventory or self.show_help:
+            if self.show_pause_menu or self.show_inventory:
                 return
             # Main gameplay area with movement and exploration
             self.game_time += 1
@@ -9147,9 +9096,6 @@ class Game:
         if self.show_pause_menu and self.state in ["overworld", "interior"]:
             self.draw_pause_menu(screen)
 
-        if self.show_help and self.state in ["overworld", "interior"]:
-            self.draw_help_controls(screen)
-
         if self.transition_state != "none":
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, self.transition_alpha))
@@ -9241,11 +9187,6 @@ class Game:
                             mouse_click = False
                             continue
 
-                    if self.show_help and self.state in ["overworld", "interior"]:
-                        self.close_help_controls(play_sound=True)
-                        mouse_click = False
-                        continue
-
                     if self.state == "opening_cutscene":
                         self.opening_cutscene.skip()
                         continue
@@ -9257,11 +9198,6 @@ class Game:
                 
                 if event.type == pygame.KEYDOWN:
                     action = action_for_key(event.key)
-
-                    if self.show_help and self.state in ["overworld", "interior"]:
-                        if action in [CANCEL, CONFIRM, INTERACT]:
-                            self.close_help_controls(play_sound=True)
-                        continue
 
                     if action == LOAD and self.state in ["start_menu", "overworld", "interior", "game_over", "victory"]:
                         self.load_saved_game()
@@ -9401,7 +9337,6 @@ class Game:
                         self.show_journal = True
                         self.show_inventory = False
                         self.show_world_map = False
-                        self.show_help = False
                         if self.SFX_CLICK:
                             self.SFX_CLICK.play()
                         continue
@@ -9449,7 +9384,6 @@ class Game:
                     if self.state == "overworld" and action == MAP:
                         self.show_world_map = not self.show_world_map
                         self.show_journal = False
-                        self.show_help = False
                         if self.SFX_CLICK:
                             self.SFX_CLICK.play()
                         continue
@@ -9509,10 +9443,7 @@ class Game:
                         self.battle_screen.handle_input(event, self)
             
             # Handle button clicks
-            if self.show_help and self.state in ["overworld", "interior"]:
-                mouse_click = False
-
-            elif self.interior_service_menu_open and self.state == "interior":
+            if self.interior_service_menu_open and self.state == "interior":
                 if not self.interior_service_menu_buttons:
                     self.rebuild_interior_service_menu_buttons()
                 for index, button in enumerate(self.interior_service_menu_buttons):
@@ -9716,7 +9647,6 @@ class Game:
         self.show_world_map = False
         self.show_journal = False
         self.show_inventory = False
-        self.show_help = False
         self.show_pause_menu = False
         self.pause_menu_buttons = []
         self.interior_service_menu_open = False

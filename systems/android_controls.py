@@ -104,7 +104,6 @@ def build_android_touch_buttons(game, screen_width, screen_height):
     - Log/Journal overlay: CLOSE button only
     - Inventory: slot/selection/equip/unequip/close buttons
     - World map: CLOSE MAP button only
-    - Help/Controls overlay: CLOSE HELP button only
     - Pause menu: pause-menu buttons are drawn by `main.py`, so this helper
       returns an empty list
     - Interior service menu: service buttons are drawn by `main.py`, so this
@@ -119,18 +118,6 @@ def build_android_touch_buttons(game, screen_width, screen_height):
 
     if state == "interior" and getattr(game, "interior_service_menu_open", False):
         return []
-
-    if getattr(game, "show_help", False):
-        return [
-            _make_button(
-                "close_help",
-                _right_aligned_rect(screen_width, TOUCH_EDGE_MARGIN, 158, 48),
-                "CLOSE HELP",
-                CANCEL,
-                (44, 52, 72),
-                (255, 215, 0),
-            )
-        ]
 
     buttons = []
     buttons.append(_menu_button(screen_width))

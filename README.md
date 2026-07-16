@@ -117,10 +117,7 @@ Android touch controls:
   battle screen. Tap `ACTIONS` to show attack buttons, tap an attack to choose
   it, and tap `HIDE` when you want the lower battlefield clear. If the action
   row is hidden, tapping the lower command area also brings it back.
-- Pause-menu buttons expose `Log`, `Map`, `Inventory`, `Save`, `Load`, and
-  `Help / Controls` without a hardware keyboard.
-- `Help / Controls` explains desktop keys, Android buttons, battle flow, and
-  where to find Log, Map, Inventory, Save, and Load.
+- Pause-menu buttons expose `Log`, `Map`, `Save`, and `Load` without a hardware keyboard.
 - Inventory opens from the pause menu. In Inventory, use `SLOT <` / `SLOT >`
   to switch weapon, armor, and charm slots; arrows to choose owned gear;
   `EQUIP` to equip it; and `UNEQUIP` to clear the active slot.
