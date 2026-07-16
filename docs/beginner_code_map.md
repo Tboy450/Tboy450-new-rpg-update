@@ -291,12 +291,21 @@ beginner-facing control labels.
 1. Add the area name to `WORLD_LAYOUT` in `game_data/world.py` if it should appear on the 3x3 map.
 2. Add a readable label in `AREA_DESCRIPTIONS`.
 3. Add colors in `AREA_VISUALS`.
-4. Optional: add particles in `AREA_PARTICLE_PROFILES`.
-5. Optional: add environmental effects in `AREA_MECHANICS`.
-6. Optional: add enemies in `AREA_ENEMY_TYPES` in `game_data/enemies.py`.
+4. Optional: add draw-only background shapes in `AREA_SCENIC_PROFILES`.
+5. Optional: choose a generated overworld music mood in `AREA_MUSIC_PROFILES`.
+6. Optional: add particles in `AREA_PARTICLE_PROFILES`. Use `x_range` or
+   `y_range` when particles should stay near the sky, ground, lava, water, or
+   crystals; `main.py` clamps those ranges through `normalized_spawn_range`.
+7. Optional: add environmental effects in `AREA_MECHANICS`.
+8. Optional: add enemies in `AREA_ENEMY_TYPES` in `game_data/enemies.py`.
 
 Note: `plains` is the active center map area. Beach/sand details are town
 scenery in `game_data/town.py`, not a separate map area.
+
+BEGINNER CODE LABEL: engine safeguards.
+Particle spawn bounds and music restart guards live in `main.py`. They keep
+ambience data from `game_data/world.py` from crashing on bad ranges or looping
+music unexpectedly.
 
 ## How To Add Equipment
 

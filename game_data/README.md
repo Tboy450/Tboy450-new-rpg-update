@@ -54,6 +54,11 @@ an enemy list changes what can spawn in an area.
 - `purpose`: player-facing reason to visit a town service.
 - `first_reward`: what the first one-time building errand can give.
 - `repeat_use`: why the service still matters after the first errand is done.
+- `x_range`, `y_range`: optional particle spawn bounds inside one 1000x700
+  area. `main.py` clamps these through `normalized_spawn_range`, but keeping
+  the smaller number first makes the data easier to read.
+- `music mood`: a short key in `AREA_MUSIC_PROFILES` such as `green`, `sun`,
+  `shadow`, or `highlands`; `MusicSystem` turns that key into generated music.
 
 ## Cross-File Keys
 
@@ -70,6 +75,20 @@ Some strings must match across modules:
   in `systems/assets.py` `TOWN_SERVICE_NPC_SPRITE_PATHS`.
 - Area names like `forest`, `town`, and `volcano` should match entries in `WORLD_LAYOUT`, `AREA_VISUALS`, `AREA_SCENIC_PROFILES`, `AREA_MUSIC_PROFILES`, and `AREA_ENEMY_TYPES`.
 - Story sprite keys like `lion_sage`, `forest_apothecary`, and `ghost_face` should match `STORY_SPRITE_PATHS` in `systems/assets.py`.
+
+## Ambience Data Map
+
+BEGINNER CODE LABEL: ambience data map.
+
+- `AREA_SCENIC_PROFILES`: draw-only background shapes. These do not add
+  collision, buttons, quests, or new playable spaces.
+- `AREA_PARTICLE_PROFILES`: ambient particle presets. Optional `x_range` and
+  `y_range` values keep effects near a part of the 1000x700 area.
+- `AREA_MUSIC_PROFILES`: regional overworld music mood keys used by
+  `MusicSystem` in `main.py`.
+
+`main.py` normalizes particle ranges and guards music restart keys. Those are
+engine safety checks around the ambience tables, not player-facing features.
 
 ## Placement Rules
 
@@ -90,6 +109,11 @@ Some strings must match across modules:
 - To change how Warrior/Mage/Rogue are described in combat, edit `role`,
   `battle_style`, `basic_attack`, or `magic_attack` in `characters.py`.
 - To make volcano enemies more dangerous by variety, add another element key to `AREA_ENEMY_TYPES["volcano"]` in `enemies.py`.
+- To change an area's draw-only scenery, edit `AREA_SCENIC_PROFILES` in
+  `world.py`; to change its generated overworld music mood, edit
+  `AREA_MUSIC_PROFILES`.
+- To keep particles near the sky, ground, lava, water, or crystals, add
+  `x_range` or `y_range` to that area's `AREA_PARTICLE_PROFILES` record.
 - To move the shop outdoors, edit the shop record in `TOWN_BUILDINGS` in `town.py`.
 - To add a line of shopkeeper dialogue, edit the `shop` `dialogue` tuple in `npcs.py`.
 - To change town reward preview wording, edit `format_town_reward_preview` in

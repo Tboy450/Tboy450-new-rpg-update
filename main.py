@@ -247,6 +247,10 @@ def clamp(value, minimum, maximum):
     return max(minimum, min(maximum, value))
 
 
+# BEGINNER CODE LABEL: safe particle range helper.
+# Area particle data can optionally limit where effects appear. This helper
+# keeps future bad tuning values from crashing the game loop by clamping,
+# swapping backwards ranges, and falling back to the full screen range.
 def normalized_spawn_range(profile, key, maximum):
     """Return a safe integer spawn range for an optional particle profile key."""
     raw_range = profile.get(key, (0, maximum))
@@ -8413,6 +8417,10 @@ class Game:
             render_fitted_text,
         )
 
+    # BEGINNER CODE LABEL: area ambience routing.
+    # `game_data/world.py` owns the scenery, particle, and music mood tables.
+    # This method handles particle ambience; `WorldArea.draw_scenic_layer`
+    # handles draw-only scenery; `MusicSystem.update` handles regional music.
     def emit_area_particles(self, current_area):
         area_world_x, area_world_y = current_area.get_world_position()
         for profile in AREA_PARTICLE_PROFILES.get(current_area.area_type, ()):

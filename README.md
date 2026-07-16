@@ -149,7 +149,7 @@ Repository layout:
 
 - `main.py` is the active game file.
 - `docs/` holds beginner-facing code maps and project notes.
-- `game_data/` holds active modular data. See `game_data/README.md` for where character, enemy, world, NPC, town interior, mechanic, and progression data belongs.
+- `game_data/` holds active modular data. See `game_data/README.md` for where character, enemy, world scenery/music/particles, NPC, town interior, mechanic, and progression data belongs.
 - `systems/` holds active helper systems such as input mapping, JSON save/load, update-link helpers, and reusable story/pause UI drawing. See `systems/README.md` before changing helper code.
 - `assets/` is the intake area for future art/audio ports. Keep raw downloads in `assets/source/`, game-ready files in `assets/processed/`, and non-CC0 attribution in `assets/credits.md`.
 - `assets/processed/future_assets/` holds inactive future gear, scenery, enemy, and NPC PNG concepts. These are not loaded by the game until moved into an active folder and wired into data/code.
