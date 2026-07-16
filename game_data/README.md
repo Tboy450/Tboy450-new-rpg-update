@@ -23,7 +23,7 @@ an enemy list changes what can spawn in an area.
 - `story.py`: opening story text, Lion Sage map placement/dialogue/reward, Ghost Face area intro dialogue, overworld side-story NPC conversations, and the pause-menu story checklist helper.
 - `town.py`: town overworld buildings, boundaries, decorations, smoke sources, and building collision tuning.
 - `town_population.py`: outdoor town residents, their rotating dialogue, one-time resident errands, and resident rewards.
-- `world.py`: world grid layout, area descriptions, area visuals, area particles, and environmental area effects.
+- `world.py`: world grid layout, area descriptions, area visuals, draw-only scenic profiles, area music moods, particles, and environmental area effects.
 
 ## Beginner Data Glossary
 
@@ -68,7 +68,7 @@ Some strings must match across modules:
   files under `assets/processed/scenery/`.
 - Interior `npc_sprite_rect` entries in `interiors.py` depend on service keys
   in `systems/assets.py` `TOWN_SERVICE_NPC_SPRITE_PATHS`.
-- Area names like `forest`, `town`, and `volcano` should match entries in `WORLD_LAYOUT`, `AREA_VISUALS`, and `AREA_ENEMY_TYPES`.
+- Area names like `forest`, `town`, and `volcano` should match entries in `WORLD_LAYOUT`, `AREA_VISUALS`, `AREA_SCENIC_PROFILES`, `AREA_MUSIC_PROFILES`, and `AREA_ENEMY_TYPES`.
 - Story sprite keys like `lion_sage`, `forest_apothecary`, and `ghost_face` should match `STORY_SPRITE_PATHS` in `systems/assets.py`.
 
 ## Placement Rules

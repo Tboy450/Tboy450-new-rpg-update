@@ -69,7 +69,7 @@ For a beginner-friendly explanation of the most recent larger commits, read
 - `story.py`: opening story lines, Lion Sage placement and reward, Ghost Face area dialogue, side-story NPC placement, and side-story keepsake rewards.
 - `town.py`: outdoor town buildings, walls, decorations, smoke sources, and collision tuning fields.
 - `town_population.py`: outdoor town residents, their rotating dialogue, one-time resident errands, and resident rewards.
-- `world.py`: 3x3 world layout, area descriptions, colors, particles, and environmental effects.
+- `world.py`: 3x3 world layout, area descriptions, colors, draw-only scenic styles, regional music moods, particles, and environmental effects.
 
 ## `systems/` Modules
 

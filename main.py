@@ -63,7 +63,9 @@ from game_data import (
     AREA_DESCRIPTIONS,
     AREA_ENEMY_TYPES,
     AREA_MECHANICS,
+    AREA_MUSIC_PROFILES,
     AREA_PARTICLE_PROFILES,
+    AREA_SCENIC_PROFILES,
     AREA_VISUALS,
     BATTLE_RULES,
     FINAL_BOSS_LEVEL,
@@ -768,6 +770,109 @@ class WorldArea:
                 if random.random() < 0.3:
                     grass_color = (60 + random.randint(0, 40), 100 + random.randint(0, 40), 40 + random.randint(0, 20))
                     pygame.draw.circle(surface, grass_color, (x + random.randint(0, 20), y + random.randint(0, 15)), 2)
+
+    def _scenic_point(self, index, x_min=0, x_max=SCREEN_WIDTH, y_min=0, y_max=SCREEN_HEIGHT):
+        """Return a stable local screen point for draw-only scenery.
+
+        Beginner note:
+            This uses simple math instead of `random` so rocks, grass, and
+            cracks stay in the same place every frame. These are only
+            background marks; they do not affect collision or controls.
+        """
+        span_x = max(1, int(x_max - x_min))
+        span_y = max(1, int(y_max - y_min))
+        seed = (self.area_x + 1) * 73 + (self.area_y + 1) * 97 + index * 131
+        x = int(x_min + ((seed * 37) % span_x))
+        y = int(y_min + ((seed * 53) % span_y))
+        return x, y
+
+    def draw_scenic_layer(self, surface):
+        """Draw non-interactive overworld depth for the current area type."""
+        profile = AREA_SCENIC_PROFILES.get(self.area_type)
+        if not profile:
+            return
+
+        style = profile["style"]
+        primary = profile["primary"]
+        secondary = profile["secondary"]
+        accent = profile["accent"]
+
+        # BEGINNER CODE LABEL: scenic draw-only layer.
+        # These shapes make each region easier to recognize. They are drawn
+        # before items, enemies, NPCs, the player, and UI, so gameplay logic
+        # still comes from the existing world/enemy/item systems.
+        if style == "forest":
+            for i in range(9):
+                x, y = self._scenic_point(i, 35, SCREEN_WIDTH - 35, 185, SCREEN_HEIGHT - 80)
+                trunk = pygame.Rect(x - 5, y + 20, 10, 38)
+                pygame.draw.rect(surface, (86, 58, 34), trunk)
+                pygame.draw.circle(surface, primary, (x - 12, y + 18), 22)
+                pygame.draw.circle(surface, secondary, (x + 11, y + 12), 25)
+                pygame.draw.circle(surface, accent, (x + 2, y - 2), 15)
+        elif style == "dunes":
+            for i in range(8):
+                x, y = self._scenic_point(i, 70, SCREEN_WIDTH - 70, 285, SCREEN_HEIGHT - 30)
+                dune_rect = pygame.Rect(x - 86, y - 26, 172, 70)
+                pygame.draw.arc(surface, secondary, dune_rect, math.pi * 0.05, math.pi * 0.95, 3)
+                pygame.draw.arc(surface, primary, dune_rect.move(0, 18), math.pi * 0.1, math.pi * 0.9, 2)
+                pygame.draw.line(surface, accent, (x - 36, y + 5), (x + 44, y - 6), 1)
+        elif style == "ridges":
+            ridge_sets = (
+                [(0, 270), (180, 150), (360, 250), (560, 120), (780, 245), (1000, 170)],
+                [(0, 360), (140, 270), (330, 340), (520, 235), (760, 345), (1000, 265)],
+            )
+            pygame.draw.lines(surface, primary, False, ridge_sets[0], 6)
+            pygame.draw.lines(surface, secondary, False, ridge_sets[1], 4)
+            for i in range(5):
+                x, y = self._scenic_point(i, 60, SCREEN_WIDTH - 60, 380, SCREEN_HEIGHT - 70)
+                pygame.draw.polygon(surface, secondary, [(x, y - 18), (x - 22, y + 20), (x + 24, y + 18)])
+                pygame.draw.line(surface, accent, (x, y - 16), (x - 8, y + 7), 2)
+        elif style == "wetlands":
+            for i in range(7):
+                x, y = self._scenic_point(i, 60, SCREEN_WIDTH - 80, 300, SCREEN_HEIGHT - 35)
+                pygame.draw.ellipse(surface, primary, (x - 40, y - 10, 80, 22))
+                pygame.draw.ellipse(surface, secondary, (x - 32, y - 8, 64, 16), 2)
+                for reed in range(3):
+                    reed_x = x - 28 + reed * 26
+                    pygame.draw.line(surface, accent, (reed_x, y), (reed_x + 5, y - 32), 2)
+        elif style == "grassland":
+            for i in range(20):
+                x, y = self._scenic_point(i, 20, SCREEN_WIDTH - 20, 245, SCREEN_HEIGHT - 30)
+                blade_height = 12 + (i % 4) * 5
+                pygame.draw.line(surface, primary, (x, y), (x - 5, y - blade_height), 2)
+                pygame.draw.line(surface, secondary, (x + 2, y), (x + 3, y - blade_height - 4), 2)
+                if i % 5 == 0:
+                    pygame.draw.circle(surface, accent, (x + 4, y - blade_height - 7), 3)
+        elif style == "lava_cracks":
+            for i in range(8):
+                x, y = self._scenic_point(i, 70, SCREEN_WIDTH - 70, 260, SCREEN_HEIGHT - 45)
+                crack_points = [(x, y), (x + 18, y + 10), (x + 38, y + 5), (x + 54, y + 24)]
+                pygame.draw.lines(surface, primary, False, crack_points, 6)
+                pygame.draw.lines(surface, accent, False, crack_points, 2)
+                if i % 2 == 0:
+                    pygame.draw.circle(surface, secondary, (x + 42, y + 12), 9)
+        elif style == "ice_shards":
+            for i in range(9):
+                x, y = self._scenic_point(i, 50, SCREEN_WIDTH - 50, 230, SCREEN_HEIGHT - 40)
+                height = 32 + (i % 4) * 9
+                points = [(x, y - height), (x - 14, y + 10), (x + 16, y + 8)]
+                pygame.draw.polygon(surface, secondary, points)
+                pygame.draw.polygon(surface, primary, points, 2)
+                pygame.draw.line(surface, accent, (x, y - height + 5), (x + 4, y + 3), 1)
+        elif style == "runes":
+            for i in range(6):
+                x, y = self._scenic_point(i, 80, SCREEN_WIDTH - 80, 250, SCREEN_HEIGHT - 65)
+                pygame.draw.rect(surface, primary, (x - 18, y - 26, 36, 52), border_radius=4)
+                pygame.draw.rect(surface, secondary, (x - 18, y - 26, 36, 52), 2, border_radius=4)
+                pygame.draw.line(surface, accent, (x - 9, y - 8), (x + 9, y - 8), 2)
+                pygame.draw.line(surface, accent, (x, y - 18), (x, y + 15), 2)
+        elif style == "crystals":
+            for i in range(8):
+                x, y = self._scenic_point(i, 55, SCREEN_WIDTH - 55, 315, SCREEN_HEIGHT - 35)
+                height = 24 + (i % 5) * 7
+                pygame.draw.ellipse(surface, primary, (x - 28, y + 8, 56, 13))
+                pygame.draw.polygon(surface, secondary, [(x, y - height), (x - 12, y + 10), (x + 12, y + 10)])
+                pygame.draw.line(surface, accent, (x, y - height + 4), (x + 4, y + 8), 2)
     
     def _draw_town_paths(self, surface):
         """Draw red dirt paths connecting buildings"""
@@ -8298,8 +8403,14 @@ class Game:
         area_world_x, area_world_y = current_area.get_world_position()
         for profile in AREA_PARTICLE_PROFILES.get(current_area.area_type, ()):
             for _ in range(profile["count"]):
-                x = area_world_x + random.randint(0, AREA_WIDTH)
-                y = area_world_y + random.randint(0, AREA_HEIGHT)
+                # BEGINNER CODE LABEL: particle spawn bounds.
+                # Most profiles can use the full area. A profile may add
+                # x_range/y_range in `game_data/world.py` when an effect should
+                # stay near the sky, ground, lava, water, or crystals.
+                x_min, x_max = profile.get("x_range", (0, AREA_WIDTH))
+                y_min, y_max = profile.get("y_range", (0, AREA_HEIGHT))
+                x = area_world_x + random.randint(int(x_min), int(x_max))
+                y = area_world_y + random.randint(int(y_min), int(y_max))
                 velocity = (
                     random.uniform(*profile["velocity_x"]),
                     random.uniform(*profile["velocity_y"]),
@@ -8818,6 +8929,8 @@ class Game:
                 # Draw town if this is a town area
                 if current_area.area_type == "town":
                     current_area.draw_town(screen)
+                else:
+                    current_area.draw_scenic_layer(screen)
             else:
                 screen.fill(BACKGROUND)
 
@@ -9726,9 +9839,11 @@ class MusicSystem:
         self.last_state = None
         self.last_area_type = None
         self.boss_battle_active = False
+        self.last_music_key = None
         self.town_music_bytes = None
         self.start_menu_music_bytes = None
         self.overworld_music_bytes = None
+        self.area_music_bytes = {}
         self.battle_music_bytes = None
         self.boss_music_bytes = None
         self.victory_music_bytes = None
@@ -9740,6 +9855,7 @@ class MusicSystem:
         try:
             self.start_menu_music_bytes = self.generate_start_menu_music()
             self.overworld_music_bytes = self.generate_overworld_music()
+            self.area_music_bytes = self.generate_area_music_variants()
             self.town_music_bytes = self.generate_town_music()
             self.battle_music_bytes = self.generate_battle_music()
             self.boss_music_bytes = self.generate_boss_music()
@@ -9748,6 +9864,7 @@ class MusicSystem:
             print('Music bytes created successfully')
         except Exception as e:
             print(f"Failed to create music bytes: {e}")
+            self.area_music_bytes = {}
             self.start_menu_music_bytes = self.overworld_music_bytes = self.battle_music_bytes = None
             self.boss_music_bytes = self.victory_music_bytes = self.game_over_music_bytes = None
     
@@ -9797,29 +9914,148 @@ class MusicSystem:
             ("E5", .25), ("B4", .25), ("G4", .25), ("B4", .25),
         ] * 2)
         return self.generate_chiptune_song(melody, bass, self.drum_loop(8), lead, bpm=126, volume=0.18)
+
+    def generate_area_music_variants(self):
+        """Generate the small regional loops used by AREA_MUSIC_PROFILES."""
+        variants = {}
+        for music_key in sorted(set(AREA_MUSIC_PROFILES.values())):
+            variants[music_key] = self.generate_area_music(music_key)
+        return variants
+
+    def generate_area_music(self, music_key):
+        """Build a short procedural overworld loop for one area mood.
+
+        Beginner note:
+            `game_data/world.py` maps area types like forest or volcano to one
+            of these mood keys. Keeping only a few loops gives regions their
+            own feel without storing audio files or slowing Android startup.
+        """
+        profiles = {
+            "green": {
+                "bpm": 116,
+                "volume": 0.14,
+                "melody": [
+                    ("G4", .5), ("A4", .5), ("B4", .5), ("D5", .5),
+                    ("C5", .5), ("B4", .5), ("A4", .5), ("G4", .5),
+                    ("E4", .5), ("G4", .5), ("A4", .5), ("C5", .5),
+                    ("B4", .5), ("A4", .5), ("G4", .5), ("E4", .5),
+                ],
+                "bass": [
+                    ("G2", 1), ("D3", 1), ("E3", 1), ("C3", 1),
+                    ("G2", 1), ("D3", 1), ("C3", 1), ("G2", 1),
+                ],
+                "lead": [
+                    ("D5", .25), ("R", .25), ("B4", .25), ("R", .25),
+                    ("E5", .25), ("R", .25), ("C5", .25), ("R", .25),
+                ] * 2,
+            },
+            "highlands": {
+                "bpm": 108,
+                "volume": 0.13,
+                "melody": [
+                    ("D4", 1), ("F4", .5), ("A4", .5), ("G4", 1), ("F4", 1),
+                    ("A4", .5), ("C5", .5), ("D5", 1), ("C5", .5), ("A4", .5), ("G4", 1),
+                ],
+                "bass": [
+                    ("D2", 1), ("A2", 1), ("C3", 1), ("G2", 1),
+                    ("D2", 1), ("A2", 1), ("F2", 1), ("C3", 1),
+                ],
+                "lead": [
+                    ("A5", .5), ("R", .5), ("F5", .5), ("R", .5),
+                    ("D5", .5), ("R", .5), ("C5", .5), ("R", .5),
+                ],
+            },
+            "shadow": {
+                "bpm": 96,
+                "volume": 0.13,
+                "melody": [
+                    ("C4", .5), ("D#4", .5), ("G4", 1), ("F#4", .5), ("D#4", .5), ("C4", 1),
+                    ("A#3", .5), ("C4", .5), ("D#4", 1), ("G4", .5), ("F4", .5), ("D#4", 1),
+                ],
+                "bass": [
+                    ("C2", 1), ("C3", 1), ("G1", 1), ("G2", 1),
+                    ("A#1", 1), ("A#2", 1), ("G1", 1), ("C2", 1),
+                ],
+                "lead": [
+                    ("G5", .25), ("R", .25), ("D#5", .25), ("R", .25),
+                    ("C5", .25), ("R", .25), ("A#4", .25), ("R", .25),
+                ] * 2,
+            },
+            "sun": {
+                "bpm": 128,
+                "volume": 0.15,
+                "melody": [
+                    ("E4", .5), ("F4", .5), ("G#4", .5), ("B4", .5),
+                    ("C5", .5), ("B4", .5), ("G#4", .5), ("F4", .5),
+                    ("E4", .5), ("G#4", .5), ("B4", .5), ("D5", .5),
+                    ("C5", .5), ("B4", .5), ("G#4", .5), ("E4", .5),
+                ],
+                "bass": [
+                    ("E2", .5), ("E3", .5), ("B2", .5), ("E3", .5),
+                    ("F2", .5), ("F3", .5), ("C3", .5), ("F3", .5),
+                    ("E2", .5), ("E3", .5), ("B1", .5), ("B2", .5),
+                    ("E2", .5), ("E3", .5), ("E2", .5), ("B2", .5),
+                ],
+                "lead": [
+                    ("B5", .125), ("G#5", .125), ("E5", .125), ("G#5", .125),
+                    ("C6", .125), ("B5", .125), ("G#5", .125), ("F5", .125),
+                ] * 4,
+            },
+        }
+        profile = profiles.get(music_key, profiles["green"])
+        melody = self.notes(profile["melody"])
+        bass = self.notes(profile["bass"])
+        lead = self.notes(profile.get("lead", [])) if profile.get("lead") else None
+        percussion = self.drum_loop(4, busy=music_key in {"shadow", "sun"})
+        return self.generate_chiptune_song(
+            melody,
+            bass,
+            percussion=percussion,
+            lead=lead,
+            bpm=profile["bpm"],
+            volume=profile["volume"],
+        )
     
     def play_music_bytes(self, music_bytes, loops=-1):
         pygame.mixer.music.load(io.BytesIO(music_bytes), "wav")
         pygame.mixer.music.play(loops)
+
+    def get_overworld_music_key(self, current_area):
+        """Return the regional music key for the current overworld area."""
+        if not current_area:
+            return "overworld"
+        if current_area.area_type == "town":
+            return "town"
+        return AREA_MUSIC_PROFILES.get(current_area.area_type, "overworld")
+
+    def get_music_key(self, game_state, is_boss_battle=False, current_area=None):
+        """Return a stable key used to avoid unnecessary music restarts."""
+        if game_state == "battle":
+            return "boss_battle" if is_boss_battle else "battle"
+        if game_state == "overworld":
+            return f"overworld:{self.get_overworld_music_key(current_area)}"
+        if game_state == "interior":
+            return "town"
+        return game_state
 
     def update(self, game_state, is_boss_battle=False, current_area=None):
         if not pygame.mixer.get_init():
             return
 
         area_type = current_area.area_type if current_area else None
+        music_key = self.get_music_key(game_state, is_boss_battle, current_area)
 
-        # Only update when state or boss battle status changes
-        if (
-            game_state == self.last_state and
-            is_boss_battle == self.boss_battle_active and
-            area_type == self.last_area_type
-        ):
+        # BEGINNER CODE LABEL: music restart guard.
+        # Area types can share a music mood. Comparing the mood key keeps the
+        # same loop playing when the player moves between similar regions.
+        if music_key == self.last_music_key:
             return
         
         print(f'MusicSystem: State change detected! "{self.last_state}" -> "{game_state}", boss: {self.boss_battle_active} -> {is_boss_battle}')
         self.last_state = game_state
         self.last_area_type = area_type
         self.boss_battle_active = is_boss_battle
+        self.last_music_key = music_key
         pygame.mixer.music.stop()
         pygame.mixer.music.set_volume(0.5)
         
@@ -9838,6 +10074,10 @@ class MusicSystem:
                 if current_area and current_area.area_type == "town" and self.town_music_bytes:
                     print('MusicSystem: Playing town music')
                     self.play_music_bytes(self.town_music_bytes)
+                elif self.area_music_bytes.get(self.get_overworld_music_key(current_area)):
+                    area_music_key = self.get_overworld_music_key(current_area)
+                    print(f'MusicSystem: Playing {area_music_key} area music')
+                    self.play_music_bytes(self.area_music_bytes[area_music_key])
                 elif self.overworld_music_bytes:
                     print('MusicSystem: Playing overworld music')
                     self.play_music_bytes(self.overworld_music_bytes)

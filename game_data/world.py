@@ -8,7 +8,9 @@ Beginner note:
 Common fields:
     background_color: RGB color used to fill the area background.
     grid_color: RGB color used for grid/path lines.
+    style: name of the draw-only scenic layer for an area.
     count: how many particles to spawn at once.
+    x_range/y_range: optional local-area spawn bounds for particles.
     interval: frames between environmental mechanic ticks.
     health/mana: amount restored or drained by an area effect.
 """
@@ -78,6 +80,83 @@ AREA_VISUALS = {
     },
 }
 
+# BEGINNER CODE LABEL: draw-only scenic layer tuning.
+# These values give each overworld area a stronger visual identity. The drawing
+# code in `WorldArea.draw_scenic_layer` reads this table, but these shapes do
+# not add collision, quests, buttons, or new playable spaces.
+AREA_SCENIC_PROFILES = {
+    "forest": {
+        "style": "forest",
+        "primary": (34, 82, 38),
+        "secondary": (58, 124, 56),
+        "accent": (132, 190, 88),
+    },
+    "desert": {
+        "style": "dunes",
+        "primary": (128, 102, 58),
+        "secondary": (178, 146, 82),
+        "accent": (232, 198, 118),
+    },
+    "mountain": {
+        "style": "ridges",
+        "primary": (72, 76, 92),
+        "secondary": (108, 112, 132),
+        "accent": (190, 196, 218),
+    },
+    "swamp": {
+        "style": "wetlands",
+        "primary": (34, 68, 42),
+        "secondary": (58, 96, 66),
+        "accent": (126, 166, 112),
+    },
+    "plains": {
+        "style": "grassland",
+        "primary": (72, 132, 52),
+        "secondary": (116, 172, 72),
+        "accent": (204, 226, 108),
+    },
+    "volcano": {
+        "style": "lava_cracks",
+        "primary": (92, 34, 28),
+        "secondary": (150, 56, 34),
+        "accent": (255, 146, 48),
+    },
+    "ice": {
+        "style": "ice_shards",
+        "primary": (72, 106, 142),
+        "secondary": (118, 166, 206),
+        "accent": (218, 244, 255),
+    },
+    "castle": {
+        "style": "runes",
+        "primary": (72, 60, 82),
+        "secondary": (110, 92, 128),
+        "accent": (238, 210, 112),
+    },
+    "cave": {
+        "style": "crystals",
+        "primary": (34, 34, 54),
+        "secondary": (70, 70, 104),
+        "accent": (154, 176, 238),
+    },
+}
+
+# BEGINNER CODE LABEL: overworld music mood by area.
+# MusicSystem generates a few short procedural loops and uses this table to
+# choose which loop matches the current area. It does not load external audio or
+# touch Android packaging.
+AREA_MUSIC_PROFILES = {
+    "forest": "green",
+    "plains": "green",
+    "mountain": "highlands",
+    "ice": "highlands",
+    "desert": "sun",
+    "volcano": "sun",
+    "swamp": "shadow",
+    "cave": "shadow",
+    "castle": "shadow",
+}
+
 # Optional ambient particles for areas. Missing area keys simply have no custom
 # particle profile.
 AREA_PARTICLE_PROFILES = {
@@ -89,6 +168,16 @@ AREA_PARTICLE_PROFILES = {
             "velocity_y": (-2, -0.5),
             "size": 6,
             "lifetime": 40,
+            "y_range": (240, 660),
+        },
+        {
+            "count": 2,
+            "color": (90, 70, 70),
+            "velocity_x": (-0.2, 0.2),
+            "velocity_y": (-0.7, -0.2),
+            "size": 3,
+            "lifetime": 55,
+            "y_range": (260, 680),
         },
     ],
     "ice": [
@@ -99,6 +188,16 @@ AREA_PARTICLE_PROFILES = {
             "velocity_y": (0.5, 1.5),
             "size": 4,
             "lifetime": 50,
+            "y_range": (0, 360),
+        },
+        {
+            "count": 2,
+            "color": (230, 245, 255),
+            "velocity_x": (-0.1, 0.1),
+            "velocity_y": (-0.1, 0.1),
+            "size": 2,
+            "lifetime": 45,
+            "y_range": (260, 660),
         },
     ],
     "swamp": [
@@ -109,6 +208,16 @@ AREA_PARTICLE_PROFILES = {
             "velocity_y": (-0.2, 0.2),
             "size": 5,
             "lifetime": 60,
+            "y_range": (260, 660),
+        },
+        {
+            "count": 2,
+            "color": (92, 136, 96),
+            "velocity_x": (-0.1, 0.1),
+            "velocity_y": (-0.6, -0.2),
+            "size": 4,
+            "lifetime": 70,
+            "y_range": (360, 680),
         },
     ],
     "forest": [
@@ -119,6 +228,16 @@ AREA_PARTICLE_PROFILES = {
             "velocity_y": (-0.5, -0.1),
             "size": 5,
             "lifetime": 45,
+            "y_range": (180, 620),
+        },
+        {
+            "count": 2,
+            "color": (190, 220, 120),
+            "velocity_x": (-0.2, 0.2),
+            "velocity_y": (-0.15, 0.15),
+            "size": 2,
+            "lifetime": 55,
+            "y_range": (200, 520),
         },
     ],
     "desert": [
@@ -129,6 +248,7 @@ AREA_PARTICLE_PROFILES = {
             "velocity_y": (-0.5, 0.5),
             "size": 4,
             "lifetime": 35,
+            "y_range": (300, 680),
         },
     ],
     "mountain": [
@@ -139,6 +259,7 @@ AREA_PARTICLE_PROFILES = {
             "velocity_y": (-0.3, 0.3),
             "size": 4,
             "lifetime": 40,
+            "y_range": (120, 520),
         },
     ],
     "plains": [
@@ -149,6 +270,16 @@ AREA_PARTICLE_PROFILES = {
             "velocity_y": (-0.4, -0.1),
             "size": 5,
             "lifetime": 55,
+            "y_range": (250, 650),
+        },
+        {
+            "count": 2,
+            "color": (235, 228, 118),
+            "velocity_x": (-0.15, 0.15),
+            "velocity_y": (-0.2, 0.05),
+            "size": 2,
+            "lifetime": 60,
+            "y_range": (230, 540),
         },
     ],
     "castle": [
@@ -159,6 +290,7 @@ AREA_PARTICLE_PROFILES = {
             "velocity_y": (-0.2, 0.2),
             "size": 4,
             "lifetime": 50,
+            "y_range": (180, 520),
         },
     ],
     "cave": [
@@ -169,6 +301,16 @@ AREA_PARTICLE_PROFILES = {
             "velocity_y": (-0.1, 0.1),
             "size": 3,
             "lifetime": 70,
+            "y_range": (220, 650),
+        },
+        {
+            "count": 2,
+            "color": (150, 160, 230),
+            "velocity_x": (-0.05, 0.05),
+            "velocity_y": (-0.05, 0.05),
+            "size": 2,
+            "lifetime": 65,
+            "y_range": (300, 640),
         },
     ],
 }
