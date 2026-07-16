@@ -110,8 +110,9 @@ from .town_population import (
     iter_town_residents,
 )
 
-# World map layout, area visuals, particles, and environmental effects.
+# World map layout, area visuals, atmosphere, particles, and environmental effects.
 from .world import (
+    AREA_ATMOSPHERE_PROFILES,
     AREA_DESCRIPTIONS,
     AREA_MECHANICS,
     AREA_MUSIC_PROFILES,
@@ -123,6 +124,7 @@ from .world import (
 
 # `__all__` lists the names that are intentionally public from this package.
 __all__ = [
+    "AREA_ATMOSPHERE_PROFILES",
     "AREA_DESCRIPTIONS",
     "AREA_ENEMY_TYPES",
     "AREA_MECHANICS",

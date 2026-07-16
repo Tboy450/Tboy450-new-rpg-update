@@ -60,6 +60,7 @@ import io
 # Active game data is imported through `game_data/__init__.py`. That file keeps
 # this import list stable even if data gets moved between smaller modules later.
 from game_data import (
+    AREA_ATMOSPHERE_PROFILES,
     AREA_DESCRIPTIONS,
     AREA_ENEMY_TYPES,
     AREA_MECHANICS,
@@ -560,6 +561,7 @@ class WorldArea:
         visual_profile = AREA_VISUALS.get(area_type, AREA_VISUALS["forest"])
         self.background_color = visual_profile["background_color"]
         self.grid_color = visual_profile["grid_color"]
+        self.atmosphere_overlay = None
 
         if area_type == "town":
             # Town-specific buildings and structures
@@ -891,6 +893,43 @@ class WorldArea:
                 pygame.draw.ellipse(surface, primary, (x - 28, y + 8, 56, 13))
                 pygame.draw.polygon(surface, secondary, [(x, y - height), (x - 12, y + 10), (x + 12, y + 10)])
                 pygame.draw.line(surface, accent, (x, y - height + 4), (x + 4, y + 8), 2)
+
+    def draw_atmosphere_overlay(self, surface):
+        """Draw cached transparent haze over the background scenery only."""
+        profile = AREA_ATMOSPHERE_PROFILES.get(self.area_type)
+        if not profile:
+            return
+
+        if self.atmosphere_overlay is None:
+            # BEGINNER CODE LABEL: cached draw-only atmosphere.
+            # The transparent surface is built once for this area, then reused
+            # each frame. That keeps the visual upgrade cheap on Android and
+            # makes it clear this code only changes background mood.
+            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            overlay.fill(profile["overlay_color"])
+            band_color = profile["band_color"]
+
+            for y, height, alpha in profile.get("bands", ()):
+                rect = pygame.Rect(-90, y - height // 2, SCREEN_WIDTH + 180, height)
+                pygame.draw.ellipse(overlay, (*band_color, alpha), rect)
+
+            for index in range(profile.get("wisps", 0)):
+                x, y = self._scenic_point(
+                    200 + index,
+                    80,
+                    SCREEN_WIDTH - 80,
+                    160,
+                    SCREEN_HEIGHT - 90,
+                )
+                width = 100 + (index % 3) * 26
+                height = 22 + (index % 2) * 10
+                alpha = max(6, profile.get("wisp_alpha", 16) - (index % 3) * 3)
+                rect = pygame.Rect(x - width // 2, y - height // 2, width, height)
+                pygame.draw.ellipse(overlay, (*band_color, alpha), rect)
+
+            self.atmosphere_overlay = overlay
+
+        surface.blit(self.atmosphere_overlay, (0, 0))
     
     def _draw_town_paths(self, surface):
         """Draw red dirt paths connecting buildings"""
@@ -8420,7 +8459,8 @@ class Game:
     # BEGINNER CODE LABEL: area ambience routing.
     # `game_data/world.py` owns the scenery, particle, and music mood tables.
     # This method handles particle ambience; `WorldArea.draw_scenic_layer`
-    # handles draw-only scenery; `MusicSystem.update` handles regional music.
+    # and `WorldArea.draw_atmosphere_overlay` handle draw-only scenery;
+    # `MusicSystem.update` handles regional music.
     def emit_area_particles(self, current_area):
         area_world_x, area_world_y = current_area.get_world_position()
         for profile in AREA_PARTICLE_PROFILES.get(current_area.area_type, ()):
@@ -8953,6 +8993,7 @@ class Game:
                     current_area.draw_town(screen)
                 else:
                     current_area.draw_scenic_layer(screen)
+                current_area.draw_atmosphere_overlay(screen)
             else:
                 screen.fill(BACKGROUND)
 

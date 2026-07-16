@@ -9,6 +9,7 @@ Common fields:
     background_color: RGB color used to fill the area background.
     grid_color: RGB color used for grid/path lines.
     style: name of the draw-only scenic layer for an area.
+    overlay_color/bands/wisps: optional draw-only atmosphere layer controls.
     count: how many particles to spawn at once.
     x_range/y_range: optional local-area spawn bounds for particles.
     interval: frames between environmental mechanic ticks.
@@ -138,6 +139,48 @@ AREA_SCENIC_PROFILES = {
         "primary": (34, 34, 54),
         "secondary": (70, 70, 104),
         "accent": (154, 176, 238),
+    },
+}
+
+# BEGINNER CODE LABEL: draw-only atmosphere overlay tuning.
+# These values add region mood with transparent haze. They do not create
+# collision, hide UI, change enemies, or alter Android packaging. Keep alpha
+# values low so the player, items, and landmarks stay readable.
+AREA_ATMOSPHERE_PROFILES = {
+    "mountain": {
+        "overlay_color": (160, 170, 210, 16),
+        "band_color": (210, 218, 238),
+        "bands": ((128, 70, 20), (252, 86, 16), (382, 58, 12)),
+        "wisps": 4,
+        "wisp_alpha": 18,
+    },
+    "swamp": {
+        "overlay_color": (118, 158, 126, 24),
+        "band_color": (172, 210, 162),
+        "bands": ((278, 64, 22), (388, 76, 20), (515, 92, 16)),
+        "wisps": 7,
+        "wisp_alpha": 22,
+    },
+    "volcano": {
+        "overlay_color": (150, 58, 34, 14),
+        "band_color": (255, 142, 54),
+        "bands": ((360, 50, 16), (490, 62, 14), (610, 78, 12)),
+        "wisps": 5,
+        "wisp_alpha": 14,
+    },
+    "ice": {
+        "overlay_color": (184, 220, 255, 20),
+        "band_color": (226, 246, 255),
+        "bands": ((112, 58, 18), (198, 70, 16), (552, 82, 14)),
+        "wisps": 5,
+        "wisp_alpha": 16,
+    },
+    "cave": {
+        "overlay_color": (72, 82, 128, 20),
+        "band_color": (146, 164, 236),
+        "bands": ((322, 62, 12), (512, 82, 10)),
+        "wisps": 4,
+        "wisp_alpha": 12,
     },
 }
 
