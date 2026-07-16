@@ -173,6 +173,8 @@ Root files:
   auto-sync when active game files have local edits.
 - `scripts/create_windows_shortcut.ps1`: creates or refreshes a desktop
   shortcut with the Dragon's Lair RPG icon for this checkout.
+- `scripts/inventory_local_copies.ps1`: read-only helper for finding older
+  local RPG copies before pulling, cleaning, or migrating them.
 - `assets/processed/ui/dragon_app_icon.ico`: Windows shortcut icon built from
   the Dragon's Lair app icon art.
 - `README.md`: this project overview and install/update guide.

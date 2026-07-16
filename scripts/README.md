@@ -16,6 +16,9 @@ and packaging.
 - `install_windows.ps1`: Windows PowerShell setup helper.
 - `create_windows_shortcut.ps1`: creates or refreshes a desktop shortcut for
   this checkout using the Dragon's Lair RPG icon.
+- `inventory_local_copies.ps1`: read-only helper that finds likely older local
+  RPG folders and prints Git status, HEAD commit, origin, and dirty-file count
+  before any old copy is updated.
 - `process_uploaded_enemy_sheet.py`: splits a user-supplied green-screen enemy sheet into future transparent enemy PNGs.
 - `process_uploaded_npc_sheet.py`: splits a user-supplied green-screen NPC sheet into future transparent NPC PNGs.
 - `run_local_android.py`: Android/Pydroid runtime launcher helper for source installs.
@@ -30,8 +33,7 @@ edit `main.py`, `game_data/`, or `systems/` instead.
 
 ## Windows Shortcut Icon
 
-Codex does not expose a project-level button for the top-right app toolbar, so
-the safe launcher path is a normal Windows shortcut. Run this from the repo to
+The Windows desktop shortcut is separate from Codex. Run this from the repo to
 create or refresh the desktop shortcut for this checkout:
 
 ```powershell
@@ -40,6 +42,22 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\create_windows
 
 The shortcut points to `Run Dragons Lair RPG.cmd`, so it still uses the same
 GitHub update check and Windows launch flow as the normal double-click file.
+
+Codex desktop can also show project-specific local environment actions in the
+top bar. Create those through the Codex desktop settings UI first, then check in
+the generated `.codex` config. Do not hand-write the `.codex` action schema
+until Codex has generated an example for this project.
+
+## Local Copy Inventory
+
+Before pulling or cleaning older RPG folders, run:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\inventory_local_copies.ps1
+```
+
+This is read-only. It helps protect older local-only work, especially the
+equipment/visual-polish commit noted in `docs/local_copy_inventory.md`.
 
 ## Android Build Path
 
