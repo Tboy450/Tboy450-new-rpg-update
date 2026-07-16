@@ -26,6 +26,10 @@ function Invoke-Checked {
 }
 
 function Get-DirtyActivePaths {
+    # BEGINNER CODE LABEL: Local edit safety check.
+    # The launcher can copy fresh files from GitHub, but only after this
+    # function confirms the active game files are clean. That protects local
+    # edits made by the user or Codex from being overwritten.
     Push-Location $RepoDir
     try {
         $statusArgs = @("status", "--porcelain", "--") + $ActivePaths
@@ -93,6 +97,9 @@ function Update-GameFiles {
 
     $dirtyPaths = @(Get-DirtyActivePaths)
     if ($dirtyPaths.Count -gt 0) {
+        # BEGINNER CODE LABEL: Stop before GitHub restore.
+        # Returning here means the launcher still starts the local game, but it
+        # skips the auto-update step so changed files stay untouched.
         Write-Host "Local game edits detected; skipping auto-update so they are not overwritten." -ForegroundColor Yellow
         foreach ($path in $dirtyPaths) {
             Write-Host "  $path" -ForegroundColor DarkYellow

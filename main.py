@@ -390,6 +390,10 @@ def create_game_display():
     Android devices often ignore the requested 1000x700 window size and show it
     as a small corner surface. Rendering to a virtual surface and stretching it
     to the real fullscreen display keeps the game usable on phones.
+
+    BEGINNER CODE LABEL:
+        `screen` is where the game draws everything. `display_surface` is the
+        real window or phone screen that finally shows the scaled result.
     """
     if is_android_runtime():
         try:
@@ -3243,7 +3247,7 @@ class Dragon:
         dragon_color, fire_color = self.get_boss_palette(boss_level)
         imported_dragon = load_sprite_by_height(TITLE_DRAGON_SPRITE_PATH, target_height)
         if imported_dragon:
-            # BEGINNER NOTE: Active title dragon.
+            # BEGINNER CODE LABEL: Active title dragon.
             # Keep the PNG's original red-and-gold colors. A former full-image
             # tint made transparent pixels visible as a colored rectangle and
             # washed out the sprite's detailed shading. The older Python-drawn

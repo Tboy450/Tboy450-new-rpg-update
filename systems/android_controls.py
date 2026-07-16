@@ -20,6 +20,9 @@ import pygame
 from .input_actions import CANCEL, CONFIRM, INTERACT, MAP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, MOVE_UP
 
 
+# BEGINNER CODE LABEL: Touch layout tuning.
+# These numbers change where Android buttons sit and how forgiving their tap
+# targets are. They do not change the gameplay action that each button sends.
 TOUCH_EDGE_MARGIN = 24
 # pygame.Rect.inflate adds this many total pixels, so 16 means 8 per side.
 DEFAULT_TAP_PADDING = 16
@@ -41,6 +44,10 @@ def _make_button(
 
     The returned dictionary is intentionally plain and beginner-friendly so
     `main.py` can inspect the values without needing a custom class.
+
+    BEGINNER CODE LABEL:
+        The `action` field is the important gameplay part. Drawing code reads
+        `label`, `fill`, and `border`; input code reads `rect` and `action`.
     """
     return {
         "name": name,
@@ -149,6 +156,9 @@ def build_android_touch_buttons(game, screen_width, screen_height):
         return buttons
 
     if getattr(game, "show_inventory", False):
+        # BEGINNER CODE LABEL: Inventory touch row.
+        # These buttons mirror the Inventory keyboard actions. The row uses
+        # tighter tap padding because the buttons are close together.
         base_y = screen_height - TOUCH_EDGE_MARGIN - 42
         gap = 8
         close_x = screen_width - TOUCH_EDGE_MARGIN - 106
@@ -241,8 +251,9 @@ def build_android_touch_buttons(game, screen_width, screen_height):
         )
         return buttons
 
-    # Normal exploration controls. The interior uses a larger bottom clearance
-    # because its service text panel sits near the bottom center of the screen.
+    # BEGINNER CODE LABEL: Normal exploration controls.
+    # The interior uses a larger bottom clearance because its service text panel
+    # sits near the bottom center of the screen.
     dpad_size = 56 if state == "overworld" else 52
     action_w = 104
     action_h = 50
@@ -328,6 +339,9 @@ def find_android_touch_button(buttons, pos, extra_padding=DEFAULT_TAP_PADDING):
         grows too far beyond the visible rectangle.
     """
     for button in reversed(buttons):
+        # BEGINNER CODE LABEL: Hit testing order matters.
+        # Reversed order gives later-drawn buttons first chance at the tap if
+        # two forgiving hitboxes ever overlap.
         hit_padding = button.get("hit_padding", extra_padding)
         if button["rect"].inflate(hit_padding, hit_padding).collidepoint(pos):
             return button
