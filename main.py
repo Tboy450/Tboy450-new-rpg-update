@@ -247,6 +247,20 @@ def clamp(value, minimum, maximum):
     return max(minimum, min(maximum, value))
 
 
+def normalized_spawn_range(profile, key, maximum):
+    """Return a safe integer spawn range for an optional particle profile key."""
+    raw_range = profile.get(key, (0, maximum))
+    try:
+        range_min, range_max = raw_range
+        range_min = int(clamp(range_min, 0, maximum))
+        range_max = int(clamp(range_max, 0, maximum))
+    except (TypeError, ValueError):
+        return 0, maximum
+    if range_min > range_max:
+        range_min, range_max = range_max, range_min
+    return range_min, range_max
+
+
 def append_stereo_sample(buffer, value):
     """Append one signed 16-bit stereo sample to a PCM byte buffer."""
     sample = int(clamp(value, -1.0, 1.0) * MAX_AUDIO_SAMPLE)
@@ -8407,10 +8421,10 @@ class Game:
                 # Most profiles can use the full area. A profile may add
                 # x_range/y_range in `game_data/world.py` when an effect should
                 # stay near the sky, ground, lava, water, or crystals.
-                x_min, x_max = profile.get("x_range", (0, AREA_WIDTH))
-                y_min, y_max = profile.get("y_range", (0, AREA_HEIGHT))
-                x = area_world_x + random.randint(int(x_min), int(x_max))
-                y = area_world_y + random.randint(int(y_min), int(y_max))
+                x_min, x_max = normalized_spawn_range(profile, "x_range", AREA_WIDTH)
+                y_min, y_max = normalized_spawn_range(profile, "y_range", AREA_HEIGHT)
+                x = area_world_x + random.randint(x_min, x_max)
+                y = area_world_y + random.randint(y_min, y_max)
                 velocity = (
                     random.uniform(*profile["velocity_x"]),
                     random.uniform(*profile["velocity_y"]),
@@ -10055,11 +10069,10 @@ class MusicSystem:
         self.last_state = game_state
         self.last_area_type = area_type
         self.boss_battle_active = is_boss_battle
-        self.last_music_key = music_key
-        pygame.mixer.music.stop()
-        pygame.mixer.music.set_volume(0.5)
         
         try:
+            pygame.mixer.music.stop()
+            pygame.mixer.music.set_volume(0.5)
             if game_state == "start_menu" and self.start_menu_music_bytes:
                 print('MusicSystem: Playing start menu music')
                 self.play_music_bytes(self.start_menu_music_bytes)
@@ -10103,6 +10116,12 @@ class MusicSystem:
                 print(f'MusicSystem: No music for state: {game_state}')
         except Exception as e:
             print(f"Music playback error: {e}")
+            return
+
+        # Mark the music key only after playback code finishes without raising.
+        # This lets the next update retry if pygame rejects a generated track.
+        self.last_music_key = music_key
+
     def generate_overworld_music(self):
         # Driving adventure loop with an actual 8-bar phrase.
         melody = self.notes([
