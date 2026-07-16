@@ -171,4 +171,8 @@ Root files:
 - `Run Dragons Lair RPG.cmd`: Windows double-click launcher.
 - `scripts/run_windows.ps1`: Windows launcher/update helper; it skips GitHub
   auto-sync when active game files have local edits.
+- `scripts/create_windows_shortcut.ps1`: creates or refreshes a desktop
+  shortcut with the Dragon's Lair RPG icon for this checkout.
+- `assets/processed/ui/dragon_app_icon.ico`: Windows shortcut icon built from
+  the Dragon's Lair app icon art.
 - `README.md`: this project overview and install/update guide.

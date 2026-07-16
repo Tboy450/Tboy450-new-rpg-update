@@ -162,12 +162,18 @@ function Write-DesktopShortcut {
 
     $desktop = Get-DesktopPath
     $shortcutPath = Join-Path $desktop "Dragon's Lair RPG.lnk"
+    $iconPath = Join-Path $InstallDir "assets\processed\ui\dragon_app_icon.ico"
     $shell = New-Object -ComObject WScript.Shell
     $shortcut = $shell.CreateShortcut($shortcutPath)
     $shortcut.TargetPath = $Launcher
     $shortcut.WorkingDirectory = $InstallDir
     $shortcut.Description = "Run Dragon's Lair RPG and update from GitHub before launch"
-    $shortcut.IconLocation = "$PythonExe,0"
+    if (Test-Path -LiteralPath $iconPath) {
+        $shortcut.IconLocation = $iconPath
+    }
+    else {
+        $shortcut.IconLocation = "$PythonExe,0"
+    }
     $shortcut.Save()
     return $shortcutPath
 }

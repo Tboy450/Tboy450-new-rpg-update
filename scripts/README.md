@@ -14,6 +14,8 @@ and packaging.
 - `install_packages_strict.py`: stricter installer helper for environments where package versions matter more.
 - `install_python_app.py`: desktop/source install helper for the Python version of the game.
 - `install_windows.ps1`: Windows PowerShell setup helper.
+- `create_windows_shortcut.ps1`: creates or refreshes a desktop shortcut for
+  this checkout using the Dragon's Lair RPG icon.
 - `process_uploaded_enemy_sheet.py`: splits a user-supplied green-screen enemy sheet into future transparent enemy PNGs.
 - `process_uploaded_npc_sheet.py`: splits a user-supplied green-screen NPC sheet into future transparent NPC PNGs.
 - `run_local_android.py`: Android/Pydroid runtime launcher helper for source installs.
@@ -25,6 +27,19 @@ and packaging.
 
 Use scripts when you need a repeatable command. If a change affects gameplay,
 edit `main.py`, `game_data/`, or `systems/` instead.
+
+## Windows Shortcut Icon
+
+Codex does not expose a project-level button for the top-right app toolbar, so
+the safe launcher path is a normal Windows shortcut. Run this from the repo to
+create or refresh the desktop shortcut for this checkout:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\create_windows_shortcut.ps1
+```
+
+The shortcut points to `Run Dragons Lair RPG.cmd`, so it still uses the same
+GitHub update check and Windows launch flow as the normal double-click file.
 
 ## Android Build Path
 
