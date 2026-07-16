@@ -44,9 +44,11 @@ The shortcut points to `Run Dragons Lair RPG.cmd`, so it still uses the same
 GitHub update check and Windows launch flow as the normal double-click file.
 
 Codex desktop can also show project-specific local environment actions in the
-top bar. Create those through the Codex desktop settings UI first, then check in
-the generated `.codex` config. Do not hand-write the `.codex` action schema
-until Codex has generated an example for this project.
+top bar. This project includes `.codex/environments/environment.toml` with a
+`Run Game` action wired to `scripts/run_windows.ps1`. Restart Codex or open a
+fresh task for this project if the button does not appear immediately. The
+action uses the verified built-in `run` icon; a custom dragon image for this
+top-bar slot was not documented in the local references.
 
 ## Local Copy Inventory
 

@@ -53,7 +53,13 @@ safety copy, not a file to commit.
 ## Codex Top-Bar Run Button Note
 
 Codex desktop supports project-specific local environment actions that appear in
-the top bar and can have an icon. The official docs say to create these through
-the Codex desktop settings pane, and then check in the generated `.codex`
-configuration. Do not hand-write a `.codex` action schema unless we first have a
-generated example from Codex itself.
+the top bar and can have an icon. The public manual says to create these through
+the Codex desktop settings pane, then check in the generated `.codex`
+configuration. Do not invent a `.codex` action shape from scratch.
+
+This project now includes `.codex/environments/environment.toml`, using the
+verified action shape from bundled Codex run-button references. It adds a
+`Run Game` top-bar action that launches `scripts/run_windows.ps1`.
+
+The action uses the verified built-in `run` icon. A custom dragon image for this
+top-bar slot was not documented in the local references.

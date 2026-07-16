@@ -175,6 +175,8 @@ Root files:
   shortcut with the Dragon's Lair RPG icon for this checkout.
 - `scripts/inventory_local_copies.ps1`: read-only helper for finding older
   local RPG copies before pulling, cleaning, or migrating them.
+- `.codex/environments/environment.toml`: Codex desktop top-bar `Run Game`
+  action for this project.
 - `assets/processed/ui/dragon_app_icon.ico`: Windows shortcut icon built from
   the Dragon's Lair app icon art.
 - `README.md`: this project overview and install/update guide.
