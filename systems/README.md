@@ -31,6 +31,8 @@ This module gives input a shared vocabulary.
 - `input_actions.py` translates those raw keys into action strings such as `move_up`.
 - `main.py` can then ask for actions instead of checking every possible key in every place.
 - Android virtual buttons also map into the same actions, so keyboard and touch controls stay aligned.
+- The top docstring now has a beginner input-flow map showing the path from
+  keyboard key -> action string -> optional Android synthetic key reuse.
 
 When adding a new control:
 

@@ -200,6 +200,7 @@ beginner-facing control labels.
 
 - Keyboard action names and primary key mappings:
   `systems/input_actions.py`
+  This is code vocabulary for input routing, not player-facing button text.
 - Android touch layout and draw rules:
   `systems/android_controls.py`
   This file also owns phone edge margins and tap-hit padding.
