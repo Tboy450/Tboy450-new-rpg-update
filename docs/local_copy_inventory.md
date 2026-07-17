@@ -59,7 +59,7 @@ configuration. Do not invent a `.codex` action shape from scratch.
 
 This project now includes `.codex/environments/environment.toml`, using the
 verified action shape from bundled Codex run-button references. It adds a
-`Run Game` top-bar action that launches `scripts/run_windows.ps1`.
+canonical `Run` top-bar action that launches `scripts/run_windows.ps1`.
 
 The action uses the verified built-in `run` icon. A custom dragon image for this
 top-bar slot was not documented in the local references.

@@ -6,6 +6,6 @@ name = "Dragon's Lair RPG"
 script = ""
 
 [[actions]]
-name = "Run Game"
+name = "Run"
 icon = "run"
 command = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/run_windows.ps1"

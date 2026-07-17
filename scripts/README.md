@@ -45,7 +45,7 @@ GitHub update check and Windows launch flow as the normal double-click file.
 
 Codex desktop can also show project-specific local environment actions in the
 top bar. This project includes `.codex/environments/environment.toml` with a
-`Run Game` action wired to `scripts/run_windows.ps1`. Restart Codex or open a
+canonical `Run` action wired to `scripts/run_windows.ps1`. Restart Codex or open a
 fresh task for this project if the button does not appear immediately. The
 action uses the verified built-in `run` icon; a custom dragon image for this
 top-bar slot was not documented in the local references.
